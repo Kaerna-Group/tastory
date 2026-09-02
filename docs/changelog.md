@@ -36,4 +36,7 @@
 - Настроен origin `git@github.com-personal:Kaerna-Group/tastory.git`.
 - Подтверждён доступ личного SSH-ключа аккаунта Ermolz69.
 - В этом репозитории закреплён автор и создатель коммитов: Ermolz <00ermzahar@gmail.com>.
-- Первый push в main запускает workflow CI; статус проверяется после отправки.
+- Основа опубликована в main коммитом `3bd468b`; настроено отслеживание origin/main.
+- GitHub связал автора и создателя коммита с аккаунтом Ermolz69.
+- Первый [CI на Ubuntu](https://github.com/Kaerna-Group/tastory/actions/runs/33673983434) завершился успешно: Quality and smoke, обе сборки и браузерные проверки.
+- Подготовлен [порядок следующих задач](next-steps.md): Google staging, gate платформы, данные и пользователи, затем структурированный рецепт.
