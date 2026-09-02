@@ -1,5 +1,12 @@
 # Журнал изменений
 
+## 2026-09-03 — OAuth client подключён к настройке
+
+- Полученный от владельца публичный Client ID сохранён в локальном staging и GitHub variable `STAGING_GOOGLE_CLIENT_ID`.
+- `setupStagingAuth` автоматически заполняет отсутствующую `GOOGLE_CLIENT_IDS` этим клиентом при запуске владельцем. Существующая allowlist сохраняется; HTTP-запрос не может включить настройку.
+- Обновление загружено в рабочий Apps Script HEAD. Ещё нужны owner consent и выпуск новой версии /exec, затем настоящий вход с HTTPS-сайта.
+- Проверка: полный `npm run check`, 107 тестов и IIFE smoke, включая автоматическую настройку клиента и отказ токену с прежним audience.
+
 ## 2026-09-03 — подготовка Google auth и приглашений
 
 - Реализованы auth.signIn/auth.me, проверка Google RS256/claims, фиксированный endpoint и кеш публичных ключей, fail-closed ошибки без credentials.

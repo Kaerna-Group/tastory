@@ -125,6 +125,14 @@ export function checkAuthRuntime(code) {
   ]);
   assert.equal(request(jwt(), 'auth.me').error.code, 'ACCESS_DENIED');
   assert.equal(held, false);
+  delete properties.GOOGLE_CLIENT_IDS;
+  sandbox.setupStagingAuth();
+  assert.equal(
+    properties.GOOGLE_CLIENT_IDS,
+    '808057643126-ih11h368gu15lbdlm63g1fmihre3v9s3.apps.googleusercontent.com',
+  );
+  assert.equal(request(jwt(), 'auth.me').error.code, 'UNAUTHENTICATED');
+  assert.equal(held, false);
   console.log(
     'Apps Script: real RS256 verification, cached Google keys, invitation claim/revocation passed without WebCrypto.',
   );

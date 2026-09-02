@@ -1,10 +1,12 @@
 import { invitationsSchema } from '../auth/invitations';
+import { STAGING_GOOGLE_CLIENT_ID } from '../platform/staging-config';
 
 // Editor-only setup, never routed by doPost. Existing bindings/invites are preserved.
 export function setupStagingAuth() {
   const properties = PropertiesService.getScriptProperties();
   if (properties.getProperty('APP_ENV') !== 'staging') throw new Error('Требуется staging-проект.');
-  const ids = (properties.getProperty('GOOGLE_CLIENT_IDS') ?? '')
+  const configuredIds = properties.getProperty('GOOGLE_CLIENT_IDS');
+  const ids = (configuredIds ?? STAGING_GOOGLE_CLIENT_ID)
     .split(',')
     .map((id) => id.trim())
     .filter(Boolean);
@@ -21,6 +23,10 @@ export function setupStagingAuth() {
   const lock = LockService.getScriptLock();
   if (!lock.tryLock(5000)) throw new Error('Настройка занята. Повторите позже.');
   try {
+    // Configure the owner's supplied public client during the authorized editor run.
+    // Preserve any explicit allowlist, including a value changed while waiting for the lock.
+    if (properties.getProperty('GOOGLE_CLIENT_IDS') === null)
+      properties.setProperty('GOOGLE_CLIENT_IDS', ids.join(','));
     const previous = properties.getProperty('STAGING_INVITES');
     const invites = invitationsSchema.parse(
       previous
