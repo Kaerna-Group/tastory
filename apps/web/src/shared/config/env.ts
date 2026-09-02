@@ -13,8 +13,17 @@ if (
   throw new Error('Укажите корректный VITE_API_URL.');
 if (environment !== 'local' && apiMode === 'mock')
   throw new Error('Mock API разрешен только локально.');
-export const env: Readonly<{ environment: AppEnvironment; apiMode: ApiMode; apiUrl: string }> = {
+const googleClientId: string = import.meta.env['VITE_GOOGLE_CLIENT_ID'] || '';
+if (googleClientId && !/^[\w-]+\.apps\.googleusercontent\.com$/.test(googleClientId))
+  throw new Error('Укажите корректный VITE_GOOGLE_CLIENT_ID.');
+export const env: Readonly<{
+  environment: AppEnvironment;
+  apiMode: ApiMode;
+  apiUrl: string;
+  googleClientId: string;
+}> = {
   environment,
   apiMode,
   apiUrl,
+  googleClientId,
 };

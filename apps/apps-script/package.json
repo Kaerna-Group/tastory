@@ -5,12 +5,14 @@
   "type": "module",
   "scripts": {
     "build": "node scripts/build.mjs",
-    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "typecheck": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p tsconfig.test.json",
     "clasp:status": "clasp show-file-status",
     "clasp:push": "clasp push"
   },
   "dependencies": {
     "@tastory/contracts": "0.1.0",
-    "@tastory/domain": "0.1.0"
+    "@tastory/domain": "0.1.0",
+    "micro-rsa-dsa-dh": "0.4.0",
+    "zod": "4.5.4"
   }
 }

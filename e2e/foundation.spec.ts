@@ -6,6 +6,8 @@ test('library, settings, connection and saved theme work', async ({ page }) => {
   await expect(page.getByRole('heading', { name: 'Ваша кулинарная тетрадь' })).toBeVisible();
   await page.getByRole('navigation').getByRole('link', { name: 'Настройки' }).click();
   await expect(page.getByRole('heading', { name: 'Настройки тетради' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Ваш аккаунт' })).toBeVisible();
+  await expect(page.getByText('Вход Google ещё настраивается.', { exact: false })).toBeVisible();
   await expect(page.getByRole('status')).toHaveText('Соединение проверено');
   await expect(page.getByText('Локальный режим:', { exact: false })).toBeVisible();
   const theme = page.getByRole('button', { name: 'Темная тема' });

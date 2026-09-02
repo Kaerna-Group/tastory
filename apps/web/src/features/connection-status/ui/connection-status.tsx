@@ -19,7 +19,9 @@ export function ConnectionStatus(): React.JSX.Element {
               ? 'Соединение проверено'
               : 'Проверка ещё не выполнена'}
       </p>
-      <p className="muted text-sm">Авторизация и хранение рецептов пока не подключены.</p>
+      <p className="muted text-sm">
+        Доступ к аккаунту проверяется отдельно при входе. Хранение рецептов пока не подключено.
+      </p>
       <button
         type="button"
         className="button button-secondary mt-5"

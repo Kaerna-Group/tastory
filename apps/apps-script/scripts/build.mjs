@@ -1,6 +1,8 @@
 import { build } from 'esbuild';
 import { copyFile, mkdir, readFile } from 'node:fs/promises';
 import { runInNewContext } from 'node:vm';
+import { checkAuthRuntime } from './check-auth-runtime.mjs';
+import ts from 'typescript';
 
 await mkdir('dist', { recursive: true });
 await build({
@@ -12,7 +14,7 @@ await build({
   target: 'es2020',
   outfile: 'dist/Code.js',
   footer: {
-    js: 'function doGet(e) { return Tastory.doGet(e); }\nfunction doPost(e) { return Tastory.doPost(e); }\nfunction setupStaging() { return Tastory.setupStaging(); }',
+    js: 'function doGet(e) { return Tastory.doGet(e); }\nfunction doPost(e) { return Tastory.doPost(e); }\nfunction setupStaging() { return Tastory.setupStaging(); }\nfunction setupStagingAuth() { return Tastory.setupStagingAuth(); }',
   },
   legalComments: 'eof',
 });
@@ -29,6 +31,13 @@ for (const forbidden of [
   if (forbidden.test(code))
     throw new Error(`Apps Script bundle contains forbidden content: ${forbidden}`);
 }
+const syntax = ts.createSourceFile('Code.js', code, ts.ScriptTarget.ES2020, true, ts.ScriptKind.JS);
+function checkSyntax(node) {
+  if (ts.isBigIntLiteral(node))
+    throw new Error('Apps Script upload parser requires BigInt(...) instead of bigint literals.');
+  ts.forEachChild(node, checkSyntax);
+}
+checkSyntax(syntax);
 // Проверяем именно собранные глобальные функции в среде без Node/browser API.
 const scriptProperties = {};
 let createdResources = 0;
@@ -98,3 +107,4 @@ if (
 )
   throw new Error('Apps Script bundle staging setup smoke failed.');
 console.log('Apps Script: dist/Code.js, global entrypoints and isolated runtime smoke passed.');
+checkAuthRuntime(code);

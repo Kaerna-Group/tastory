@@ -1,0 +1,6 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": { "types": ["google-apps-script", "node"] },
+  "include": ["src/**/*.test.ts"],
+  "exclude": []
+}

@@ -1,6 +1,8 @@
 import { defineConfig } from 'vitest/config';
+import { fileURLToPath } from 'node:url';
 
 export default defineConfig({
+  resolve: { alias: { '@': fileURLToPath(new URL('./apps/web/src', import.meta.url)) } },
   test: {
     environment: 'node',
     include: [
@@ -15,6 +17,8 @@ export default defineConfig({
       include: [
         'packages/*/src/**/*.ts',
         'apps/apps-script/src/controllers/**/*.ts',
+        'apps/apps-script/src/auth/**/*.ts',
+        'apps/web/src/entities/session/model/**/*.ts',
         'apps/web/src/shared/api/**/*.ts',
       ],
       exclude: ['**/index.ts', '**/*.test.ts', '**/mock-transport.ts'],

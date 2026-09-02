@@ -27,7 +27,7 @@ export function LibraryPage(): React.JSX.Element {
       <div className="library-footer">
         <p className="muted text-sm">Tastory · начало вашей коллекции</p>
         <Link className="text-link" to="/settings">
-          Настройки тетради <span aria-hidden="true">↗</span>
+          Аккаунт и настройки <span aria-hidden="true">↗</span>
         </Link>
       </div>
     </>

@@ -1,4 +1,5 @@
 import type { RequestContext } from '../controllers/handle-request';
+import { authenticateGoogle } from './google-auth';
 
 export function createRequestContext(): RequestContext {
   const properties = PropertiesService.getScriptProperties();
@@ -7,5 +8,11 @@ export function createRequestContext(): RequestContext {
     createRequestId: () => Utilities.getUuid(),
     isEchoEnabled: properties.getProperty('ENABLE_SPIKE_ECHO') === 'true',
     deploymentVersion: properties.getProperty('DEPLOYMENT_VERSION') || 'foundation',
+    isAuthConfigured:
+      properties.getProperty('APP_ENV') === 'staging' &&
+      Boolean(
+        properties.getProperty('GOOGLE_CLIENT_IDS') && properties.getProperty('STAGING_INVITES'),
+      ),
+    authenticate: authenticateGoogle,
   };
 }

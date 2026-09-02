@@ -1,5 +1,6 @@
 import { ThemeSwitch } from '@/features/theme-switch';
 import { ConnectionStatus } from '@/features/connection-status';
+import { GoogleSignIn } from '@/features/google-sign-in';
 export function SettingsPage(): React.JSX.Element {
   return (
     <>
@@ -9,6 +10,7 @@ export function SettingsPage(): React.JSX.Element {
         <p className="muted">Выберите удобный внешний вид и проверьте подключение.</p>
       </div>
       <div className="settings-grid">
+        <GoogleSignIn />
         <section className="panel" aria-labelledby="theme-title">
           <h2 id="theme-title">Внешний вид</h2>
           <p className="muted mb-6">

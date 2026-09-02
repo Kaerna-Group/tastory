@@ -49,7 +49,7 @@ npm run dev
 
 Шаблоны — в `apps/web/.env*.example`. Значения `REPLACE_*` обязательно заменить. У production и staging разные Google-ресурсы.
 
-`VITE_*` попадает в публичный JavaScript: здесь допустимы только публичные настройки. Google ID token, service account key и clasp credentials сюда не помещаются. OAuth client ID будет добавлен вместе с auth spike; сейчас вход не реализован.
+`VITE_*` попадает в публичный JavaScript: здесь допустимы только публичные настройки. Google ID token, service account key и clasp credentials сюда не помещаются. Публичный OAuth client ID задаётся в `VITE_GOOGLE_CLIENT_ID`; пустое значение оставляет кнопку входа выключенной. [Настройка Google auth](google-auth-staging.md).
 
 Сборки staging/production отклоняют mock и отсутствующий URL. Успешная сборка не доказывает, что удалённый API прошёл gate.
 

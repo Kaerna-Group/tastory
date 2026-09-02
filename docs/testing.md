@@ -1,5 +1,13 @@
 # Проверки качества
 
+## Google auth spike
+
+`npm run test:auth` проверяет настроенный экран входа на desktop/mobile с явными fixtures Google Identity Services и API: вход, повторная проверка, отзыв, повторный вход, выход, отсутствие сохранённой сессии после reload, ошибка загрузки Google и retry. Порт 4188; обычный smoke использует 4187. Fixtures не являются реальным Google-входом.
+
+Unit tests подписывают токены настоящим RSA-ключом, созданным только в памяти теста. Apps Script build дополнительно проверяет собранный IIFE в VM без WebCrypto, TextEncoder, Buffer и browser/Node globals: подпись, кеш ключей, атомарное потребление, повтор и отзыв. Типы Node доступны только в отдельной test-конфигурации сервера.
+
+`check:all`, GitHub CI и Publish staging включают auth E2E. При ручном входе настоящим аккаунтом trace/HAR не записываем, токен и персональные данные в отчёт не включаем. [Прогон владельца](google-auth-staging.md#4-проверить-вход).
+
 ## Основной цикл
 
 ```sh

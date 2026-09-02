@@ -1,16 +1,12 @@
-import { API_VERSION, healthResponseSchema } from '@tastory/contracts';
-import type { ApiRequest, HealthData } from '@tastory/contracts';
+import { API_VERSION, healthResponseSchema, authResponseSchema } from '@tastory/contracts';
+import type { ApiRequest, HealthData, AuthData, ApiErrorResponse } from '@tastory/contracts';
 
 export type ApiTransport = (request: ApiRequest, signal?: AbortSignal) => Promise<unknown>;
 
 export class ApiClientError extends Error {
   constructor(
     public readonly code:
-      | 'TRANSPORT_ERROR'
-      | 'INVALID_RESPONSE'
-      | 'INVALID_REQUEST'
-      | 'ACTION_DISABLED'
-      | 'INTERNAL_ERROR',
+      'TRANSPORT_ERROR' | 'INVALID_RESPONSE' | ApiErrorResponse['error']['code'],
     message: string,
   ) {
     super(message);
@@ -21,8 +17,30 @@ export class ApiClientError extends Error {
 export function createApiClient(
   transport: ApiTransport,
   createRequestId: () => string = () => crypto.randomUUID(),
-): { health: (signal?: AbortSignal) => Promise<HealthData> } {
+): {
+  health: (signal?: AbortSignal) => Promise<HealthData>;
+  authenticate: (
+    credential: string,
+    action?: 'auth.signIn' | 'auth.me',
+    signal?: AbortSignal,
+  ) => Promise<AuthData>;
+} {
   return {
+    async authenticate(credential, action = 'auth.signIn', signal) {
+      const requestId = createRequestId();
+      const raw = await transport(
+        { apiVersion: API_VERSION, requestId, action, credential, payload: {} },
+        signal,
+      );
+      const parsed = authResponseSchema.safeParse(raw);
+      if (!parsed.success || parsed.data.requestId !== requestId)
+        throw new ApiClientError('INVALID_RESPONSE', 'Сервер вернул несовместимый ответ.');
+      if (!parsed.data.ok)
+        throw new ApiClientError(parsed.data.error.code, parsed.data.error.message);
+      if (Date.parse(parsed.data.data.expiresAt) <= Date.now())
+        throw new ApiClientError('UNAUTHENTICATED', 'Войдите в Google повторно.');
+      return parsed.data.data;
+    },
     async health(signal) {
       const requestId = createRequestId();
       const raw = await transport(

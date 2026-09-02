@@ -3,6 +3,12 @@ import type { ApiTransport } from './client';
 
 export const mockTransport: ApiTransport = (request, signal) => {
   signal?.throwIfAborted();
+  if (request.action === 'auth.signIn' || request.action === 'auth.me')
+    return Promise.resolve({
+      ok: false,
+      requestId: request.requestId,
+      error: { code: 'AUTH_NOT_CONFIGURED', message: 'Вход доступен в тестовом окружении Google.' },
+    });
   return Promise.resolve({
     ok: true,
     requestId: request.requestId,

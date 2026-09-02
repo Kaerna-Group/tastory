@@ -30,6 +30,7 @@ jobs:
       - run: npm run check
       - run: npx playwright install --with-deps chromium
       - run: npm run test:e2e
+      - run: npm run test:auth
       - name: Read Pages configuration
         id: pages
         uses: actions/configure-pages@v5
@@ -39,6 +40,7 @@ jobs:
           VITE_APP_ENV: staging
           VITE_API_MODE: apps-script
           VITE_API_URL: ${{ vars.STAGING_API_URL }}
+          VITE_GOOGLE_CLIENT_ID: ${{ vars.STAGING_GOOGLE_CLIENT_ID }}
           VITE_BASE_PATH: ${{ steps.pages.outputs.base_path }}/
       - uses: actions/upload-pages-artifact@v4
         with:
