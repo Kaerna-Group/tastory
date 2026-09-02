@@ -26,9 +26,11 @@ Origin: `git@github.com-personal:Kaerna-Group/tastory.git`. SSH-алиас `gith
 
 ## Развёртывание
 
-Хостинг на этом этапе не публикуется. Плановый web-хостинг — GitHub Pages со статическим dist. HashRouter поддерживает переходы без server rewrites. Для project Pages нужен `VITE_BASE_PATH=/tastory/`; для собственного домена — `/`.
+Для проверки этапа 0 подготовлена публикация **staging** на GitHub Pages со статическим dist. HashRouter поддерживает переходы без server rewrites. Для project Pages используется `VITE_BASE_PATH=/tastory/`; workflow получает base path из configure-pages.
 
-Перед автоматизацией deployment:
+Workflow **Publish staging** запускается вручную из main, выполняет quality и smoke перед публикацией, затем проверяет настоящий HTTPS origin в браузерах. Это необходимая часть технического spike. [Настройка и повторный запуск](staging-hosting.md).
+
+Перед выпуском production:
 
 - завершить gate этапа 0;
 - настроить отдельные staging/prod Google-ресурсы;
@@ -37,4 +39,4 @@ Origin: `git@github.com-personal:Kaerna-Group/tastory.git`. SSH-алиас `gith
 - Apps Script сначала проверять на staging, затем создавать версию и обновлять существующий deployment;
 - иметь предыдущую рабочую версию для rollback.
 
-Автоматические deploy workflows будут отдельной задачей после выбора ресурсов. Текущий CI собирает mock shell и не публикует его как production.
+Обычный CI собирает mock shell и ничего не публикует. Отдельный Publish staging собирает настоящий staging API; автоматического production deploy нет.

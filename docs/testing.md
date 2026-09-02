@@ -37,3 +37,5 @@ Playwright выполняет одни сценарии в desktop Chromium и m
 ## Ограничения
 
 Ни один локальный тест не доказывает реальные CORS, Google JWT, Drive permissions, Sheets locks или квоты. Для них нужен [spike](spike-checklist.md). Тесты схем Sheets, CRUD, RBAC и экспорта добавляются с реализацией соответствующего этапа.
+
+Для реального HTTPS origin есть отдельный `npm run test:staging`: Chrome, Edge, Firefox и WebKit проверяют health и echo. Он запускается после публикации в Publish staging; параметры и трактовка пропущенного echo описаны в [руководстве](staging-hosting.md). Успех WebKit не отмечается как проверка реального Safari.

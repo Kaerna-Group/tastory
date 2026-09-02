@@ -1,0 +1,88 @@
+name: Publish staging
+on:
+  workflow_dispatch:
+    inputs:
+      require_echo:
+        description: Require enabled echo for the full transport check
+        type: boolean
+        default: false
+permissions:
+  contents: read
+concurrency:
+  group: staging-pages
+  cancel-in-progress: false
+jobs:
+  build:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      pages: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm install --global npm@11.9.0
+      - run: npm ci
+      - run: npm run check
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test:e2e
+      - name: Read Pages configuration
+        id: pages
+        uses: actions/configure-pages@v5
+      - name: Build Google staging
+        run: npm run build:staging && npm run check:bundle
+        env:
+          VITE_APP_ENV: staging
+          VITE_API_MODE: apps-script
+          VITE_API_URL: ${{ vars.STAGING_API_URL }}
+          VITE_BASE_PATH: ${{ steps.pages.outputs.base_path }}/
+      - uses: actions/upload-pages-artifact@v4
+        with:
+          path: apps/web/dist
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    outputs:
+      page_url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Publish staging artifact
+        id: deployment
+        uses: actions/deploy-pages@v4
+  verify:
+    needs: deploy
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      STAGING_URL: ${{ needs.deploy.outputs.page_url }}
+      STAGING_API_URL: ${{ vars.STAGING_API_URL }}
+      REQUIRE_STAGING_ECHO: ${{ inputs.require_echo }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm install --global npm@11.9.0
+      - run: npm ci
+      - run: npx playwright install --with-deps chrome msedge firefox webkit
+      - name: Check the published origin in browsers
+        run: npm run test:staging
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: staging-browser-checks
+          path: |
+            playwright-report/staging/
+            test-results/staging/
+          retention-days: 7

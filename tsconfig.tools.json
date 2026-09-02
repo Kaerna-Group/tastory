@@ -4,5 +4,11 @@
     "lib": ["ES2022", "DOM"],
     "types": ["node"]
   },
-  "include": ["vitest.config.ts", "playwright.config.ts", "e2e/**/*.ts", "apps/web/vite.config.ts"]
+  "include": [
+    "vitest.config.ts",
+    "playwright*.config.ts",
+    "e2e/**/*.ts",
+    "staging-tests/**/*.ts",
+    "apps/web/vite.config.ts"
+  ]
 }
