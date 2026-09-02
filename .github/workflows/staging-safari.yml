@@ -1,0 +1,31 @@
+name: Verify Safari staging
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: staging-safari
+  cancel-in-progress: false
+jobs:
+  safari:
+    if: github.ref == 'refs/heads/main'
+    runs-on: macos-latest
+    timeout-minutes: 8
+    env:
+      STAGING_URL: https://kaerna-group.github.io/tastory/
+      STAGING_API_URL: ${{ vars.STAGING_API_URL }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+      - name: Enable isolated Safari automation on the CI runner
+        run: sudo /usr/bin/safaridriver --enable
+      - name: Check UI, health and echo in real Safari
+        run: node scripts/check-safari-staging.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: safari-staging-checks
+          path: test-results/safari/
+          retention-days: 7
