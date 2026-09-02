@@ -1,5 +1,6 @@
 import type { RequestContext } from '../controllers/handle-request';
 import { authenticateGoogle } from './google-auth';
+import { privatePhoto } from './private-photo';
 
 export function createRequestContext(): RequestContext {
   const properties = PropertiesService.getScriptProperties();
@@ -14,5 +15,6 @@ export function createRequestContext(): RequestContext {
         properties.getProperty('GOOGLE_CLIENT_IDS') && properties.getProperty('STAGING_INVITES'),
       ),
     authenticate: authenticateGoogle,
+    photo: privatePhoto,
   };
 }

@@ -3,7 +3,7 @@ import type { ApiTransport } from './client';
 
 export const mockTransport: ApiTransport = (request, signal) => {
   signal?.throwIfAborted();
-  if (request.action === 'auth.signIn' || request.action === 'auth.me')
+  if ('credential' in request)
     return Promise.resolve({
       ok: false,
       requestId: request.requestId,

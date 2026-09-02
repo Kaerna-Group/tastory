@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { photoUploadSchema, photoDataSchema } from './photo';
 
 export const API_VERSION = 1;
 export const SCHEMA_VERSION = 0;
@@ -27,6 +28,24 @@ export const apiRequestSchema = z.discriminatedUnion('action', [
     credential: z.string().min(1).max(6144),
     payload: z.strictObject({}),
   }),
+  z.strictObject({
+    ...requestFields,
+    action: z.literal('spike.photo.upload'),
+    credential: z.string().min(1).max(6144),
+    payload: photoUploadSchema,
+  }),
+  z.strictObject({
+    ...requestFields,
+    action: z.literal('spike.photo.read'),
+    credential: z.string().min(1).max(6144),
+    payload: z.strictObject({}),
+  }),
+  z.strictObject({
+    ...requestFields,
+    action: z.literal('spike.photo.delete'),
+    credential: z.string().min(1).max(6144),
+    payload: z.strictObject({ id: z.uuid() }),
+  }),
 ]);
 
 export const apiErrorSchema = z.strictObject({
@@ -41,6 +60,10 @@ export const apiErrorSchema = z.strictObject({
       'UNAUTHENTICATED',
       'ACCESS_DENIED',
       'AUTH_UNAVAILABLE',
+      'PHOTO_INVALID',
+      'PHOTO_EXISTS',
+      'PHOTO_UNAVAILABLE',
+      'PHOTO_NOT_PRIVATE',
     ]),
     message: z.string(),
   }),
@@ -106,3 +129,13 @@ export const authResponseSchema = z.union([
 ]);
 export type AuthData = z.infer<typeof authDataSchema>;
 export type AuthResponse = z.infer<typeof authResponseSchema>;
+export const photoResponseSchema = z.union([
+  z.strictObject({
+    ok: z.literal(true),
+    requestId: z.uuid(),
+    data: photoDataSchema,
+    meta: responseMetaSchema,
+  }),
+  apiErrorSchema,
+]);
+export type PhotoResponse = z.infer<typeof photoResponseSchema>;

@@ -8,7 +8,7 @@ React UI → API client → Apps Script controllers → services → repositorie
           contracts            contracts/domain
 ```
 
-Backend сейчас содержит диагностические entrypoints и controller. Services/repositories/storage подготовлены как каталоги; данные реализуются после проверки платформы.
+Backend содержит диагностику, staging auth и ограниченную пробу приватного фото через Drive. Полная модель данных и repositories реализуются после проверки платформы. [Ограничения пробы фото](google-photos-staging.md) не являются моделью хранения рецептов.
 
 Общие пакеты имеют единственный TypeScript public API, не публикуются в npm и собираются потребляющим приложением. Между ними пока нет зависимостей.
 

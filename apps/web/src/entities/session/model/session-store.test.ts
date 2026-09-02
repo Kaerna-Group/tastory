@@ -1,6 +1,13 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { apiClient, ApiClientError } from '@/shared/api';
-import { getSession, recheckSession, signIn, signOut, subscribeSession } from './session-store';
+import {
+  getSession,
+  recheckSession,
+  signIn,
+  signOut,
+  subscribeSession,
+  requestSessionPhoto,
+} from './session-store';
 const data = () => ({
   user: { id: 'sub', email: 'chef@gmail.com', name: 'Chef', role: 'owner' as const },
   expiresAt: new Date(Date.now() + 60_000).toISOString(),
@@ -11,6 +18,35 @@ afterEach(() => {
   vi.useRealTimers();
 });
 describe('memory-only Google session', () => {
+  it('uses the memory credential for photos and clears revoked sessions', async () => {
+    const command = { action: 'spike.photo.read', payload: {} } as const;
+    await expect(requestSessionPhoto(command)).rejects.toMatchObject({ code: 'UNAUTHENTICATED' });
+    vi.spyOn(apiClient, 'authenticate').mockResolvedValue(data());
+    const photo = vi
+      .spyOn(apiClient, 'photo')
+      .mockResolvedValue({ photo: null, thumbnailBase64: null });
+    await signIn('sensitive-token');
+    await requestSessionPhoto(command, new AbortController().signal);
+    expect(photo).toHaveBeenCalledWith(command, 'sensitive-token', expect.any(AbortSignal));
+    photo.mockRejectedValue(new ApiClientError('ACCESS_DENIED', 'Доступ отозван.'));
+    await expect(requestSessionPhoto(command)).rejects.toMatchObject({ code: 'ACCESS_DENIED' });
+    expect(getSession().status).toBe('signed-out');
+  });
+  it('logout prevents late photo responses from restoring private data', async () => {
+    vi.spyOn(apiClient, 'authenticate').mockResolvedValue(data());
+    let resolve: ((value: { photo: null; thumbnailBase64: null }) => void) | undefined;
+    vi.spyOn(apiClient, 'photo').mockImplementation(
+      () =>
+        new Promise((done) => {
+          resolve = done;
+        }),
+    );
+    await signIn('token');
+    const request = requestSessionPhoto({ action: 'spike.photo.read', payload: {} });
+    signOut();
+    resolve?.({ photo: null, thumbnailBase64: null });
+    await expect(request).rejects.toMatchObject({ name: 'AbortError' });
+  });
   it('keeps credentials out of the view state, rechecks and expires', async () => {
     vi.useFakeTimers();
     const authenticate = vi.spyOn(apiClient, 'authenticate').mockResolvedValue(data());

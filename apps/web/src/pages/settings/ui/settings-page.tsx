@@ -1,6 +1,7 @@
 import { ThemeSwitch } from '@/features/theme-switch';
 import { ConnectionStatus } from '@/features/connection-status';
 import { GoogleSignIn } from '@/features/google-sign-in';
+import { PhotoProbe } from '@/features/photo-probe';
 export function SettingsPage(): React.JSX.Element {
   return (
     <>
@@ -11,6 +12,7 @@ export function SettingsPage(): React.JSX.Element {
       </div>
       <div className="settings-grid">
         <GoogleSignIn />
+        <PhotoProbe />
         <section className="panel" aria-labelledby="theme-title">
           <h2 id="theme-title">Внешний вид</h2>
           <p className="muted mb-6">

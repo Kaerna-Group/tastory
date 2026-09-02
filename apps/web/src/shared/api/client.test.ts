@@ -5,6 +5,34 @@ import { mockTransport } from './mock-transport';
 const requestId = 'c3dcd2e8-e2f8-428b-9e26-3e715f678fac';
 const request = { apiVersion: 1, requestId, action: 'health', payload: {} } as const;
 describe('typed API client', () => {
+  it('validates protected photo responses and request correlation', async () => {
+    const command = { action: 'spike.photo.read', payload: {} } as const;
+    const response = {
+      ok: true,
+      requestId,
+      data: { photo: null, thumbnailBase64: null },
+      meta: { apiVersion: 1, schemaVersion: 0 },
+    };
+    const transport = vi.fn().mockResolvedValue(response);
+    const client = createApiClient(transport, () => requestId);
+    expect(await client.photo(command, 'token')).toEqual(response.data);
+    expect(transport).toHaveBeenCalledWith(
+      { ...command, apiVersion: 1, requestId, credential: 'token' },
+      undefined,
+    );
+    transport.mockResolvedValue({ ...response, requestId: 'a3dcd2e8-e2f8-428b-9e26-3e715f678fac' });
+    await expect(client.photo(command, 'token')).rejects.toMatchObject({
+      code: 'INVALID_RESPONSE',
+    });
+    transport.mockResolvedValue({
+      ok: false,
+      requestId,
+      error: { code: 'PHOTO_NOT_PRIVATE', message: 'Доступ открыт.' },
+    });
+    await expect(client.photo(command, 'token')).rejects.toMatchObject({
+      code: 'PHOTO_NOT_PRIVATE',
+    });
+  });
   it('validates auth response, correlation, expiry and error codes', async () => {
     const response = {
       ok: true,

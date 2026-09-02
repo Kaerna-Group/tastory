@@ -1,4 +1,4 @@
-# API v1: диагностика и staging auth
+# API v1: диагностика, staging auth и фото
 
 Источник схем — `packages/contracts/src/api.ts`. DTO выводятся из Zod. API version = 1, schema version = 0: таблицы и миграции ещё не созданы.
 
@@ -13,9 +13,9 @@
 }
 ```
 
-Поддержаны health, echo, auth.signIn и auth.me. Неизвестные поля, действия и версия отклоняются. Поле `credential` требуется только для auth-действий; health/echo его не принимают. `expectedRevision` появится вместе с записью данных.
+Поддержаны health, echo, auth.signIn, auth.me и три действия spike.photo. Неизвестные поля, действия и версия отклоняются. Поле `credential` требуется для auth и фото; health/echo его не принимают. `expectedRevision` появится вместе с записью данных.
 
-POST отправляет JSON с Content-Type `text/plain;charset=utf-8`, без cookies/Authorization. Это избегает собственного preflight, но реальная работа CORS/redirect должна быть доказана на опубликованном origin. Таймаут — 15 секунд, поддержана отмена.
+POST отправляет JSON с Content-Type `text/plain;charset=utf-8`, без cookies/Authorization. Это избегает собственного preflight, но реальная работа CORS/redirect должна быть доказана на опубликованном origin. Таймаут — 15 секунд, для фото — 60 секунд; поддержана отмена ожидания. Серверная запись может завершиться после отмены клиентом.
 
 ## Health
 
@@ -47,9 +47,21 @@ Status ok доказывает выполнение обработчика. Heal
 
 Успешный `data`: `{ user: { id, email, name, role }, expiresAt }`; `id` — проверенный `sub`, role — из серверного приглашения, срок — из проверенного токена. Ключи и список приглашений не возвращаются. Общие envelope и meta сохраняются; schemaVersion остаётся 0. [Настройки, отзыв доступа и ограничения](google-auth-staging.md).
 
+## Пробное фото
+
+Все три действия требуют staging, действующий credential, ранее закреплённый `sub` и роль owner. Они не принимают Drive IDs или чужой `sub`.
+
+| Действие             | Payload                                      | Результат data                                 |
+| -------------------- | -------------------------------------------- | ---------------------------------------------- |
+| `spike.photo.upload` | `{ uploadId, imageBase64, thumbnailBase64 }` | `{ photo, thumbnailBase64: null }`             |
+| `spike.photo.read`   | `{}`                                         | `{ photo, thumbnailBase64 }` или оба поля null |
+| `spike.photo.delete` | `{ id }` — ID ожидаемого тестового фото      | оба поля null                                  |
+
+`photo` содержит `{ id, width, height, bytes, thumbnailBytes, createdAt }`. Envelope/meta общие. Ограничения и правила повторных запросов — в [инструкции фото](google-photos-staging.md). Схемы находятся в `packages/contracts/src/photo.ts`.
+
 ## Echo
 
-Action `echo`, payload `{"message":"hello"}`. Успех возвращает payload в data и тот же meta. Сообщение — до 1024 символов. POST отклоняет тело длиннее 8192 UTF-16 code units до JSON.parse.
+Action `echo`, payload `{"message":"hello"}`. Успех возвращает payload в data и тот же meta. Сообщение — до 1024 символов. POST ограничивает всё тело значением PHOTO_BODY_LIMIT до JSON.parse; после разбора оставляет максимум 8192 UTF-16 code units для всех действий, кроме spike.photo.upload. Для загрузки действуют отдельные строгие лимиты base64 и декодированных байтов.
 
 Echo выключен по умолчанию. В staging включается через Script Property `ENABLE_SPIKE_ECHO=true`. Используйте только несекретные тестовые строки.
 
@@ -63,7 +75,7 @@ Echo выключен по умолчанию. В staging включается �
 }
 ```
 
-Коды сервера: INVALID_REQUEST, ACTION_DISABLED, AUTH_NOT_CONFIGURED, UNAUTHENTICATED, ACCESS_DENIED, AUTH_UNAVAILABLE; INTERNAL_ERROR зарезервирован. Некорректному запросу присваивается новый диагностический requestId; валидный сохраняет свой. Auth-ошибки не отражают входящий токен или внутреннее исключение.
+Коды сервера: INVALID_REQUEST, ACTION_DISABLED, AUTH_NOT_CONFIGURED, UNAUTHENTICATED, ACCESS_DENIED, AUTH_UNAVAILABLE, PHOTO_INVALID, PHOTO_EXISTS, PHOTO_UNAVAILABLE, PHOTO_NOT_PRIVATE; INTERNAL_ERROR зарезервирован. Некорректному запросу присваивается новый диагностический requestId; валидный сохраняет свой. Ошибки не отражают входящий токен, содержимое фото или внутреннее исключение.
 
 Клиент также различает TRANSPORT_ERROR и INVALID_RESPONSE. HTTP 200 не означает успех: проверяется `ok` в JSON. ContentService не предоставляет обычное управление HTTP-статусами.
 

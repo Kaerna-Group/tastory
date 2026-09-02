@@ -30,6 +30,8 @@ test('sign-in, recheck, revocation, retry and logout with provider fixtures', as
         storage: 'not-configured',
         auth: 'staging',
       };
+    else if (request.action.startsWith('spike.photo.'))
+      data = { photo: null, thumbnailBase64: null };
     else {
       actions.push(request.action);
       expect(request.credential).toBe('synthetic-test-credential');
