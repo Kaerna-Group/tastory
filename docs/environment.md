@@ -53,6 +53,16 @@ npm run dev
 
 Сборки staging/production отклоняют mock и отсутствующий URL. Успешная сборка не доказывает, что удалённый API прошёл gate.
 
+## Текущее подключение Google staging
+
+На рабочем компьютере заполнен `apps/web/.env.staging.local` с опубликованным `/exec`. Для запуска приложения с настоящим API:
+
+```sh
+npm run dev:staging -- --port 5178 --strictPort
+```
+
+Откройте `http://127.0.0.1:5178/#/settings`: успешный запрос показывает «Соединение проверено». Обычный `npm run dev` сохраняет local/mock. На другом компьютере env-файл нужно заполнить заново: он исключён из Git. [Результаты проверки и оставшиеся шаги](staging-verification.md).
+
 ## Troubleshooting
 
 - Другой Node/npm: переключите версию, повторите `npm ci`.
