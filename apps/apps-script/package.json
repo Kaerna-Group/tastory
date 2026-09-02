@@ -1,0 +1,16 @@
+{
+  "name": "@tastory/apps-script",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "clasp:status": "clasp show-file-status",
+    "clasp:push": "clasp push"
+  },
+  "dependencies": {
+    "@tastory/contracts": "0.1.0",
+    "@tastory/domain": "0.1.0"
+  }
+}

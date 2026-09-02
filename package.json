@@ -1,0 +1,63 @@
+{
+  "name": "tastory",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Личная кулинарная тетрадь — основа проекта",
+  "license": "UNLICENSED",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "engines": {
+    "node": ">=24.14.0 <25",
+    "npm": ">=11.9.0 <12"
+  },
+  "packageManager": "npm@11.9.0",
+  "scripts": {
+    "dev": "npm run dev --workspace @tastory/web --",
+    "dev:staging": "npm run dev --workspace @tastory/web -- --mode staging",
+    "build": "npm run build:web && npm run build:apps-script && npm run check:bundle",
+    "build:web": "npm run build --workspace @tastory/web -- --mode mock",
+    "build:staging": "npm run build --workspace @tastory/web -- --mode staging",
+    "build:production": "npm run build --workspace @tastory/web -- --mode production",
+    "build:apps-script": "npm run build --workspace @tastory/apps-script",
+    "preview": "npm run preview --workspace @tastory/web --",
+    "typecheck": "tsc --noEmit -p tsconfig.tools.json && npm run typecheck --workspaces --if-present",
+    "lint": "eslint . --max-warnings 0",
+    "lint:architecture": "node scripts/check-architecture.mjs",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui",
+    "check:bundle": "node scripts/check-bundle.mjs",
+    "check": "npm run format:check && npm run lint && npm run lint:architecture && npm run typecheck && npm run test:coverage && npm run build",
+    "check:all": "npm run check && npm run test:e2e",
+    "audit:dependencies": "npm audit --audit-level=high",
+    "apps-script:configure": "node scripts/configure-clasp.mjs",
+    "apps-script:login": "clasp login",
+    "apps-script:status": "npm run clasp:status --workspace @tastory/apps-script",
+    "apps-script:push": "npm run build:apps-script && npm run clasp:push --workspace @tastory/apps-script"
+  },
+  "devDependencies": {
+    "@eslint/js": "10.0.1",
+    "@google/clasp": "3.4.1",
+    "@playwright/test": "1.62.1",
+    "@types/google-apps-script": "2.0.12",
+    "@types/node": "24.13.3",
+    "@vitest/coverage-v8": "4.1.11",
+    "esbuild": "0.28.2",
+    "eslint": "10.9.1",
+    "eslint-config-prettier": "10.1.8",
+    "eslint-plugin-react-hooks": "7.1.1",
+    "eslint-plugin-react-refresh": "0.5.6",
+    "globals": "17.12.0",
+    "prettier": "3.9.6",
+    "typescript": "5.9.3",
+    "typescript-eslint": "8.69.0",
+    "vitest": "4.1.11"
+  }
+}
