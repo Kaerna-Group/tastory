@@ -67,3 +67,19 @@
 - В браузере подтверждено «Соединение проверено» при работе настоящего HTTP transport. Сборка `npm run build:staging` успешна.
 - Локальный manifest синхронизирован с уже выбранными владельцем настройками web app. Удалённый код не менялся.
 - S0-02 закрыт, S0-03 частично выполнен. Подробности и ограничения зафиксированы в [записи проверки](staging-verification.md); auth, хранение рецептов и полный gate остаются впереди.
+
+## 2026-09-02 — HTTPS staging и проверки браузеров
+
+- Включён GitHub Pages с HTTPS и workflow-публикацией; [Tastory staging](https://kaerna-group.github.io/tastory/) опубликован из `0285460`.
+- Добавлен ручной Publish staging: quality и smoke → сборка с Google API → публикация → реальные браузерные запросы. Google API URL задан repository variable, credentials не требуются.
+- Локальный `npm run check` успешен: 54 теста, типы, lint, архитектура, обе сборки и размеры bundle. Перед публикацией в GitHub прошли также 6 browser smoke.
+- [Первый запуск](https://github.com/Kaerna-Group/tastory/actions/runs/33680492260) успешен: health через интерфейс проходит в Chrome, Edge, Firefox и WebKit. Во встроенном браузере отдельно подтверждено соединение по HTTPS.
+- Echo в этом прогоне вернул ACTION_DISABLED: 4 проверки пропущены. Установлено, что пользователь открыл отдельный привязанный к таблице проект со стартовой функцией; рабочий backend и код сохранны в Tastory - Staging API.
+- S0-03 остаётся частичным: нужны включение echo в рабочем проекте, успешный повтор и настоящий Safari. Далее — Google-вход и приглашения.
+
+### Завершение транспортных проверок
+
+- Владелец включил echo в рабочем Tastory - Staging API; опубликованный backend подтвердил точный возврат тестовой строки.
+- [Обязательный повтор](https://github.com/Kaerna-Group/tastory/actions/runs/33681506028) с `require_echo=true`: **8 успешно, без пропусков и нестабильных повторов** — Chrome, Edge, Firefox и WebKit.
+- Добавлен и успешно выполнен [Verify Safari staging](https://github.com/Kaerna-Group/tastory/actions/runs/33681876348): настоящий Safari 26.5.2 на macOS 26.5.2, **3 проверки успешно** (интерфейс, health, echo). Использован нативный SafariDriver без дополнительных зависимостей.
+- S0-03 закрыт; следующий приоритет — S0-04/S0-05: Google Sign-In, проверка токена и допуска по приглашению. Полный gate платформы остаётся открытым.

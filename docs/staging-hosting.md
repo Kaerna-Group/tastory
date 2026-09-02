@@ -1,6 +1,10 @@
 # HTTPS staging на GitHub Pages
 
-Тестовая web-сборка размещается в существующем репозитории Kaerna-Group/tastory. Плановый адрес: `https://kaerna-group.github.io/tastory/`. Это окружение проверки платформы; авторизация и сохранение рецептов ещё не реализованы.
+Тестовая web-сборка опубликована на [GitHub Pages](https://kaerna-group.github.io/tastory/). Это окружение проверки платформы; авторизация и сохранение рецептов ещё не реализованы.
+
+Первая публикация: 2 сентября 2026, commit `0285460`, [Publish staging](https://github.com/Kaerna-Group/tastory/actions/runs/33680492260). Quality и локальные smoke прошли до публикации. Во встроенном браузере на HTTPS странице настроек получено «Соединение проверено».
+
+После включения echo обязательный [повторный прогон](https://github.com/Kaerna-Group/tastory/actions/runs/33681506028) завершился: **8 успешно, 0 пропусков, 0 ошибок**. Health и echo подтверждены в Chrome, Edge, Firefox и WebKit. Отдельная [проверка настоящего Safari на macOS](https://github.com/Kaerna-Group/tastory/actions/runs/33681876348) тоже успешна. S0-03 закрыт. [Подробный результат](staging-verification.md#проверка-опубликованного-https-origin).
 
 ## Публикация
 
@@ -25,9 +29,17 @@ Workflow **Publish staging** (`.github/workflows/staging-pages.yml`) запус�
 - Chrome и Edge используют установленные каналы этих браузеров. WebKit — тест движка; он **не заменяет реальный Safari** на macOS/iOS.
 - Сервер работает с `credentials: omit`; отключение защиты браузера или `no-cors` не используются.
 
-Echo пока выключен в Script Properties. Пока владелец не задаст `ENABLE_SPIKE_ECHO=true`, тесты echo отмечаются как пропущенные, а не успешные. Для обязательного полного прогона включите **require_echo** при запуске workflow. Тогда отключённый echo приведёт к ошибке проверки.
+Echo управляется Script Property `ENABLE_SPIKE_ECHO`. При значении, отличном от `true`, тесты echo отмечаются как пропущенные, а не успешные. Для обязательного полного прогона владелец задаёт `ENABLE_SPIKE_ECHO=true` и включает **require_echo** при запуске workflow. Тогда отключённый echo приведёт к ошибке проверки.
 
 Изменение Script Property не требует новой версии Apps Script: существующий сервер читает его при каждом запросе. После проверки echo можно снова выключить. Полный gate закрывается только после зафиксированного успешного echo и остальных сценариев [чек-листа](spike-checklist.md).
+
+Свойство нужно менять в **Tastory - Staging API**, связанном с текущим `/exec`. Проект, открытый через «Расширения → Apps Script» в таблице, может быть другим, привязанным к таблице. Он не наследует код и свойства отдельного backend. Точная ссылка рабочего проекта сохранена в локальной карточке `.local/google-staging.md`.
+
+## Настоящий Safari
+
+Workflow **Verify Safari staging** (`.github/workflows/staging-safari.yml`) запускается вручную из main после публикации. Он использует стандартный macOS runner и установленный Safari с нативным `/usr/bin/safaridriver`. В изолированном automation-окне проверяются состояние подключения в интерфейсе, POST health и точный Unicode echo после redirect. TLS-проверка и защита браузера не отключаются.
+
+Скрипт `scripts/check-safari-staging.mjs` использует встроенные модули Node и W3C WebDriver, не требует дополнительных npm-зависимостей. Echo здесь обязателен. Результат с версией Safari, ОС и ответами сохраняется в `safari-staging-checks` на 7 дней. Этот workflow только проверяет уже опубликованный сайт, не меняя deployment. Первый успешный результат — Safari 26.5.2 на macOS 26.5.2; iOS отдельно не проверялся.
 
 ## Обновление и восстановление
 
@@ -39,3 +51,4 @@ Production требует отдельного выбора ресурсов, а
 
 - [Custom workflows для GitHub Pages](https://docs.github.com/en/pages/getting-started-with-github-pages/using-custom-workflows-with-github-pages)
 - [Поддерживаемые браузеры Playwright](https://playwright.dev/docs/browsers)
+- [Нативный WebDriver Safari](https://developer.apple.com/documentation/webkit/testing-with-webdriver-in-safari)

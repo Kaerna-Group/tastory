@@ -31,11 +31,33 @@ npm run dev:staging -- --port 5178 --strictPort
 
 На другом компьютере сначала создайте `apps/web/.env.staging.local` по шаблону и укажите тот же опубликованный адрес в `VITE_API_URL`. Он не восстанавливается из Git автоматически.
 
+## Проверка опубликованного HTTPS origin
+
+2 сентября 2026 опубликован [Tastory staging](https://kaerna-group.github.io/tastory/), commit `0285460`. [Обязательный прогон Publish staging](https://github.com/Kaerna-Group/tastory/actions/runs/33681506028) завершился успешно: quality, 6 локальных browser smoke, staging build и публикация, затем health/echo с настоящим API. Echo включён владельцем в рабочем Apps Script; `require_echo=true` исключает пропуск этой проверки.
+
+Origin: `https://kaerna-group.github.io`. Время отчёта Playwright: `2026-09-02T20:51:40.943Z`.
+
+| Браузер         | Версия        | Health через интерфейс | Echo    |
+| --------------- | ------------- | ---------------------- | ------- |
+| Google Chrome   | 152.0.7977.75 | Успешно                | Успешно |
+| Microsoft Edge  | 152.0.4191.62 | Успешно                | Успешно |
+| Firefox         | 153.0         | Успешно                | Успешно |
+| WebKit          | 26.5          | Успешно                | Успешно |
+| Safari на macOS | 26.5.2        | Успешно                | Успешно |
+
+Playwright: **8 успешно, 0 пропусков, 0 ошибок, 0 нестабильных повторов**. Health проверяет настоящий POST приложения, requestId, контракт JSON, Google redirect и состояние «Соединение проверено». Echo вернул точную тестовую строку с кириллицей и Unicode во всех четырёх браузерных проектах.
+
+Настоящий Safari проверен [отдельным workflow](https://github.com/Kaerna-Group/tastory/actions/runs/33681876348), commit проверочного скрипта `1628d89`: **3 проверки успешно** — health через интерфейс, POST health и POST echo. SafariDriver подтвердил Safari 26.5.2, macOS 26.5.2 и `acceptInsecureCerts=false`. Время: `2026-09-02T20:52:48.832Z`—`20:53:08.392Z`. Это отдельный результат настоящего Safari, а не переименование WebKit.
+
+Отчёты доступны в артефактах `staging-browser-checks` и `safari-staging-checks` соответствующих запусков (7 дней хранения); локальные копии итогов — `.local/staging-browser-results.json` и `.local/staging-safari-results.json`. Первоначальный прогон до включения echo имел 4 пропуска; итоговый обязательный прогон их устранил.
+
+Дополнительно встроенный браузер вручную подтвердил успешную связь со страницы настроек опубликованного сайта. Отдельный пустой Apps Script, созданный из таблицы, не является backend этого deployment: настройки echo нужно менять в исходном Tastory - Staging API.
+
 ## Оставшиеся проверки
 
-- S0-02 закрыт. S0-03 выполнен частично: проверен POST health только с локального origin в одном браузере.
-- Нужны опубликованный HTTPS staging origin и отдельные прогоны Chrome, Edge, Firefox, Safari.
-- Echo оставлен выключенным; его прогон, Google Sign-In, приглашения, приватные фотографии и конкурентные записи ещё впереди.
+- S0-02 и S0-03 закрыты: health/echo подтверждены с опубликованного HTTPS origin в Chrome, Edge, Firefox и настоящем Safari; WebKit проверен дополнительно.
+- Следующий шаг — Google Sign-In, серверная проверка ID token и приглашения (S0-04/S0-05).
+- Приватные фотографии, конкурентные записи, измерения payload и квот ещё впереди. iOS отдельно не проверялся.
 - Health сообщает `storage: not-configured` и `auth: not-configured`. Созданные таблица и папка ещё не используются для хранения рецептов; подключение API этого не меняет.
 
 Полный [gate платформы](spike-checklist.md) остаётся открытым.

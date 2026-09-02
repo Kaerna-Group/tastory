@@ -26,9 +26,11 @@ Origin: `git@github.com-personal:Kaerna-Group/tastory.git`. SSH-алиас `gith
 
 ## Развёртывание
 
-Для проверки этапа 0 подготовлена публикация **staging** на GitHub Pages со статическим dist. HashRouter поддерживает переходы без server rewrites. Для project Pages используется `VITE_BASE_PATH=/tastory/`; workflow получает base path из configure-pages.
+Для проверки этапа 0 опубликован [**staging** на GitHub Pages](https://kaerna-group.github.io/tastory/) со статическим dist. HashRouter поддерживает переходы без server rewrites. Для project Pages используется `VITE_BASE_PATH=/tastory/`; workflow получает base path из configure-pages.
 
 Workflow **Publish staging** запускается вручную из main, выполняет quality и smoke перед публикацией, затем проверяет настоящий HTTPS origin в браузерах. Это необходимая часть технического spike. [Настройка и повторный запуск](staging-hosting.md).
+
+**Verify Safari staging** отдельно проверяет уже опубликованный сайт в настоящем Safari на macOS. Для полного транспортного прогона нужны оба workflow и включённый echo; первые обязательные проверки успешно завершены.
 
 Перед выпуском production:
 
