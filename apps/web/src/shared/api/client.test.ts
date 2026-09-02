@@ -5,6 +5,34 @@ import { mockTransport } from './mock-transport';
 const requestId = 'c3dcd2e8-e2f8-428b-9e26-3e715f678fac';
 const request = { apiVersion: 1, requestId, action: 'health', payload: {} } as const;
 describe('typed API client', () => {
+  it('correlates concurrency responses with both request and run and preserves errors', async () => {
+    const command = { action: 'spike.concurrency.read', payload: { runId: requestId } } as const;
+    const data = {
+      outcome: 'read',
+      state: { runId: requestId, revision: 0, value: null },
+      appliedOperations: 0,
+      operationRevision: null,
+    };
+    const response = { ok: true, requestId, data, meta: { apiVersion: 1, schemaVersion: 0 } };
+    const transport = vi.fn().mockResolvedValue(response);
+    const client = createApiClient(transport, () => requestId);
+    expect(await client.concurrency(command, 'token')).toEqual(data);
+    transport.mockResolvedValue({
+      ...response,
+      data: { ...data, state: { ...data.state, runId: 'a3dcd2e8-e2f8-428b-9e26-3e715f678fac' } },
+    });
+    await expect(client.concurrency(command, 'token')).rejects.toMatchObject({
+      code: 'INVALID_RESPONSE',
+    });
+    transport.mockResolvedValue({
+      ok: false,
+      requestId,
+      error: { code: 'PROBE_LIMIT', message: 'Лимит.' },
+    });
+    await expect(client.concurrency(command, 'token')).rejects.toMatchObject({
+      code: 'PROBE_LIMIT',
+    });
+  });
   it('validates protected photo responses and request correlation', async () => {
     const command = { action: 'spike.photo.read', payload: {} } as const;
     const response = {

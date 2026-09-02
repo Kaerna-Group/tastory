@@ -13,7 +13,7 @@
 }
 ```
 
-Поддержаны health, echo, auth.signIn, auth.me и три действия spike.photo. Неизвестные поля, действия и версия отклоняются. Поле `credential` требуется для auth и фото; health/echo его не принимают. `expectedRevision` появится вместе с записью данных.
+Поддержаны health, echo, auth.signIn, auth.me, три действия spike.photo и два spike.concurrency. Неизвестные поля, действия и версия отклоняются. Поле `credential` требуется для auth, фото и пробы записей; health/echo его не принимают. `expectedRevision` используется в ограниченной пробе записей; версия схемы рецептов по-прежнему 0.
 
 POST отправляет JSON с Content-Type `text/plain;charset=utf-8`, без cookies/Authorization. Это избегает собственного preflight, но реальная работа CORS/redirect должна быть доказана на опубликованном origin. Таймаут — 15 секунд, для фото — 60 секунд; поддержана отмена ожидания. Серверная запись может завершиться после отмены клиентом.
 
@@ -58,6 +58,14 @@ Status ok доказывает выполнение обработчика. Heal
 | `spike.photo.delete` | `{ id }` — ID ожидаемого тестового фото      | оба поля null                                  |
 
 `photo` содержит `{ id, width, height, bytes, thumbnailBytes, createdAt }`. Envelope/meta общие. Ограничения и правила повторных запросов — в [инструкции фото](google-photos-staging.md). Схемы находятся в `packages/contracts/src/photo.ts`.
+
+## Проба одновременных записей
+
+`spike.concurrency.read` принимает `{ runId }`. `spike.concurrency.write` принимает `{ runId, operationId, expectedRevision, value }`: UUID, UUID, 0 или 1 и first/second соответственно. Только staging и уже привязанный owner; роль из клиента не принимается. [Сценарий и ограничения](google-concurrency-staging.md).
+
+Успешный data: `{ outcome, state: { runId, revision, value }, appliedOperations, operationRevision }`. Outcome — read/applied/replayed/conflict. Конфликт возвращается как ожидаемый результат без мутации; transport-успех не означает, что запись применена. При replayed возвращается текущее состояние и исходная operationRevision. При read/conflict operationRevision равна null. Клиент проверяет requestId и runId.
+
+PROBE_UNAVAILABLE обозначает сбой/занятую блокировку/неизвестную схему; PROBE_LIMIT — лимит новых проб; OPERATION_MISMATCH — повтор ID с изменённым содержимым. Тело ограничено 8192 символами, ожидание ответа — 60 секунд. Отмена ожидания не отменяет запись на сервере.
 
 ## Echo
 

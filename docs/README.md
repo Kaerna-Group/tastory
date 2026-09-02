@@ -12,6 +12,8 @@
 
 Проверка загрузки фото и приватной миниатюры: [Google photos staging](google-photos-staging.md).
 
+Проверка одновременных записей и повторных запросов: [Google concurrency staging](google-concurrency-staging.md).
+
 | Документ                                | Что здесь искать                                |
 | --------------------------------------- | ----------------------------------------------- |
 | [Среда и запуск](environment.md)        | Установка, команды, local/staging/production    |

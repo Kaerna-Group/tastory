@@ -40,7 +40,7 @@
 | S0-02 | HTTPS health/echo — выполнено                         | S0-01                              | Успешно: Chrome, Edge, Firefox, настоящий Safari; WebKit дополнительно       |
 | S0-03 | Google JWT/sub/invite: первый вход успешен            | S0-02                              | Реальный вход и отрицательные сценарии, [инструкция](google-auth-staging.md) |
 | S0-04 | Приватное фото: проба реализована, нужен Drive-прогон | S0-03                              | Чужой пользователь не получает файл                                          |
-| S0-05 | LockService и две конкурентные записи                 | S0-01                              | Нет потерь, ревизии корректны                                                |
+| S0-05 | LockService: проба готова, нужен Google-прогон        | S0-01                              | Нет потерь, ревизии корректны                                                |
 | S0-06 | Замеры и ADR upload                                   | S0-02, S0-04                       | Выбран single/chunks по данным                                               |
 | D-01  | Схема Meta/Users/Invites/Workspaces/Members           | Gate этапа 0                       | Setup создаёт заголовки, migration идемпотентна                              |
 | D-02  | RBAC, errors, idempotency, audit                      | D-01                               | Сервер отказывает чужим операциям                                            |

@@ -7,6 +7,7 @@ import {
   signOut,
   subscribeSession,
   requestSessionPhoto,
+  requestSessionConcurrency,
 } from './session-store';
 const data = () => ({
   user: { id: 'sub', email: 'chef@gmail.com', name: 'Chef', role: 'owner' as const },
@@ -18,6 +19,22 @@ afterEach(() => {
   vi.useRealTimers();
 });
 describe('memory-only Google session', () => {
+  it('uses the same cancellable private session for concurrency checks', async () => {
+    const command = {
+      action: 'spike.concurrency.read',
+      payload: { runId: 'c3dcd2e8-e2f8-428b-9e26-3e715f678fac' },
+    } as const;
+    vi.spyOn(apiClient, 'authenticate').mockResolvedValue(data());
+    vi.spyOn(apiClient, 'concurrency').mockRejectedValue(
+      new ApiClientError('UNAUTHENTICATED', 'Войдите снова.'),
+    );
+    await signIn('token');
+    await expect(requestSessionConcurrency(command)).rejects.toMatchObject({
+      code: 'UNAUTHENTICATED',
+    });
+    expect(apiClient.concurrency).toHaveBeenCalledWith(command, 'token', expect.any(AbortSignal));
+    expect(getSession().status).toBe('signed-out');
+  });
   it('uses the memory credential for photos and clears revoked sessions', async () => {
     const command = { action: 'spike.photo.read', payload: {} } as const;
     await expect(requestSessionPhoto(command)).rejects.toMatchObject({ code: 'UNAUTHENTICATED' });

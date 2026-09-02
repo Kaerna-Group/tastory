@@ -3,6 +3,7 @@ import {
   healthResponseSchema,
   authResponseSchema,
   photoResponseSchema,
+  concurrencyResponseSchema,
 } from '@tastory/contracts';
 import type {
   ApiRequest,
@@ -11,6 +12,8 @@ import type {
   ApiErrorResponse,
   PhotoCommand,
   PhotoData,
+  ConcurrencyCommand,
+  ConcurrencyData,
 } from '@tastory/contracts';
 
 export type ApiTransport = (request: ApiRequest, signal?: AbortSignal) => Promise<unknown>;
@@ -32,6 +35,11 @@ export function createApiClient(
 ): {
   health: (signal?: AbortSignal) => Promise<HealthData>;
   photo: (command: PhotoCommand, credential: string, signal?: AbortSignal) => Promise<PhotoData>;
+  concurrency: (
+    command: ConcurrencyCommand,
+    credential: string,
+    signal?: AbortSignal,
+  ) => Promise<ConcurrencyData>;
   authenticate: (
     credential: string,
     action?: 'auth.signIn' | 'auth.me',
@@ -39,6 +47,23 @@ export function createApiClient(
   ) => Promise<AuthData>;
 } {
   return {
+    async concurrency(command, credential, signal) {
+      const requestId = createRequestId();
+      const raw = await transport(
+        { ...command, apiVersion: API_VERSION, requestId, credential },
+        signal,
+      );
+      const parsed = concurrencyResponseSchema.safeParse(raw);
+      if (
+        !parsed.success ||
+        parsed.data.requestId !== requestId ||
+        (parsed.data.ok && parsed.data.data.state.runId !== command.payload.runId)
+      )
+        throw new ApiClientError('INVALID_RESPONSE', 'Сервер вернул несовместимый ответ.');
+      if (!parsed.data.ok)
+        throw new ApiClientError(parsed.data.error.code, parsed.data.error.message);
+      return parsed.data.data;
+    },
     async photo(command, credential, signal) {
       const requestId = createRequestId();
       const raw = await transport(
@@ -86,9 +111,7 @@ export function createApiClient(
 export function createHttpTransport(url: string, fetcher: typeof fetch = fetch): ApiTransport {
   return async (request, signal) => {
     try {
-      const timeout = AbortSignal.timeout(
-        request.action.startsWith('spike.photo.') ? 60_000 : 15_000,
-      );
+      const timeout = AbortSignal.timeout(request.action.startsWith('spike.') ? 60_000 : 15_000);
       const response = await fetcher(url, {
         method: 'POST',
         // Apps Script не обрабатывает произвольный preflight. Реальный CORS проверяется на этапе 0.

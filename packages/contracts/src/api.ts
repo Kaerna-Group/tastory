@@ -1,5 +1,10 @@
 import { z } from 'zod';
 import { photoUploadSchema, photoDataSchema } from './photo';
+import {
+  concurrencyReadSchema,
+  concurrencyWriteSchema,
+  concurrencyDataSchema,
+} from './concurrency';
 
 export const API_VERSION = 1;
 export const SCHEMA_VERSION = 0;
@@ -10,6 +15,18 @@ const requestFields = {
 };
 
 export const apiRequestSchema = z.discriminatedUnion('action', [
+  z.strictObject({
+    ...requestFields,
+    action: z.literal('spike.concurrency.read'),
+    credential: z.string().min(1).max(6144),
+    payload: concurrencyReadSchema,
+  }),
+  z.strictObject({
+    ...requestFields,
+    action: z.literal('spike.concurrency.write'),
+    credential: z.string().min(1).max(6144),
+    payload: concurrencyWriteSchema,
+  }),
   z.strictObject({ ...requestFields, action: z.literal('health'), payload: z.strictObject({}) }),
   z.strictObject({
     ...requestFields,
@@ -64,6 +81,9 @@ export const apiErrorSchema = z.strictObject({
       'PHOTO_EXISTS',
       'PHOTO_UNAVAILABLE',
       'PHOTO_NOT_PRIVATE',
+      'PROBE_UNAVAILABLE',
+      'PROBE_LIMIT',
+      'OPERATION_MISMATCH',
     ]),
     message: z.string(),
   }),
@@ -139,3 +159,13 @@ export const photoResponseSchema = z.union([
   apiErrorSchema,
 ]);
 export type PhotoResponse = z.infer<typeof photoResponseSchema>;
+export const concurrencyResponseSchema = z.union([
+  z.strictObject({
+    ok: z.literal(true),
+    requestId: z.uuid(),
+    data: concurrencyDataSchema,
+    meta: responseMetaSchema,
+  }),
+  apiErrorSchema,
+]);
+export type ConcurrencyResponse = z.infer<typeof concurrencyResponseSchema>;

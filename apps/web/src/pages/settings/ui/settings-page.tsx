@@ -2,6 +2,7 @@ import { ThemeSwitch } from '@/features/theme-switch';
 import { ConnectionStatus } from '@/features/connection-status';
 import { GoogleSignIn } from '@/features/google-sign-in';
 import { PhotoProbe } from '@/features/photo-probe';
+import { ConcurrencyProbe } from '@/features/concurrency-probe';
 export function SettingsPage(): React.JSX.Element {
   return (
     <>
@@ -21,6 +22,7 @@ export function SettingsPage(): React.JSX.Element {
           <ThemeSwitch />
         </section>
         <ConnectionStatus />
+        <ConcurrencyProbe />
       </div>
     </>
   );

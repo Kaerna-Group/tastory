@@ -21,6 +21,19 @@ button:disabled {
   display: grid;
   gap: 10px;
 }
+.probe-results {
+  padding-left: 20px;
+  display: grid;
+  gap: 12px;
+}
+.concurrency-panel {
+  grid-column: 1 / -1;
+}
+@media (min-width: 800px) {
+  .probe-results {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
 .photo-picker input {
   max-width: 100%;
   font: inherit;

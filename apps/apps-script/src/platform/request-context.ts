@@ -1,6 +1,7 @@
 import type { RequestContext } from '../controllers/handle-request';
 import { authenticateGoogle } from './google-auth';
 import { privatePhoto } from './private-photo';
+import { concurrencyProbe } from './concurrency-probe';
 
 export function createRequestContext(): RequestContext {
   const properties = PropertiesService.getScriptProperties();
@@ -16,5 +17,6 @@ export function createRequestContext(): RequestContext {
       ),
     authenticate: authenticateGoogle,
     photo: privatePhoto,
+    concurrency: concurrencyProbe,
   };
 }

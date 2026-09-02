@@ -1,5 +1,5 @@
 import { apiClient, ApiClientError } from '@/shared/api';
-import type { AuthData, PhotoCommand } from '@tastory/contracts';
+import type { AuthData, PhotoCommand, ConcurrencyCommand } from '@tastory/contracts';
 
 export type SessionState = Readonly<{
   status: 'signed-out' | 'checking' | 'signed-in';
@@ -68,6 +68,18 @@ export async function recheckSession() {
   else signOut('Войдите в Google.');
 }
 export async function requestSessionPhoto(command: PhotoCommand, signal?: AbortSignal) {
+  return protectedRequest((token, combined) => apiClient.photo(command, token, combined), signal);
+}
+export async function requestSessionConcurrency(command: ConcurrencyCommand, signal?: AbortSignal) {
+  return protectedRequest(
+    (token, combined) => apiClient.concurrency(command, token, combined),
+    signal,
+  );
+}
+async function protectedRequest<T>(
+  request: (token: string, signal: AbortSignal) => Promise<T>,
+  signal?: AbortSignal,
+) {
   if (!credential || snapshot.status !== 'signed-in')
     throw new ApiClientError('UNAUTHENTICATED', 'Войдите в Google.');
   const controller = new AbortController();
@@ -75,7 +87,7 @@ export async function requestSessionPhoto(command: PhotoCommand, signal?: AbortS
   const combined = signal ? AbortSignal.any([signal, controller.signal]) : controller.signal;
   try {
     combined.throwIfAborted();
-    const result = await apiClient.photo(command, credential, combined);
+    const result = await request(credential, combined);
     combined.throwIfAborted();
     return result;
   } catch (error) {
