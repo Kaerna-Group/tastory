@@ -57,6 +57,16 @@
 
 Локальные отчёты: `.local/google-photo-staging.json` и `.local/google-photo-live-check.json`. Публикация интерфейса: [Publish staging, исходный код d7f9447](https://github.com/Kaerna-Group/tastory/actions/runs/33691028689).
 
+## Выпуск пробы одновременных записей
+
+3 сентября 2026 опубликован **Apps Script deployment version 4**, исходный код `91ecc9f`. Подтверждение через Google API: `2026-09-02T23:26:23.875Z` (UTC). Адрес /exec, manifest и настройки доступа сохранены.
+
+На настоящем API успешны 7 проверок: health с staging auth; отказ read/write при повреждённом credential; отказ без credential; запрет переданного клиентом ownerKey, отрицательной ревизии и произвольного текста/формулы. POST заняли 3149–4283 мс; это отдельные наблюдения, не p50/p95. Ни одна проверка не записывала строки в Sheets.
+
+Локально прошли 137 автоматических тестов, 6 foundation и 8 auth/photo/concurrency браузерных сценариев. Проверка конкурентной отправки удерживала первый ответ до поступления второго запроса; затем проверены конфликт, повтор без дубликата, новая версия, отсутствие отката при старом повторе и экспорт результата. Эти fixtures не заменяют реальный прогон Google Sheets.
+
+Публикация сайта: [Publish staging, код 91ecc9f](https://github.com/Kaerna-Group/tastory/actions/runs/33695132042). Локальные отчёты: `.local/google-concurrency-staging.json` и `.local/google-concurrency-live-check.json`. S0-08 остаётся открытым до [отчёта владельца](google-concurrency-staging.md); фото также пока не подтверждено.
+
 ## Как повторить
 
 Локальная конфигурация `apps/web/.env.staging.local` уже заполнена. Из корня репозитория:
