@@ -47,6 +47,16 @@
 
 Следующая подготовленная проба — [приватное фото](google-photos-staging.md). Успешность живой загрузки/чтения Drive будет записана после отдельного прогона.
 
+## Выпуск пробы приватного фото
+
+3 сентября 2026 опубликован **Apps Script deployment version 3**, код `d7f9447`. Существующий /exec, manifest и права web app сохранены. Время подтверждения версии через API — `2026-09-02T22:33:38.492Z` (UTC).
+
+На настоящем API успешны 7 проверок: health с `auth: staging`, отказ повреждённому credential для upload/read/delete, отказ чтению без credential, отказ произвольному Drive ID и обработка тела 1 398 349 байт с последующим отказом авторизации. Отрицательные POST заняли 3480–7026 мс. Эти запросы не создавали файлы; большой body доказывает только прохождение транспорта/разбора, не сохранение изображения.
+
+Локально прошли 125 unit/contract/architecture проверок, 6 foundation и 6 auth/photo browser fixture сценариев; проверены снимки desktop/mobile. Успешный upload/read/delete в браузерных fixtures не заменяет Drive-прогон. Сохранение файла, приватная миниатюра, повторное чтение с Google и реальные задержки ожидают [проверки владельцем](google-photos-staging.md).
+
+Локальные отчёты: `.local/google-photo-staging.json` и `.local/google-photo-live-check.json`. Публикация интерфейса: [Publish staging, исходный код d7f9447](https://github.com/Kaerna-Group/tastory/actions/runs/33691028689).
+
 ## Как повторить
 
 Локальная конфигурация `apps/web/.env.staging.local` уже заполнена. Из корня репозитория:
