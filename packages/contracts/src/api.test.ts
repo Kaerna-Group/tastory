@@ -16,6 +16,7 @@ describe('API v1 boundary', () => {
     { ...request, apiVersion: 2 },
     { ...request, requestId: 'invalid' },
     { ...request, action: 'recipes.delete' },
+    { ...request, action: 'setupStaging' },
     { ...request, credential: 'unexpected' },
     { ...request, action: 'echo', payload: { message: 'a'.repeat(1025) } },
   ])('rejects incompatible or unsafe requests', (input) => {

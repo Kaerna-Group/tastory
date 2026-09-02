@@ -4,6 +4,7 @@ coverage
 playwright-report
 test-results
 .cache
+.local
 package-lock.json
 recipe-book-project-blueprint.md
 .env*

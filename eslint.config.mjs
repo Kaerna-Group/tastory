@@ -14,6 +14,7 @@ export default [
       'playwright-report/**',
       'test-results/**',
       '.cache/**',
+      '.local/**',
     ],
   },
   js.configs.recommended,
