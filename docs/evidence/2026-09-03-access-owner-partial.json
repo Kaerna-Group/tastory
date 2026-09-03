@@ -1,0 +1,37 @@
+{
+  "formatVersion": 1,
+  "runId": "502c53ec-ef81-427d-90d4-7b7286e6b9a1",
+  "startedAt": "2026-09-03T08:26:28.213Z",
+  "finishedAt": "2026-09-03T08:27:04.049Z",
+  "stopReason": "user",
+  "origin": "https://kaerna-group.github.io",
+  "browser": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/152.0.0.0 Safari/537.36",
+  "checks": {
+    "repeatedSignIn": false,
+    "deniedSignIn": false,
+    "revokedSession": false,
+    "restoredAccess": false
+  },
+  "events": [
+    {
+      "at": "2026-09-03T08:26:41.267Z",
+      "account": "account-1",
+      "action": "auth.me",
+      "outcome": "allowed",
+      "role": "owner",
+      "requestId": "68f4c3ee-9c08-4588-b1a1-14566194510d",
+      "errorCode": null,
+      "elapsedMs": 3576
+    },
+    {
+      "at": "2026-09-03T08:26:51.882Z",
+      "account": "account-1",
+      "action": "signOut",
+      "outcome": "signed-out",
+      "role": null,
+      "requestId": null,
+      "errorCode": null,
+      "elapsedMs": 0
+    }
+  ]
+}
