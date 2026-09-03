@@ -1,0 +1,27 @@
+{
+  "formatVersion": 1,
+  "runId": "beed16eb-edc5-4946-8be1-0d69871b8ee2",
+  "startedAt": "2026-09-03T09:21:02.675Z",
+  "finishedAt": "2026-09-03T09:21:16.871Z",
+  "stopReason": "user",
+  "origin": "https://kaerna-group.github.io",
+  "browser": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/152.0.0.0 Safari/537.36",
+  "checks": {
+    "repeatedSignIn": false,
+    "deniedSignIn": false,
+    "revokedSession": false,
+    "restoredAccess": false
+  },
+  "events": [
+    {
+      "at": "2026-09-03T09:21:13.763Z",
+      "account": null,
+      "action": "auth.signIn",
+      "outcome": "error",
+      "role": null,
+      "requestId": "a50e9413-ac7e-47b1-8d9b-3fca828295f9",
+      "errorCode": "AUTH_UNAVAILABLE",
+      "elapsedMs": 4458
+    }
+  ]
+}

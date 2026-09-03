@@ -133,6 +133,18 @@ export function checkAuthRuntime(code) {
   );
   assert.equal(request(jwt(), 'auth.me').error.code, 'UNAUTHENTICATED');
   assert.equal(held, false);
+  const beforeDiagnostics = JSON.stringify(properties);
+  const cacheBeforeDiagnostics = JSON.stringify([...cache]);
+  const diagnostic = sandbox.diagnoseStagingAuth();
+  assert.equal(diagnostic.invitations.status, 'valid');
+  assert.equal(diagnostic.bindings.status, 'valid');
+  assert.equal(diagnostic.googleKeys.status, 'valid');
+  assert.equal(diagnostic.scriptLock, 'available');
+  assert.equal(JSON.stringify(properties), beforeDiagnostics);
+  assert.equal(JSON.stringify([...cache]), cacheBeforeDiagnostics);
+  assert.equal(JSON.stringify(diagnostic).includes('runtime-sub'), false);
+  assert.equal(request(undefined, 'diagnoseStagingAuth').error.code, 'INVALID_REQUEST');
+  assert.equal(held, false);
   console.log(
     'Apps Script: real RS256 verification, cached Google keys, invitation claim/revocation passed without WebCrypto.',
   );

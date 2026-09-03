@@ -14,7 +14,7 @@ await build({
   target: 'es2020',
   outfile: 'dist/Code.js',
   footer: {
-    js: 'function doGet(e) { return Tastory.doGet(e); }\nfunction doPost(e) { return Tastory.doPost(e); }\nfunction setupStaging() { return Tastory.setupStaging(); }\nfunction setupStagingAuth() { return Tastory.setupStagingAuth(); }',
+    js: 'function doGet(e) { return Tastory.doGet(e); }\nfunction doPost(e) { return Tastory.doPost(e); }\nfunction setupStaging() { return Tastory.setupStaging(); }\nfunction setupStagingAuth() { return Tastory.setupStagingAuth(); }\nfunction diagnoseStagingAuth() { return Tastory.diagnoseStagingAuth(); }',
   },
   legalComments: 'eof',
 });
@@ -86,6 +86,8 @@ const sandbox = {
 runInNewContext(code, sandbox, { timeout: 5000 });
 if (typeof sandbox.setupStaging !== 'function')
   throw new Error('Staging setup entrypoint is missing.');
+if (typeof sandbox.diagnoseStagingAuth !== 'function')
+  throw new Error('Auth diagnostic entrypoint is missing.');
 const health = JSON.parse(sandbox.doGet());
 if (!health.ok || health.meta.apiVersion !== 1 || health.data.storage !== 'not-configured') {
   throw new Error('Apps Script bundle health smoke failed.');
