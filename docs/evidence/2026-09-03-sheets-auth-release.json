@@ -1,0 +1,31 @@
+{
+  "formatVersion": 1,
+  "commit": "68e61d6525355c67c73e45026a9c569545e28834",
+  "codeSha256": "25ead514bf86d3da32aa7e339a9d61ad2cb3182f188129d85f0cc7468a735759",
+  "deploymentVersion": 5,
+  "publishedAt": "2026-09-03T11:26:42.154Z",
+  "editorCodeVerified": true,
+  "manifestPreserved": true,
+  "checkedAt": "2026-09-03T11:27:52.039Z",
+  "checks": [
+    {
+      "action": "health",
+      "status": "passed",
+      "elapsedMs": 4452
+    },
+    {
+      "action": "activateStagingSheetsAuth",
+      "status": "passed",
+      "code": "INVALID_REQUEST",
+      "elapsedMs": 7387
+    },
+    {
+      "action": "auth.signIn",
+      "status": "passed",
+      "code": "UNAUTHENTICATED",
+      "elapsedMs": 3288
+    }
+  ],
+  "activationConfirmed": false,
+  "realSheetsSignIn": "pending owner activation and sign-in"
+}
