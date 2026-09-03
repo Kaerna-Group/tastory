@@ -1,0 +1,74 @@
+{
+  "formatVersion": 1,
+  "sourceCommit": "d9441f7a54d3d92add7e10f726011b11c9e2edac",
+  "codeSha256": "1a18b83de4b50fe85b0f77a5198bfe5d2bc0fe92ea8b8a23837f0adbc12a9c9f",
+  "deploymentVersion": 7,
+  "publishedAt": "2026-09-03T12:53:30.873Z",
+  "editorCodeVerified": true,
+  "manifestPreserved": true,
+  "checks": [
+    {
+      "name": "public-health",
+      "passed": true,
+      "attempts": [
+        {
+          "attempt": 1,
+          "passed": true,
+          "elapsedMs": 3855
+        }
+      ]
+    },
+    {
+      "name": "journal-list-invalid-credential",
+      "passed": true,
+      "attempts": [
+        {
+          "attempt": 1,
+          "passed": true,
+          "elapsedMs": 4431,
+          "code": "UNAUTHENTICATED"
+        }
+      ]
+    },
+    {
+      "name": "journal-initialize-invalid-credential",
+      "passed": true,
+      "attempts": [
+        {
+          "attempt": 1,
+          "passed": true,
+          "elapsedMs": 2582,
+          "code": "UNAUTHENTICATED"
+        }
+      ]
+    },
+    {
+      "name": "journal-check-invalid-credential",
+      "passed": true,
+      "attempts": [
+        {
+          "attempt": 1,
+          "passed": true,
+          "elapsedMs": 4160,
+          "code": "UNAUTHENTICATED"
+        }
+      ]
+    },
+    {
+      "name": "journal-initialize-missing-credential",
+      "passed": true,
+      "attempts": [
+        {
+          "attempt": 1,
+          "passed": true,
+          "elapsedMs": 3488,
+          "code": "INVALID_REQUEST"
+        }
+      ]
+    }
+  ],
+  "realJournalInitialization": "pending owner action in settings",
+  "realOwnerJournalCheck": "pending owner action in settings",
+  "priorSheetsActivation": "owner confirmed enabled and both accounts working before this release",
+  "checkedAt": "2026-09-03T12:54:22.508Z"
+}
