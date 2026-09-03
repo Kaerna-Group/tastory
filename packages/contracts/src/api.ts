@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { adminUsersDataSchema, adminHealthDataSchema } from './admin';
 import { journalDataSchema } from './journal';
+import { accessCommandSchema, accessDataSchema } from './access';
 import { photoUploadSchema, photoDataSchema } from './photo';
 import {
   concurrencyReadSchema,
@@ -15,8 +16,14 @@ const requestFields = {
   apiVersion: z.literal(API_VERSION),
   requestId: z.uuid(),
 };
+const accessFields = { ...requestFields, credential: z.string().min(1).max(6144) };
 
 export const apiRequestSchema = z.discriminatedUnion('action', [
+  accessCommandSchema.options[0].extend(accessFields),
+  accessCommandSchema.options[1].extend(accessFields),
+  accessCommandSchema.options[2].extend(accessFields),
+  accessCommandSchema.options[3].extend(accessFields),
+  accessCommandSchema.options[4].extend(accessFields),
   z.strictObject({
     ...requestFields,
     action: z.literal('admin.operations.list'),
@@ -120,6 +127,11 @@ export const apiErrorSchema = z.strictObject({
       'JOURNAL_NOT_READY',
       'JOURNAL_UNAVAILABLE',
       'JOURNAL_LIMIT',
+      'ACCESS_CONFLICT',
+      'ACCESS_PENDING',
+      'ACCESS_LIMIT',
+      'ACCESS_INVALID',
+      'ACCESS_UNAVAILABLE',
     ]),
     message: z.string(),
   }),
@@ -237,3 +249,14 @@ export const journalResponseSchema = z.union([
   apiErrorSchema,
 ]);
 export type JournalResponse = z.infer<typeof journalResponseSchema>;
+
+export const accessResponseSchema = z.union([
+  z.strictObject({
+    ok: z.literal(true),
+    requestId: z.uuid(),
+    data: accessDataSchema,
+    meta: responseMetaSchema,
+  }),
+  apiErrorSchema,
+]);
+export type AccessResponse = z.infer<typeof accessResponseSchema>;

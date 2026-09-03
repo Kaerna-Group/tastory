@@ -12,6 +12,7 @@ import {
   requestSessionUsers,
   requestSessionHealth,
   requestSessionJournal,
+  requestSessionAccess,
 } from './session-store';
 const data = () => ({
   requestId: 'c3dcd2e8-e2f8-428b-9e26-3e715f678fac',
@@ -25,6 +26,28 @@ afterEach(() => {
   vi.useRealTimers();
 });
 describe('memory-only Google session', () => {
+  it('keeps access commands within the active session and clears revoked permissions', async () => {
+    vi.spyOn(apiClient, 'authenticate').mockResolvedValue(data());
+    const request = vi
+      .spyOn(apiClient, 'access')
+      .mockRejectedValue(new ApiClientError('ACCESS_DENIED', 'Доступ закрыт.'));
+    const command = { action: 'admin.access.list', payload: {} } as const;
+    await expect(requestSessionAccess(command, data().requestId)).rejects.toMatchObject({
+      code: 'UNAUTHENTICATED',
+    });
+    expect(request).not.toHaveBeenCalled();
+    await signIn('private-token');
+    await expect(requestSessionAccess(command, data().requestId)).rejects.toMatchObject({
+      code: 'ACCESS_DENIED',
+    });
+    expect(request).toHaveBeenCalledWith(
+      command,
+      'private-token',
+      data().requestId,
+      expect.any(AbortSignal),
+    );
+    expect(getSession().status).toBe('signed-out');
+  });
   it('uses the private session and stable journal ID, then clears revoked access', async () => {
     vi.spyOn(apiClient, 'authenticate').mockResolvedValue(data());
     vi.spyOn(apiClient, 'journal').mockRejectedValue(

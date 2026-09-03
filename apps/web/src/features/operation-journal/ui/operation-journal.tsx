@@ -3,6 +3,14 @@ import { getSession, subscribeSession, requestSessionJournal } from '@/entities/
 import { ApiClientError } from '@/shared/api';
 import type { JournalData } from '../model/types';
 
+const actionNames = {
+  'admin.operations.check': 'Проверка журнала',
+  'admin.invites.create': 'Создание приглашения',
+  'admin.invites.revoke': 'Отзыв приглашения',
+  'admin.members.update': 'Изменение доступа',
+  'auth.invite.accept': 'Принятие приглашения',
+};
+
 export function OperationJournal(): React.JSX.Element | null {
   const session = useSyncExternalStore(subscribeSession, getSession);
   return session.status === 'signed-in' && session.user?.role === 'owner' ? (
@@ -146,7 +154,7 @@ function JournalPanel(): React.JSX.Element {
             {list.entries.map((entry) => (
               <li className="member-row" key={entry.id}>
                 <div className="member-identity">
-                  <p className="font-semibold">Проверка журнала</p>
+                  <p className="font-semibold">{actionNames[entry.action]}</p>
                   <p className="muted text-sm">
                     {entry.actorName} · {new Date(entry.startedAt).toLocaleString('ru-RU')}
                   </p>

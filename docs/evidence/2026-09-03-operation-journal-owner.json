@@ -1,0 +1,16 @@
+{
+  "formatVersion": 1,
+  "date": "2026-09-03",
+  "source": "owner confirmation and screenshot of published Tastory settings",
+  "operationDisplayedAt": "2026-09-03T16:10:21+03:00",
+  "ownerReportedWorking": true,
+  "visibleResult": {
+    "checkPassed": true,
+    "totalOperations": 1,
+    "operationStatus": "committed",
+    "auditRecorded": true,
+    "duplicateCreated": false
+  },
+  "schema2": "preparation confirmed by the successful journal check; not a separate raw migration export",
+  "limitations": "Screenshot and owner confirmation, not an automated storage inspection or recovery test. No identities or Google resource IDs retained."
+}

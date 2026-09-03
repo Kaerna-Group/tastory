@@ -259,6 +259,35 @@ h2 {
   flex-wrap: wrap;
   align-items: center;
   gap: 12px;
+  min-width: 0;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+}
+.access-form {
+  display: grid;
+  gap: 16px;
+  margin: 28px 0;
+}
+.access-form label,
+.member-access label {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+}
+.access-form input,
+.access-form select,
+.member-access select {
+  min-height: 44px;
+  width: 100%;
+  min-width: 0;
+  padding: 10px 12px;
+  border: 1px solid var(--app-border);
+  border-radius: 8px;
+  background: var(--app-surface-raised);
+  color: var(--app-text);
+}
+.access-form a {
+  text-decoration: underline;
 }
 .member-role {
   border: 1px solid var(--app-border);

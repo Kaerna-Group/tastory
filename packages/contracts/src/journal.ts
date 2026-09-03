@@ -3,7 +3,13 @@ import { z } from 'zod';
 export const journalEntrySchema = z
   .strictObject({
     id: z.uuid(),
-    action: z.literal('admin.operations.check'),
+    action: z.enum([
+      'admin.operations.check',
+      'admin.invites.create',
+      'admin.invites.revoke',
+      'admin.members.update',
+      'auth.invite.accept',
+    ]),
     actorName: z.string().min(1).max(254),
     status: z.enum(['started', 'committed']),
     startedAt: z.iso.datetime(),

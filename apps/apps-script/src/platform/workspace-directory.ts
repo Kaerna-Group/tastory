@@ -8,6 +8,9 @@ import {
   sheetsAuthConfigSchema,
 } from '../auth/workspace-access';
 import { usersImportCheckpointSchema } from '../services/users-import';
+import { acceptInvitation } from '../services/access-mutations';
+import { createAccessStore } from './access-store';
+import { sha256 } from './current-schema';
 
 export const SHEETS_AUTH_CONFIG_KEY = 'SHEETS_AUTH_CONFIG';
 
@@ -70,10 +73,24 @@ export function authenticateSheets(
   identity: GoogleIdentity,
   rawConfig: string,
   spreadsheetId: string | null,
+  allowJoin = false,
 ) {
   const config = sheetsAuthConfigSchema.safeParse(JSON.parse(rawConfig));
   if (!config.success || !spreadsheetId) throw new AuthError('AUTH_UNAVAILABLE');
-  const directory = readWorkspaceDirectory(SpreadsheetApp.openById(spreadsheetId));
+  const spreadsheet = SpreadsheetApp.openById(spreadsheetId);
+  let directory = readWorkspaceDirectory(spreadsheet);
+  const store = createAccessStore(spreadsheet);
+  if (store.rows('Meta').some((row) => row[0] === 'schema_version' && row[1] === '2')) {
+    acceptInvitation(store, identity, config.data.workspaceId, allowJoin, {
+      now: () => new Date(),
+      uuid: () => Utilities.getUuid(),
+      sha256,
+      assertLive: () => {
+        if (Date.parse(identity.expiresAt) <= Date.now()) throw new AuthError('UNAUTHENTICATED');
+      },
+    });
+    directory = readWorkspaceDirectory(spreadsheet);
+  }
   const access = resolveWorkspaceAccess(directory, identity.sub, config.data.workspaceId);
   if (Date.parse(identity.expiresAt) <= Date.now()) throw new AuthError('UNAUTHENTICATED');
   return {

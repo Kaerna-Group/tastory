@@ -30,6 +30,8 @@ export default defineConfig({
         'apps/apps-script/src/platform/journal-store.ts',
         'apps/apps-script/src/platform/operation-journal.ts',
         'apps/apps-script/src/platform/current-schema.ts',
+        'apps/apps-script/src/services/access-*.ts',
+        'apps/apps-script/src/platform/access-*.ts',
         'apps/apps-script/src/entrypoints/sheets-auth-staging.ts',
         'apps/apps-script/src/entrypoints/users-staging.ts',
         'apps/apps-script/src/platform/schema-store.ts',

@@ -84,7 +84,12 @@ export function authenticateGoogle(credential: string, allowJoin: boolean) {
     if (Date.parse(identity.expiresAt) <= Date.now()) throw new AuthError('UNAUTHENTICATED');
     const sheetsConfig = properties.getProperty(SHEETS_AUTH_CONFIG_KEY);
     if (sheetsConfig !== null)
-      return authenticateSheets(identity, sheetsConfig, properties.getProperty('SPREADSHEET_ID'));
+      return authenticateSheets(
+        identity,
+        sheetsConfig,
+        properties.getProperty('SPREADSHEET_ID'),
+        allowJoin,
+      );
     const rawInvites = properties.getProperty('STAGING_INVITES');
     if (!rawInvites) throw new AuthError('AUTH_NOT_CONFIGURED');
     const invitations = invitationsSchema.parse(JSON.parse(rawInvites));

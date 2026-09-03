@@ -5,6 +5,51 @@ import { mockTransport } from './mock-transport';
 const requestId = 'c3dcd2e8-e2f8-428b-9e26-3e715f678fac';
 const request = { apiVersion: 1, requestId, action: 'health', payload: {} } as const;
 describe('typed API client', () => {
+  it('preserves access write keys, validates resume receipt IDs and propagates conflicts', async () => {
+    const command = {
+      action: 'admin.invites.create',
+      payload: { email: 'guest@example.test', role: 'viewer', days: 7, expectedRevision: 1 },
+    } as const;
+    const body = {
+      ok: true,
+      requestId,
+      meta: { apiVersion: 1, schemaVersion: 0 },
+      data: {
+        kind: 'saved',
+        outcome: 'committed',
+        operationId: requestId,
+        entityId: requestId,
+        revision: 2,
+      },
+    };
+    const transport = vi.fn().mockResolvedValue(body);
+    const client = createApiClient(transport);
+    await client.access(command, 'private-token', requestId);
+    await client.access(command, 'private-token', requestId);
+    expect(transport.mock.calls[0]?.[0]).toEqual(transport.mock.calls[1]?.[0]);
+    await expect(
+      client.access({ action: 'admin.access.list', payload: {} }, 'token', requestId),
+    ).rejects.toMatchObject({ code: 'INVALID_RESPONSE' });
+    await expect(
+      client.access(
+        {
+          action: 'admin.access.resume',
+          payload: { operationId: '11111111-1111-4111-8111-111111111111' },
+        },
+        'token',
+        requestId,
+      ),
+    ).rejects.toMatchObject({ code: 'INVALID_RESPONSE' });
+    transport.mockResolvedValue({
+      ok: false,
+      requestId,
+      error: { code: 'ACCESS_CONFLICT', message: 'Обновите список.' },
+    });
+    await expect(client.access(command, 'token', requestId)).rejects.toMatchObject({
+      code: 'ACCESS_CONFLICT',
+      requestId,
+    });
+  });
   it('keeps journal request IDs stable and rejects mismatched actions or operation receipts', async () => {
     const entry = {
       id: requestId,

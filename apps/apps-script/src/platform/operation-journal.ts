@@ -56,7 +56,10 @@ export function operationJournal(
       startedAt: operation.started_at,
       completedAt: operation.completed_at || null,
       auditRecorded,
-      canRetry: operation.status === 'started' && operation.user_id === access.userId,
+      canRetry:
+        operation.action === 'admin.operations.check' &&
+        operation.status === 'started' &&
+        operation.user_id === access.userId,
     });
     if (action === 'admin.operations.initialize') {
       assertLive();

@@ -16,6 +16,10 @@ export {
   journalResponseSchema,
 } from './api';
 export type { JournalResponse } from './api';
+export { accessResponseSchema } from './api';
+export type { AccessResponse } from './api';
+export { accessCommandSchema, accessWriteSchema, accessDataSchema } from './access';
+export type { AccessCommand, AccessWrite, AccessData } from './access';
 export { journalDataSchema, journalEntrySchema } from './journal';
 export type { JournalData, JournalEntry, JournalAction } from './journal';
 export type { AdminResponse } from './api';

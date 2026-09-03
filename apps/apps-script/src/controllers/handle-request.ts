@@ -6,6 +6,8 @@ import {
   adminUsersResponseSchema,
   adminHealthResponseSchema,
   journalResponseSchema,
+  accessResponseSchema,
+  accessCommandSchema,
 } from '@tastory/contracts';
 import type {
   ApiErrorResponse,
@@ -26,12 +28,16 @@ import type {
   JournalResponse,
   JournalAction,
   JournalData,
+  AccessCommand,
+  AccessData,
+  AccessResponse,
 } from '@tastory/contracts';
 import { AuthError } from '../auth/google-token';
 import { PhotoError } from '../services/photo-error';
 import { ProbeError } from '../services/concurrency-probe';
 import { AdminError } from '../services/admin-directory';
 import { JournalError } from '../services/journal-error';
+import { AccessError } from '../services/access-model';
 
 export type RequestContext = Readonly<{
   now: () => Date;
@@ -44,6 +50,7 @@ export type RequestContext = Readonly<{
   concurrency?: (command: ConcurrencyCommand, session: AuthData) => ConcurrencyData;
   admin?: (action: AdminAction, session: AuthData) => AdminUsersData | AdminHealthData;
   journal?: (action: JournalAction, requestId: string, session: AuthData) => JournalData;
+  access?: (command: AccessCommand, requestId: string, session: AuthData) => AccessData;
 }>;
 
 function invalidRequest(context: RequestContext): ApiErrorResponse {
@@ -64,7 +71,8 @@ export function handleRequest(
   | PhotoResponse
   | ConcurrencyResponse
   | AdminResponse
-  | JournalResponse {
+  | JournalResponse
+  | AccessResponse {
   const parsed = apiRequestSchema.safeParse(input);
   if (!parsed.success) return invalidRequest(context);
   const request = parsed.data;
@@ -92,6 +100,25 @@ export function handleRequest(
       if (request.action === 'auth.signIn' || request.action === 'auth.me')
         return { ok: true, requestId: request.requestId, data: session, meta };
       if (session.user.role !== 'owner') throw new AuthError('ACCESS_DENIED');
+      if (
+        request.action === 'admin.access.list' ||
+        request.action === 'admin.access.resume' ||
+        request.action === 'admin.invites.create' ||
+        request.action === 'admin.invites.revoke' ||
+        request.action === 'admin.members.update'
+      ) {
+        if (!context.access) throw new AccessError();
+        return accessResponseSchema.parse({
+          ok: true,
+          requestId: request.requestId,
+          data: context.access(
+            accessCommandSchema.parse({ action: request.action, payload: request.payload }),
+            request.requestId,
+            session,
+          ),
+          meta,
+        });
+      }
       if (
         request.action === 'admin.operations.list' ||
         request.action === 'admin.operations.initialize' ||
@@ -142,7 +169,8 @@ export function handleRequest(
         error instanceof PhotoError ||
         error instanceof ProbeError ||
         error instanceof AdminError ||
-        error instanceof JournalError
+        error instanceof JournalError ||
+        error instanceof AccessError
           ? error.code
           : 'AUTH_UNAVAILABLE';
       const messages = {
@@ -166,6 +194,12 @@ export function handleRequest(
         JOURNAL_NOT_READY: 'Сначала подготовьте журнал операций.',
         JOURNAL_UNAVAILABLE: 'Журнал не ответил. Обновите список или повторите ту же проверку.',
         JOURNAL_LIMIT: 'Журнал заполнен. Существующие записи сохранены; обратитесь к владельцу.',
+        ACCESS_CONFLICT: 'Доступ уже изменился. Обновите список и выберите изменение заново.',
+        ACCESS_PENDING: 'Сначала завершите прерванное изменение в разделе управления доступом.',
+        ACCESS_LIMIT: 'Достигнут лимит участников или приглашений.',
+        ACCESS_INVALID: 'Изменение недоступно: проверьте участника или действующее приглашение.',
+        ACCESS_UNAVAILABLE:
+          'Изменение не подтверждено. Повторите тот же запрос или откройте управление доступом.',
       };
       return { ok: false, requestId: request.requestId, error: { code, message: messages[code] } };
     }
@@ -190,7 +224,8 @@ export function handlePostBody(
   | PhotoResponse
   | ConcurrencyResponse
   | AdminResponse
-  | JournalResponse {
+  | JournalResponse
+  | AccessResponse {
   if (body.length > PHOTO_BODY_LIMIT) return invalidRequest(context);
   let input: unknown;
   try {

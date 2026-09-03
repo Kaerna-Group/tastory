@@ -5,6 +5,7 @@ import { PhotoProbe } from '@/features/photo-probe';
 import { ConcurrencyProbe } from '@/features/concurrency-probe';
 import { WorkspaceAdmin } from '@/features/workspace-admin';
 import { OperationJournal } from '@/features/operation-journal';
+import { AccessAdmin } from '@/features/access-admin';
 export function SettingsPage(): React.JSX.Element {
   return (
     <>
@@ -25,6 +26,7 @@ export function SettingsPage(): React.JSX.Element {
         </section>
         <ConnectionStatus />
         <WorkspaceAdmin />
+        <AccessAdmin />
         <OperationJournal />
         <ConcurrencyProbe />
       </div>

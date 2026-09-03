@@ -13,9 +13,9 @@
 }
 ```
 
-Поддержаны health, echo, auth.signIn, auth.me, admin.users.list, admin.health, три действия admin.operations, три действия spike.photo и два spike.concurrency. Неизвестные поля, действия и версия отклоняются. Поле `credential` требуется для всех защищённых действий; health/echo его не принимают. `expectedRevision` используется в ограниченной пробе записей; схемы рецептов ещё нет.
+Поддержаны health, echo, auth.signIn, auth.me, admin.users.list, admin.health, три действия admin.operations, пять действий управления доступом, три действия spike.photo и два spike.concurrency. Неизвестные поля, действия и версия отклоняются. Поле `credential` требуется для всех защищённых действий; health/echo его не принимают. `expectedRevision` используется в управлении доступом и пробе записей; схемы рецептов ещё нет.
 
-POST отправляет JSON с Content-Type `text/plain;charset=utf-8`, без cookies/Authorization. Это избегает собственного preflight, но реальная работа CORS/redirect должна быть доказана на опубликованном origin. Таймаут — 15 секунд, для spike и admin — 60 секунд; поддержана отмена ожидания. Серверная запись может завершиться после отмены клиентом.
+POST отправляет JSON с Content-Type `text/plain;charset=utf-8`, без cookies/Authorization. Это избегает собственного preflight, но реальная работа CORS/redirect должна быть доказана на опубликованном origin. Таймаут — 15 секунд, для auth, spike и admin — 60 секунд; поддержана отмена ожидания. Серверная запись может завершиться после отмены клиентом.
 
 ## Health
 
@@ -43,7 +43,7 @@ Status ok доказывает выполнение обработчика. Heal
 
 ## Staging auth
 
-`auth.signIn` и `auth.me` принимают пустой `payload` и строку `credential` на верхнем уровне (Google ID token, максимум 6144 символа). В обоих случаях сервер проверяет Google-подпись и claims. После включения Sheets оба действия допускают уже перенесённых пользователей с активным членством. Новый путь принятия приглашений ещё впереди. В прежнем staging-реестре до переключения только `auth.signIn` мог впервые принять приглашение.
+`auth.signIn` и `auth.me` принимают пустой `payload` и строку `credential` на верхнем уровне (Google ID token, максимум 6144 символа). В обоих случаях сервер проверяет Google-подпись и claims. После включения Sheets оба действия допускают существующих пользователей с активным членством. На схеме 2 только `auth.signIn` может принять действующее приглашение нового пользователя; `auth.me` не создаёт данные. Вступление использует проверенные Google sub и авторитетный email, роль из Invites и восстанавливаемую операцию с аудитом. [Подробности](access-management.md).
 
 Успешный `data`: `{ user: { id, email, name, role }, expiresAt }`; `id` — проверенный `sub`, role — из активного членства в выбранной книге после переключения, срок — из проверенного токена. Ключи и список приглашений не возвращаются. Общие envelope и meta сохраняются; schemaVersion остаётся 0. [Доступ по таблицам и ограничения](sheets-auth-staging.md).
 
@@ -56,6 +56,26 @@ Status ok доказывает выполнение обработчика. Heal
 
 Оба действия только читают данные и не возвращают Google sub или идентификаторы ресурсов Google. Схемы находятся в `packages/contracts/src/admin.ts`; envelope и meta прежние. [Интерфейс и границы](workspace-admin.md).
 
+## Приглашения и права
+
+Все административные действия ниже требуют Google credential и активного владельца, проверенного заново под ScriptLock. Схема таблиц остаётся 2. Общая ожидаемая ревизия приходит из `admin.access.list`, сохраняется в исходной команде и не заменяется автоматически при повторе.
+
+| Действие               | Payload                                                                                    |
+| ---------------------- | ------------------------------------------------------------------------------------------ |
+| `admin.access.list`    | `{}`                                                                                       |
+| `admin.invites.create` | `{ email, role: "member" \| "viewer", days: 1..30, expectedRevision }`                     |
+| `admin.invites.revoke` | `{ inviteId, expectedRevision }`                                                           |
+| `admin.members.update` | `{ userId, role: "member" \| "viewer", status: "active" \| "disabled", expectedRevision }` |
+| `admin.access.resume`  | `{ operationId }`                                                                          |
+
+Список возвращает `{ kind: "access", revision, checkedAt, members, invites, pending }`: участники с внутренними ID/именем/email/ролью/статусом, приглашения текущей книги со сроком и состоянием, максимум одна незавершённая запись и возможность её продолжения. Полные контракты — `packages/contracts/src/access.ts`. Планы строк, Google sub и ID ресурсов не возвращаются.
+
+Запись возвращает `{ kind: "saved", outcome: "committed" | "replayed", operationId, entityId, revision }`. `operationId` равен исходному requestId, а при resume — payload.operationId; envelope.requestId всегда относится к текущему запросу. Клиент проверяет оба значения. Replay возвращает первоначальную квитанцию даже после более новой операции; для текущего состояния нужно новое чтение списка.
+
+Ошибки: `ACCESS_CONFLICT` — устаревшая общая ревизия; `ACCESS_PENDING` — требуется завершить предыдущую запись; `ACCESS_LIMIT` — лимит пользователей/приглашений; `ACCESS_INVALID` — действие недоступно для этого адреса/участника; `ACCESS_UNAVAILABLE` — сбой или несовместимые данные. `OPERATION_MISMATCH` означает повтор ID с другим содержимым. Также применяются ошибки auth и журнала. Таймаут административных действий и auth — 60 секунд.
+
+Первое принятие приглашения выполняется внутри `auth.signIn` по проверенным claims, а не через публичный payload с ролью. Начатое вступление возобновляется по сохранённой операции и тому же Google sub; владелец также может завершить его через resume. Письма сервер не отправляет.
+
 ## Журнал операций
 
 Три дополнительных действия требуют credential, строго пустой payload, staging и активного владельца. Повторная проверка прав и срока токена выполняется под ScriptLock. Приготовленная миграцией 002 фактическая схема таблиц — 2; вход также поддерживает прежнюю схему 1. `admin.health` возвращает пару `schemaVersion: 1, tablesChecked: 6` либо `schemaVersion: 2, tablesChecked: 8`. Транспортное meta не меняется.
@@ -66,7 +86,7 @@ Status ok доказывает выполнение обработчика. Heal
 | `admin.operations.initialize` | `{ kind: "initialized", schemaVersion: 2, alreadyApplied }`                                                       |
 | `admin.operations.check`      | `{ kind: "check", outcome: "committed" \| "replayed", entry, result: { kind: "journal-check", verified: true } }` |
 
-`entry`: `{ id, action: "admin.operations.check", actorName, status, startedAt, completedAt, auditRecorded, canRetry }`. Статус — `started` или `committed`; незавершённая запись имеет `completedAt: null`. Выдаются последние 50 операций текущей книги, total ограничен 1000. `canRetry` разрешён только для незавершённой записи текущего владельца. Неподготовленный журнал возвращает пустой список с `ready: false` и схемой 1.
+`entry`: `{ id, action, actorName, status, startedAt, completedAt, auditRecorded, canRetry }`. Action — `admin.operations.check`, `admin.invites.create`, `admin.invites.revoke`, `admin.members.update` или `auth.invite.accept`. Статус — `started` или `committed`; незавершённая запись имеет `completedAt: null`. Выдаются последние 50 операций текущей книги, total ограничен 1000. `canRetry` относится только к диагностической проверке текущего владельца; записи доступа продолжаются через `admin.access.resume`. Неподготовленный журнал возвращает пустой список с `ready: false` и схемой 1.
 
 `requestId` проверочной операции сохраняется для всех повторов, включая потерю ответа; клиент сверяет его с envelope и entry.id. Повтор с другим пользователем, книгой или содержимым отклоняется. Подготовка повторяется по собственному маркеру миграции. Запись требует готового журнала и не изменяет бизнес-данные или `Meta.data_revision`.
 

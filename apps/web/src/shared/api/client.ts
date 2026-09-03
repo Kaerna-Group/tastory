@@ -7,6 +7,7 @@ import {
   adminUsersResponseSchema,
   adminHealthResponseSchema,
   journalResponseSchema,
+  accessResponseSchema,
 } from '@tastory/contracts';
 import type {
   ApiRequest,
@@ -21,6 +22,8 @@ import type {
   AdminHealthData,
   JournalAction,
   JournalData,
+  AccessCommand,
+  AccessData,
 } from '@tastory/contracts';
 
 export type ApiTransport = (request: ApiRequest, signal?: AbortSignal) => Promise<unknown>;
@@ -43,6 +46,12 @@ export function createApiClient(
   createRequestId: () => string = () => crypto.randomUUID(),
 ): {
   health: (signal?: AbortSignal) => Promise<HealthData>;
+  access: (
+    command: AccessCommand,
+    credential: string,
+    requestId: string,
+    signal?: AbortSignal,
+  ) => Promise<AccessData>;
   journal: (
     action: JournalAction,
     credential: string,
@@ -64,6 +73,31 @@ export function createApiClient(
   ) => Promise<AuthResult>;
 } {
   return {
+    async access(command, credential, requestId, signal) {
+      const raw = await transport(
+        { ...command, apiVersion: API_VERSION, requestId, credential },
+        signal,
+      );
+      const parsed = accessResponseSchema.safeParse(raw);
+      const operationId =
+        command.action === 'admin.access.resume' ? command.payload.operationId : requestId;
+      if (
+        !parsed.success ||
+        parsed.data.requestId !== requestId ||
+        (parsed.data.ok &&
+          (command.action === 'admin.access.list'
+            ? parsed.data.data.kind !== 'access'
+            : parsed.data.data.kind !== 'saved' || parsed.data.data.operationId !== operationId))
+      )
+        throw new ApiClientError(
+          'INVALID_RESPONSE',
+          'Сервер вернул несовместимый ответ.',
+          requestId,
+        );
+      if (!parsed.data.ok)
+        throw new ApiClientError(parsed.data.error.code, parsed.data.error.message, requestId);
+      return parsed.data.data;
+    },
     async journal(action, credential, requestId, signal) {
       const raw = await transport(
         { apiVersion: API_VERSION, requestId, action, credential, payload: {} },
@@ -196,7 +230,9 @@ export function createHttpTransport(url: string, fetcher: typeof fetch = fetch):
   return async (request, signal) => {
     try {
       const timeout = AbortSignal.timeout(
-        request.action.startsWith('spike.') || request.action.startsWith('admin.')
+        request.action.startsWith('spike.') ||
+          request.action.startsWith('admin.') ||
+          request.action.startsWith('auth.')
           ? 60_000
           : 15_000,
       );

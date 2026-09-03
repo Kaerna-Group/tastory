@@ -19,3 +19,4 @@ export {
   clearAccessCheck,
 } from './model/access-check';
 export type { AccessEvent, AccessReport } from './model/access-check';
+export { requestSessionAccess } from './model/session-store';

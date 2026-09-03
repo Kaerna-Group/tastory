@@ -179,7 +179,7 @@ export function checkSchemaRuntime(code) {
   assert.equal(JSON.stringify([...sheets]), before);
   assert.equal(writes, beforeWrites);
   assert.equal(held, false);
-  function request(subject, email, action = 'auth.me', requestId = randomUUID()) {
+  function request(subject, email, action = 'auth.me', requestId = randomUUID(), payload) {
     const now = Math.floor(Date.now() / 1000);
     const data = [
       { alg: 'RS256', typ: 'JWT', kid: 'cutover-key' },
@@ -206,7 +206,8 @@ export function checkSchemaRuntime(code) {
             requestId,
             action,
             credential,
-            payload: action === 'spike.concurrency.read' ? { runId: randomUUID() } : {},
+            payload:
+              payload ?? (action === 'spike.concurrency.read' ? { runId: randomUUID() } : {}),
           }),
         },
       }),
@@ -353,7 +354,113 @@ export function checkSchemaRuntime(code) {
   assert.equal(sheets.get('Meta').find(([key]) => key === 'data_revision')[1], '1');
   assert.equal(propertyWrites, 1);
   assert.equal(held, false);
+  const listAccess = () => request('private-owner', 'owner@example.test', 'admin.access.list').data;
+  const change = (action, payload, id = randomUUID()) =>
+    request('private-owner', 'owner@example.test', action, id, payload);
+  assert.equal(listAccess().revision, 1);
+  const inviteIdempotency = randomUUID();
+  const invitePayload = {
+    email: 'synthetic.new@gmail.com',
+    role: 'member',
+    days: 7,
+    expectedRevision: 1,
+  };
+  const createdInvite = change('admin.invites.create', invitePayload, inviteIdempotency);
+  assert.equal(createdInvite.ok, true, JSON.stringify(createdInvite));
+  assert.equal(
+    change('admin.invites.create', invitePayload, inviteIdempotency).data.outcome,
+    'replayed',
+  );
+  assert.equal(listAccess().revision, 2);
+  assert.equal(
+    request('fresh-google-sub', 'synthetic.new@gmail.com', 'auth.me').error.code,
+    'ACCESS_DENIED',
+  );
+  assert.equal(
+    request('wrong-google-sub', 'stranger@gmail.com', 'auth.signIn').error.code,
+    'ACCESS_DENIED',
+  );
+  const joined = request('fresh-google-sub', 'synthetic.new@gmail.com', 'auth.signIn');
+  assert.equal(joined.ok, true);
+  assert.equal(joined.data.user.role, 'member');
+  const afterJoinWrites = writes;
+  assert.equal(request('fresh-google-sub', 'synthetic.new@gmail.com', 'auth.signIn').ok, true);
+  assert.equal(writes, afterJoinWrites);
+  assert.equal(listAccess().revision, 3);
+  const newUser = listAccess().members.find((user) => user.email === 'synthetic.new@gmail.com');
+  assert.ok(newUser);
+  assert.equal(
+    change('admin.members.update', {
+      userId: newUser.id,
+      role: 'viewer',
+      status: 'active',
+      expectedRevision: 2,
+    }).error.code,
+    'ACCESS_CONFLICT',
+  );
+  assert.equal(
+    change('admin.members.update', {
+      userId: newUser.id,
+      role: 'viewer',
+      status: 'active',
+      expectedRevision: 3,
+    }).ok,
+    true,
+  );
+  assert.equal(request('fresh-google-sub', 'synthetic.new@gmail.com').data.user.role, 'viewer');
+  assert.equal(
+    change('admin.members.update', {
+      userId: newUser.id,
+      role: 'viewer',
+      status: 'disabled',
+      expectedRevision: 4,
+    }).ok,
+    true,
+  );
+  assert.equal(
+    request('fresh-google-sub', 'synthetic.new@gmail.com', 'auth.signIn').error.code,
+    'ACCESS_DENIED',
+  );
+  assert.equal(
+    change('admin.members.update', {
+      userId: newUser.id,
+      role: 'viewer',
+      status: 'active',
+      expectedRevision: 5,
+    }).ok,
+    true,
+  );
+  assert.equal(request('fresh-google-sub', 'synthetic.new@gmail.com').ok, true);
+  const unusedInvite = change('admin.invites.create', {
+    email: 'revoked.synthetic@gmail.com',
+    role: 'viewer',
+    days: 1,
+    expectedRevision: 6,
+  });
+  assert.equal(
+    change('admin.invites.revoke', { inviteId: unusedInvite.data.entityId, expectedRevision: 7 })
+      .ok,
+    true,
+  );
+  assert.equal(
+    request('revoked-new-sub', 'revoked.synthetic@gmail.com', 'auth.signIn').error.code,
+    'ACCESS_DENIED',
+  );
+  assert.equal(listAccess().revision, 8);
+  assert.equal(
+    request('private-viewer', 'viewer@example.test', 'admin.access.list').error.code,
+    'ACCESS_DENIED',
+  );
+  assert.equal(JSON.stringify(listAccess()).includes('fresh-google-sub'), false);
+  assert.equal(sheets.get('Operations').length, 9);
+  assert.equal(sheets.get('AuditLog').length, 9);
+  assert.equal(
+    request('private-owner', 'owner@example.test', 'admin.health').data.tablesChecked,
+    8,
+  );
+  assert.equal(propertyWrites, 1);
+  assert.equal(held, false);
   console.log(
-    'Apps Script: schema/import, Sheets JWT auth, owner directory, journal migration/check/replay/recovery and HTTP isolation passed in compiled runtime.',
+    'Apps Script: schema/import, Sheets JWT auth, journal, invitations, acceptance, role updates, revocation, restore and HTTP isolation passed in compiled runtime.',
   );
 }

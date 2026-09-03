@@ -5,6 +5,7 @@ import { concurrencyProbe } from './concurrency-probe';
 import { SHEETS_AUTH_CONFIG_KEY } from './workspace-directory';
 import { readAdminDirectory } from './admin-directory';
 import { operationJournal } from './operation-journal';
+import { manageAccess } from './access-admin';
 
 export function createRequestContext(): RequestContext {
   const properties = PropertiesService.getScriptProperties();
@@ -25,5 +26,6 @@ export function createRequestContext(): RequestContext {
     concurrency: concurrencyProbe,
     admin: readAdminDirectory,
     journal: operationJournal,
+    access: manageAccess,
   };
 }
