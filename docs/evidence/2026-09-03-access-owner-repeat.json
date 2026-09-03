@@ -1,0 +1,57 @@
+{
+  "formatVersion": 1,
+  "runId": "20004337-7894-49bf-aa9d-f1ca68b47e18",
+  "startedAt": "2026-09-03T08:29:06.665Z",
+  "finishedAt": "2026-09-03T08:43:47.735Z",
+  "stopReason": "user",
+  "origin": "https://kaerna-group.github.io",
+  "browser": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/152.0.0.0 Safari/537.36",
+  "checks": {
+    "repeatedSignIn": true,
+    "deniedSignIn": false,
+    "revokedSession": false,
+    "restoredAccess": false
+  },
+  "events": [
+    {
+      "at": "2026-09-03T08:30:28.246Z",
+      "account": "account-1",
+      "action": "auth.signIn",
+      "outcome": "allowed",
+      "role": "owner",
+      "requestId": "5372fd57-f87c-4143-b55a-530adc412d98",
+      "errorCode": null,
+      "elapsedMs": 4449
+    },
+    {
+      "at": "2026-09-03T08:43:04.606Z",
+      "account": "account-1",
+      "action": "signOut",
+      "outcome": "signed-out",
+      "role": null,
+      "requestId": null,
+      "errorCode": null,
+      "elapsedMs": 0
+    },
+    {
+      "at": "2026-09-03T08:43:32.828Z",
+      "account": "account-1",
+      "action": "auth.signIn",
+      "outcome": "allowed",
+      "role": "owner",
+      "requestId": "e9eb9e1b-0b7d-495c-a7aa-4fc56fe0627d",
+      "errorCode": null,
+      "elapsedMs": 4105
+    },
+    {
+      "at": "2026-09-03T08:43:40.993Z",
+      "account": "account-1",
+      "action": "auth.me",
+      "outcome": "allowed",
+      "role": "owner",
+      "requestId": "a1722c16-afbe-4e5c-ace5-ff4e9f6676dc",
+      "errorCode": null,
+      "elapsedMs": 7010
+    }
+  ]
+}
