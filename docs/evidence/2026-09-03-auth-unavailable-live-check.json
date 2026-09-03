@@ -1,0 +1,19 @@
+{
+  "checkedAt": "2026-09-03T09:16:24.825Z",
+  "checks": [
+    {
+      "name": "public health configured staging auth",
+      "result": "passed",
+      "requestId": "ed43f0bc-abc4-464c-9763-d57727e2410b"
+    },
+    {
+      "name": "synthetic invalid RSA signature with current Google key id",
+      "result": "expected-rejection",
+      "errorCode": "UNAUTHENTICATED",
+      "requestId": "b39f3b0c-795d-4afb-b243-57cb7c92a2fc",
+      "elapsedMs": 4057
+    }
+  ],
+  "realGoogleSignIn": "Not tested; only public health and a synthetic invalid signature. No invitation or binding reads/writes.",
+  "conclusion": "Public auth path rejects the forged signature as expected at this moment. This does not test verified-user policy, properties parsing, or reproduce the earlier outage."
+}
