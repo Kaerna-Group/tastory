@@ -10,6 +10,8 @@
 
 Настройка входа, приглашений и действия владельца: [Google auth staging](google-auth-staging.md).
 
+Повторный вход, отказ и отзыв с сохранением отчёта: [проверка приглашений](google-access-staging.md).
+
 Проверка загрузки фото и приватной миниатюры: [Google photos staging](google-photos-staging.md).
 
 Проверка одновременных записей и повторных запросов: [Google concurrency staging](google-concurrency-staging.md).

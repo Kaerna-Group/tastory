@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { getSession, subscribeSession, signIn, signOut, recheckSession } from '@/entities/session';
 import { env } from '@/shared/config';
+import { AccessCheck } from './access-check';
 import {
   loadGoogleIdentity,
   listenGoogleCredential,
@@ -114,6 +115,7 @@ export function GoogleSignIn(): React.JSX.Element {
         После закрытия или обновления страницы потребуется войти снова. Сохранение рецептов появится
         позже.
       </p>
+      <AccessCheck />
     </section>
   );
 }

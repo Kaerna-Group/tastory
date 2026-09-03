@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { apiClient, ApiClientError } from '@/shared/api';
+import { accessCheck } from './access-check';
 import {
   getSession,
   recheckSession,
@@ -10,15 +11,66 @@ import {
   requestSessionConcurrency,
 } from './session-store';
 const data = () => ({
+  requestId: 'c3dcd2e8-e2f8-428b-9e26-3e715f678fac',
   user: { id: 'sub', email: 'chef@gmail.com', name: 'Chef', role: 'owner' as const },
   expiresAt: new Date(Date.now() + 60_000).toISOString(),
 });
 afterEach(() => {
   signOut();
+  accessCheck.clear();
   vi.restoreAllMocks();
   vi.useRealTimers();
 });
 describe('memory-only Google session', () => {
+  it('records only completed auth requests and explicit logout, preserving no credential or profile', async () => {
+    const authenticate = vi.spyOn(apiClient, 'authenticate').mockResolvedValue(data());
+    accessCheck.start('https://example.test/', 'Browser');
+    await signIn('sensitive-token');
+    await recheckSession();
+    signOut();
+    await signIn('sensitive-token');
+    authenticate.mockRejectedValue(
+      new ApiClientError('ACCESS_DENIED', 'private server detail', data().requestId),
+    );
+    await recheckSession();
+    const report = accessCheck.getSnapshot().report;
+    expect(report?.events.map((event) => event.action)).toEqual([
+      'auth.signIn',
+      'auth.me',
+      'signOut',
+      'auth.signIn',
+      'auth.me',
+    ]);
+    expect(report?.checks.repeatedSignIn).toBe(true);
+    expect(report?.checks.revokedSession).toBe(true);
+    expect(report?.events.at(-1)?.requestId).toBe(data().requestId);
+    expect(JSON.stringify(report)).not.toMatch(
+      /sensitive-token|chef@gmail|Chef|private server detail|"sub"/,
+    );
+  });
+  it('does not classify errors as revocation or record cancelled auth responses', async () => {
+    const authenticate = vi.spyOn(apiClient, 'authenticate').mockResolvedValue(data());
+    accessCheck.start('https://example.test/', 'Browser');
+    await signIn('token');
+    authenticate.mockRejectedValue(new Error('private network detail'));
+    await recheckSession();
+    expect(accessCheck.getSnapshot().report?.events.at(-1)?.errorCode).toBe('UNKNOWN_ERROR');
+    expect(accessCheck.getSnapshot().report?.checks.revokedSession).toBe(false);
+    let finish: ((value: ReturnType<typeof data>) => void) | undefined;
+    authenticate.mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          finish = resolve;
+        }),
+    );
+    const pending = signIn('token');
+    signOut();
+    finish?.(data());
+    await pending;
+    expect(
+      accessCheck.getSnapshot().report?.events.filter((event) => event.outcome === 'allowed'),
+    ).toHaveLength(1);
+  });
   it('uses the same cancellable private session for concurrency checks', async () => {
     const command = {
       action: 'spike.concurrency.read',

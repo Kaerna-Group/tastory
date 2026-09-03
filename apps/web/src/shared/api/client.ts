@@ -17,12 +17,14 @@ import type {
 } from '@tastory/contracts';
 
 export type ApiTransport = (request: ApiRequest, signal?: AbortSignal) => Promise<unknown>;
+export type AuthResult = AuthData & { requestId: string };
 
 export class ApiClientError extends Error {
   constructor(
     public readonly code:
       'TRANSPORT_ERROR' | 'INVALID_RESPONSE' | ApiErrorResponse['error']['code'],
     message: string,
+    public readonly requestId: string | null = null,
   ) {
     super(message);
     this.name = 'ApiClientError';
@@ -44,7 +46,7 @@ export function createApiClient(
     credential: string,
     action?: 'auth.signIn' | 'auth.me',
     signal?: AbortSignal,
-  ) => Promise<AuthData>;
+  ) => Promise<AuthResult>;
 } {
   return {
     async concurrency(command, credential, signal) {
@@ -79,18 +81,24 @@ export function createApiClient(
     },
     async authenticate(credential, action = 'auth.signIn', signal) {
       const requestId = createRequestId();
-      const raw = await transport(
-        { apiVersion: API_VERSION, requestId, action, credential, payload: {} },
-        signal,
-      );
-      const parsed = authResponseSchema.safeParse(raw);
-      if (!parsed.success || parsed.data.requestId !== requestId)
-        throw new ApiClientError('INVALID_RESPONSE', 'Сервер вернул несовместимый ответ.');
-      if (!parsed.data.ok)
-        throw new ApiClientError(parsed.data.error.code, parsed.data.error.message);
-      if (Date.parse(parsed.data.data.expiresAt) <= Date.now())
-        throw new ApiClientError('UNAUTHENTICATED', 'Войдите в Google повторно.');
-      return parsed.data.data;
+      try {
+        const raw = await transport(
+          { apiVersion: API_VERSION, requestId, action, credential, payload: {} },
+          signal,
+        );
+        const parsed = authResponseSchema.safeParse(raw);
+        if (!parsed.success || parsed.data.requestId !== requestId)
+          throw new ApiClientError('INVALID_RESPONSE', 'Сервер вернул несовместимый ответ.');
+        if (!parsed.data.ok)
+          throw new ApiClientError(parsed.data.error.code, parsed.data.error.message);
+        if (Date.parse(parsed.data.data.expiresAt) <= Date.now())
+          throw new ApiClientError('UNAUTHENTICATED', 'Войдите в Google повторно.');
+        return { ...parsed.data.data, requestId };
+      } catch (error) {
+        if (error instanceof ApiClientError)
+          throw new ApiClientError(error.code, error.message, requestId);
+        throw error;
+      }
     },
     async health(signal) {
       const requestId = createRequestId();

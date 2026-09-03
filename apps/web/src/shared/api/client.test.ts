@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { createApiClient, createHttpTransport } from './client';
+import { ApiClientError, createApiClient, createHttpTransport } from './client';
 import { mockTransport } from './mock-transport';
 
 const requestId = 'c3dcd2e8-e2f8-428b-9e26-3e715f678fac';
@@ -73,13 +73,16 @@ describe('typed API client', () => {
     };
     const transport = vi.fn().mockResolvedValue(response);
     const client = createApiClient(transport, () => requestId);
-    expect((await client.authenticate('token')).user.id).toBe('sub');
+    expect(await client.authenticate('token')).toMatchObject({ user: { id: 'sub' }, requestId });
     expect(transport).toHaveBeenCalledWith(
       expect.objectContaining({ action: 'auth.signIn', credential: 'token', payload: {} }),
       undefined,
     );
     transport.mockResolvedValue({ ...response, requestId: 'a3dcd2e8-e2f8-428b-9e26-3e715f678fac' });
-    await expect(client.authenticate('token')).rejects.toMatchObject({ code: 'INVALID_RESPONSE' });
+    await expect(client.authenticate('token')).rejects.toMatchObject({
+      code: 'INVALID_RESPONSE',
+      requestId,
+    });
     transport.mockResolvedValue({
       ...response,
       data: { ...response.data, expiresAt: '2020-01-01T00:00:00Z' },
@@ -88,6 +91,19 @@ describe('typed API client', () => {
     await expect(createApiClient(mockTransport).authenticate('token')).rejects.toMatchObject({
       code: 'AUTH_NOT_CONFIGURED',
     });
+  });
+  it('attaches auth request identifiers to transport errors while preserving cancellation', async () => {
+    const transport = vi
+      .fn()
+      .mockRejectedValue(new ApiClientError('TRANSPORT_ERROR', 'Unavailable'));
+    const client = createApiClient(transport, () => requestId);
+    await expect(client.authenticate('token')).rejects.toMatchObject({
+      code: 'TRANSPORT_ERROR',
+      requestId,
+    });
+    const cancelled = new DOMException('Cancelled', 'AbortError');
+    transport.mockRejectedValue(cancelled);
+    await expect(client.authenticate('token')).rejects.toBe(cancelled);
   });
   it('validates mock fixtures using the real contract', async () => {
     expect(await createApiClient(mockTransport, () => requestId).health()).toMatchObject({
