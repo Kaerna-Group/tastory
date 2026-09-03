@@ -1,0 +1,689 @@
+{
+  "formatVersion": 1,
+  "kind": "node-public-transport-baseline",
+  "startedAt": "2026-09-03T07:40:47.341Z",
+  "finishedAt": "2026-09-03T07:44:44.733Z",
+  "environment": {
+    "runtime": "v24.14.0",
+    "platform": "win32",
+    "arch": "x64"
+  },
+  "settings": {
+    "rounds": 20,
+    "warmupsPerCase": 1,
+    "concurrency": 1,
+    "retries": 0,
+    "timeoutMs": 15000
+  },
+  "complete": true,
+  "passed": false,
+  "summary": [
+    {
+      "case": "health",
+      "attempted": 20,
+      "succeeded": 20,
+      "failed": 0,
+      "minMs": 1940,
+      "p50Ms": 3427,
+      "p95Ms": 4712,
+      "maxMs": 5114
+    },
+    {
+      "case": "echo-ascii-1024",
+      "attempted": 20,
+      "succeeded": 19,
+      "failed": 1,
+      "minMs": 1883,
+      "p50Ms": 3258,
+      "p95Ms": 4273,
+      "maxMs": 4273
+    },
+    {
+      "case": "echo-unicode-1024",
+      "attempted": 20,
+      "succeeded": 20,
+      "failed": 0,
+      "minMs": 2376,
+      "p50Ms": 3882,
+      "p95Ms": 5228,
+      "maxMs": 5299
+    }
+  ],
+  "samples": [
+    {
+      "case": "health",
+      "warmup": true,
+      "requestId": "8ef7385e-c38d-4682-ac15-8b81abe97531",
+      "requestBytes": 98,
+      "responseBytes": 275,
+      "elapsedMs": 4908,
+      "httpStatus": 200,
+      "error": null
+    },
+    {
+      "case": "echo-ascii-1024",
+      "warmup": true,
+      "requestId": "106e2a14-e085-4389-8eaa-96d145f225fb",
+      "requestBytes": 1132,
+      "responseBytes": 1150,
+      "elapsedMs": 3559,
+      "httpStatus": 200,
+      "error": null
+    },
+    {
+      "case": "echo-unicode-1024",
+      "warmup": true,
+      "requestId": "dab60bca-33c6-4fe1-8919-745afcd744da",
+      "requestBytes": 3180,
+      "responseBytes": 3198,
+      "elapsedMs": 4940,
+      "httpStatus": 200,
+      "error": null
+    },
+    {
+      "case": "health",
+      "warmup": false,
+      "requestId": "467918e0-1370-44d0-881b-87ab57239db2",
+      "requestBytes": 98,
+      "responseBytes": 275,
+      "elapsedMs": 1940,
+      "httpStatus": 200,
+      "error": null
+    },
+    {
+      "case": "echo-ascii-1024",
+      "warmup": false,
+      "requestId": "64f8ff61-0dda-45fa-be77-4fa85da3dc0e",
+      "requestBytes": 1132,
+      "responseBytes": 1150,
+      "elapsedMs": 3042,
+      "httpStatus": 200,
+      "error": null
+    },
+    {
+      "case": "echo-unicode-1024",
+      "warmup": false,
+      "requestId": "a1c63843-73bb-444b-ab46-79acc90f6540",
+      "requestBytes": 3180,
+      "responseBytes": 3198,
+      "elapsedMs": 3886,
+      "httpStatus": 200,
+      "error": null
+    },
+    {
+      "case": "health",
+      "warmup": false,
+      "requestId": "b4f021db-3e2f-4830-8d85-e4f0f2a20a0d",
+      "requestBytes": 98,
+      "responseBytes": 275,
+      "elapsedMs": 2448,
+      "httpStatus": 200,
+      "error": null
+    },
+    {
+      "case": "echo-ascii-1024",
+      "warmup": false,
+      "requestId": "751cce71-2e75-4e1f-8765-0694745534b7",
+      "requestBytes": 1132,
+      "responseBytes": 1150,
+      "elapsedMs": 4068,
+      "httpStatus": 200,
+      "error": null
+    },
+    {
+      "case": "echo-unicode-1024",
+      "warmup": false,
+      "requestId": "3fc3a5ba-26d2-4f31-a96a-20264edd380a",
+      "requestBytes": 3180,
+      "responseBytes": 3198,
+      "elapsedMs": 4653,
+      "httpStatus": 200,
+      "error": null
+    },
+    {
+      "case": "health",
+      "warmup": false,
+      "requestId": "59b7b004-9aca-48e2-a985-f9d4c655a2bf",
+      "requestBytes": 98,
+      "responseBytes": 275,
+      "elapsedMs": 4532,
+      "httpStatus": 200,
+      "error": null
+    },
+    {
+      "case": "echo-ascii-1024",
+      "warmup": false,
+      "requestId": "12735fb1-b9d6-4f93-9e46-a67e22c2c573",
+      "requestBytes": 1132,
+      "responseBytes": 1150,
+      "elapsedMs": 2362,
+      "httpStatus": 200,
+      "error": null
+    },
+    {
+      "case": "echo-unicode-1024",
+      "warmup": false,
+      "requestId": "5c6f3d37-181a-4add-958f-24957fd9c544",
+      "requestBytes": 3180,
+      "responseBytes": 3198,
+      "elapsedMs": 3897,
+      "httpStatus": 200,
+      "error": null
+    },
+    {
+      "case": "health",
+      "warmup": false,
+      "requestId": "0da5c28b-bddb-482a-87fe-e3d2a4dda859",
+      "requestBytes": 98,
+      "responseBytes": 275,
+      "elapsedMs": 2915,
+      "httpStatus": 200,
+      "error": null
+    },
+    {
+      "case": "echo-ascii-1024",
+      "warmup": false,
+      "requestId": "6a6efba3-0f75-46f8-b4ad-fea56cd56e13",
+      "requestBytes": 1132,
+      "responseBytes": 1150,
+      "elapsedMs": 3275,
+      "httpStatus": 200,
+      "error": null
+    },
+    {
+      "case": "echo-unicode-1024",
+      "warmup": false,
+      "requestId": "02087c0d-1b79-4e97-a409-1dbf1988c227",
+      "requestBytes": 3180,
+      "responseBytes": 3198,
+      "elapsedMs": 4042,
+      "httpStatus": 200,
+      "error": null
+    },
+    {
+      "case": "health",
+      "warmup": false,
+      "requestId": "ed7e6eed-2b5a-4a19-8a86-a53e6e14ecbb",
+      "requestBytes": 98,
+      "responseBytes": 275,
+      "elapsedMs": 2663,
+      "httpStatus": 200,
+      "error": null
+    },
+    {
+      "case": "echo-ascii-1024",
+      "warmup": false,
+      "requestId": "2a3601e8-851c-499f-9dca-6025d4ebb748",
+      "requestBytes": 1132,
+      "responseBytes": 1150,
+      "elapsedMs": 1883,
+      "httpStatus": 200,
+      "error": null
+    },
+    {
+      "case": "echo-unicode-1024",
+      "warmup": false,
+      "requestId": "4abae89e-90d5-494b-8987-dc72d402bb71",
+      "requestBytes": 3180,
+      "responseBytes": 3198,
+      "elapsedMs": 2875,
+      "httpStatus": 200,
+      "error": null
+    },
+    {
+      "case": "health",
+      "warmup": false,
+      "requestId": "fa768150-4100-49ad-9554-6429afd3a2ac",
+      "requestBytes": 98,
+      "responseBytes": 275,
+      "elapsedMs": 3111,
+      "httpStatus": 200,
+      "error": null
+    },
+    {
+      "case": "echo-ascii-1024",
+      "warmup": false,
+      "requestId": "c410a8e4-930b-4bd9-b38d-b8f6157812bd",
+      "requestBytes": 1132,
+      "responseBytes": 1150,
+      "elapsedMs": 3030,
+      "httpStatus": 200,
+      "error": null
+    },
+    {
+      "case": "echo-unicode-1024",
+      "warmup": false,
+      "requestId": "b28e3980-702d-437b-8885-b76a8d668f0d",
+      "requestBytes": 3180,
+      "responseBytes": 3198,
+      "elapsedMs": 5299,
+      "httpStatus": 200,
+      "error": null
+    },
+    {
+      "case": "health",
+      "warmup": false,
+      "requestId": "9f6ace6d-09a0-4c2b-82aa-1eee0161c105",
+      "requestBytes": 98,
+      "responseBytes": 275,
+      "elapsedMs": 3427,
+      "httpStatus": 200,
+      "error": null
+    },
+    {
+      "case": "echo-ascii-1024",
+      "warmup": false,
+      "requestId": "71405193-60ac-42a6-97e9-2505a394432e",
+      "requestBytes": 1132,
+      "responseBytes": 1150,
+      "elapsedMs": 2831,
+      "httpStatus": 200,
+      "error": null
+    },
+    {
+      "case": "echo-unicode-1024",
+      "warmup": false,
+      "requestId": "02633732-1ae8-4548-afb8-6bbbc0714516",
+      "requestBytes": 3180,
+      "responseBytes": 3198,
+      "elapsedMs": 5160,
+      "httpStatus": 200,
+      "error": null
+    },
+    {
+      "case": "health",
+      "warmup": false,
+      "requestId": "0de5e5c3-9147-4d6b-a345-772062dc05a6",
+      "requestBytes": 98,
+      "responseBytes": 275,
+      "elapsedMs": 4712,
+      "httpStatus": 200,
+      "error": null
+    },
+    {
+      "case": "echo-ascii-1024",
+      "warmup": false,
+      "requestId": "a51dc86d-3215-4796-b03a-310239f92daf",
+      "requestBytes": 1132,
+      "responseBytes": 1150,
+      "elapsedMs": 4256,
+      "httpStatus": 200,
+      "error": null
+    },
+    {
+      "case": "echo-unicode-1024",
+      "warmup": false,
+      "requestId": "9998cae5-ba49-408b-8e2a-2fd5eb4c0175",
+      "requestBytes": 3180,
+      "responseBytes": 3198,
+      "elapsedMs": 5228,
+      "httpStatus": 200,
+      "error": null
+    },
+    {
+      "case": "health",
+      "warmup": false,
+      "requestId": "49cf8b2b-be1c-4d26-ba00-35991ce2c58d",
+      "requestBytes": 98,
+      "responseBytes": 275,
+      "elapsedMs": 3442,
+      "httpStatus": 200,
+      "error": null
+    },
+    {
+      "case": "echo-ascii-1024",
+      "warmup": false,
+      "requestId": "81ccb548-d0c9-46d8-b98b-ecba94b54ef5",
+      "requestBytes": 1132,
+      "responseBytes": 1150,
+      "elapsedMs": 2199,
+      "httpStatus": 200,
+      "error": null
+    },
+    {
+      "case": "echo-unicode-1024",
+      "warmup": false,
+      "requestId": "1c28d644-c51d-49c4-a3fa-0898595c417e",
+      "requestBytes": 3180,
+      "responseBytes": 3198,
+      "elapsedMs": 2453,
+      "httpStatus": 200,
+      "error": null
+    },
+    {
+      "case": "health",
+      "warmup": false,
+      "requestId": "62555c60-6010-4de3-afdd-6d6aea4a3b5d",
+      "requestBytes": 98,
+      "responseBytes": 275,
+      "elapsedMs": 5114,
+      "httpStatus": 200,
+      "error": null
+    },
+    {
+      "case": "echo-ascii-1024",
+      "warmup": false,
+      "requestId": "db2a1dfd-e9eb-4171-b211-d10cc8fcc022",
+      "requestBytes": 1132,
+      "responseBytes": 1150,
+      "elapsedMs": 3258,
+      "httpStatus": 200,
+      "error": null
+    },
+    {
+      "case": "echo-unicode-1024",
+      "warmup": false,
+      "requestId": "b9477ca3-6b55-46bc-877d-0ea8b7d4dc54",
+      "requestBytes": 3180,
+      "responseBytes": 3198,
+      "elapsedMs": 4367,
+      "httpStatus": 200,
+      "error": null
+    },
+    {
+      "case": "health",
+      "warmup": false,
+      "requestId": "584c52c9-638c-4c45-9796-ec56fa1ba2ff",
+      "requestBytes": 98,
+      "responseBytes": 275,
+      "elapsedMs": 2595,
+      "httpStatus": 200,
+      "error": null
+    },
+    {
+      "case": "echo-ascii-1024",
+      "warmup": false,
+      "requestId": "2d2d549e-7ed5-448a-9461-3b5bbf575dd9",
+      "requestBytes": 1132,
+      "responseBytes": 1150,
+      "elapsedMs": 4051,
+      "httpStatus": 200,
+      "error": null
+    },
+    {
+      "case": "echo-unicode-1024",
+      "warmup": false,
+      "requestId": "c6e4ef09-6d5b-40d8-bfa6-e5da84bdee4d",
+      "requestBytes": 3180,
+      "responseBytes": 3198,
+      "elapsedMs": 2572,
+      "httpStatus": 200,
+      "error": null
+    },
+    {
+      "case": "health",
+      "warmup": false,
+      "requestId": "4e70062c-72e6-447a-9b7c-43b2c1beaa08",
+      "requestBytes": 98,
+      "responseBytes": 275,
+      "elapsedMs": 4336,
+      "httpStatus": 200,
+      "error": null
+    },
+    {
+      "case": "echo-ascii-1024",
+      "warmup": false,
+      "requestId": "8202df64-fbf9-432f-837c-5d117c41762f",
+      "requestBytes": 1132,
+      "responseBytes": 1150,
+      "elapsedMs": 3908,
+      "httpStatus": 200,
+      "error": null
+    },
+    {
+      "case": "echo-unicode-1024",
+      "warmup": false,
+      "requestId": "0ac6f871-b763-4f18-ad22-1baaddecaea9",
+      "requestBytes": 3180,
+      "responseBytes": 3198,
+      "elapsedMs": 3731,
+      "httpStatus": 200,
+      "error": null
+    },
+    {
+      "case": "health",
+      "warmup": false,
+      "requestId": "98e23145-9e10-40b0-ad00-ea0803190a26",
+      "requestBytes": 98,
+      "responseBytes": 275,
+      "elapsedMs": 3379,
+      "httpStatus": 200,
+      "error": null
+    },
+    {
+      "case": "echo-ascii-1024",
+      "warmup": false,
+      "requestId": "7a2c1284-0497-416b-a83d-83e2338c427c",
+      "requestBytes": 1132,
+      "responseBytes": 1150,
+      "elapsedMs": 3031,
+      "httpStatus": 200,
+      "error": null
+    },
+    {
+      "case": "echo-unicode-1024",
+      "warmup": false,
+      "requestId": "1ebc6468-4d3f-4ac2-be35-58a1a457a874",
+      "requestBytes": 3180,
+      "responseBytes": 3198,
+      "elapsedMs": 2376,
+      "httpStatus": 200,
+      "error": null
+    },
+    {
+      "case": "health",
+      "warmup": false,
+      "requestId": "5a38ba7e-b8e7-4f55-b813-698de7125f67",
+      "requestBytes": 98,
+      "responseBytes": 275,
+      "elapsedMs": 4288,
+      "httpStatus": 200,
+      "error": null
+    },
+    {
+      "case": "echo-ascii-1024",
+      "warmup": false,
+      "requestId": "6fdaa5d0-3df8-478a-aa2f-75e9126cc8a0",
+      "requestBytes": 1132,
+      "responseBytes": null,
+      "elapsedMs": 15004,
+      "httpStatus": null,
+      "error": "TIMEOUT"
+    },
+    {
+      "case": "echo-unicode-1024",
+      "warmup": false,
+      "requestId": "bce653c8-cf3a-464d-98b5-d7863e0d2926",
+      "requestBytes": 3180,
+      "responseBytes": 3198,
+      "elapsedMs": 3702,
+      "httpStatus": 200,
+      "error": null
+    },
+    {
+      "case": "health",
+      "warmup": false,
+      "requestId": "42930665-c1c1-48ad-9743-7d26e037ee82",
+      "requestBytes": 98,
+      "responseBytes": 275,
+      "elapsedMs": 3663,
+      "httpStatus": 200,
+      "error": null
+    },
+    {
+      "case": "echo-ascii-1024",
+      "warmup": false,
+      "requestId": "fb4ec88f-87f7-4c5b-b6f9-60affb310a0e",
+      "requestBytes": 1132,
+      "responseBytes": 1150,
+      "elapsedMs": 2796,
+      "httpStatus": 200,
+      "error": null
+    },
+    {
+      "case": "echo-unicode-1024",
+      "warmup": false,
+      "requestId": "01e45c6a-8723-491c-b642-0b4847d60b26",
+      "requestBytes": 3180,
+      "responseBytes": 3198,
+      "elapsedMs": 4045,
+      "httpStatus": 200,
+      "error": null
+    },
+    {
+      "case": "health",
+      "warmup": false,
+      "requestId": "54ef43ef-1537-41a4-9bd9-d1ab16d80914",
+      "requestBytes": 98,
+      "responseBytes": 275,
+      "elapsedMs": 3379,
+      "httpStatus": 200,
+      "error": null
+    },
+    {
+      "case": "echo-ascii-1024",
+      "warmup": false,
+      "requestId": "609e228a-3804-4cfa-9a85-715a688523e5",
+      "requestBytes": 1132,
+      "responseBytes": 1150,
+      "elapsedMs": 4273,
+      "httpStatus": 200,
+      "error": null
+    },
+    {
+      "case": "echo-unicode-1024",
+      "warmup": false,
+      "requestId": "ed147786-01d6-4879-84f1-5b621add7711",
+      "requestBytes": 3180,
+      "responseBytes": 3198,
+      "elapsedMs": 3153,
+      "httpStatus": 200,
+      "error": null
+    },
+    {
+      "case": "health",
+      "warmup": false,
+      "requestId": "a2232795-caf9-46da-b27d-31254537edd8",
+      "requestBytes": 98,
+      "responseBytes": 275,
+      "elapsedMs": 4478,
+      "httpStatus": 200,
+      "error": null
+    },
+    {
+      "case": "echo-ascii-1024",
+      "warmup": false,
+      "requestId": "9a0c2750-cbb2-4ddc-9898-9a79884568d2",
+      "requestBytes": 1132,
+      "responseBytes": 1150,
+      "elapsedMs": 2557,
+      "httpStatus": 200,
+      "error": null
+    },
+    {
+      "case": "echo-unicode-1024",
+      "warmup": false,
+      "requestId": "01a57058-4724-4856-8612-4be1c0124a4b",
+      "requestBytes": 3180,
+      "responseBytes": 3198,
+      "elapsedMs": 3144,
+      "httpStatus": 200,
+      "error": null
+    },
+    {
+      "case": "health",
+      "warmup": false,
+      "requestId": "7dc966b5-7214-46f0-a5d0-fc8afa8fe5f4",
+      "requestBytes": 98,
+      "responseBytes": 275,
+      "elapsedMs": 3847,
+      "httpStatus": 200,
+      "error": null
+    },
+    {
+      "case": "echo-ascii-1024",
+      "warmup": false,
+      "requestId": "9475f702-aa79-498c-801c-0005802a3fc7",
+      "requestBytes": 1132,
+      "responseBytes": 1150,
+      "elapsedMs": 3590,
+      "httpStatus": 200,
+      "error": null
+    },
+    {
+      "case": "echo-unicode-1024",
+      "warmup": false,
+      "requestId": "eb75c11d-50b6-4164-928d-21d690d2d381",
+      "requestBytes": 3180,
+      "responseBytes": 3198,
+      "elapsedMs": 3898,
+      "httpStatus": 200,
+      "error": null
+    },
+    {
+      "case": "health",
+      "warmup": false,
+      "requestId": "5a03b031-3365-49f1-a6b1-5c7545d49b11",
+      "requestBytes": 98,
+      "responseBytes": 275,
+      "elapsedMs": 4085,
+      "httpStatus": 200,
+      "error": null
+    },
+    {
+      "case": "echo-ascii-1024",
+      "warmup": false,
+      "requestId": "489c226f-421b-4baa-8f24-70b45c0f807f",
+      "requestBytes": 1132,
+      "responseBytes": 1150,
+      "elapsedMs": 4185,
+      "httpStatus": 200,
+      "error": null
+    },
+    {
+      "case": "echo-unicode-1024",
+      "warmup": false,
+      "requestId": "07b936f7-42c4-4042-b7ad-bc749be2c89a",
+      "requestBytes": 3180,
+      "responseBytes": 3198,
+      "elapsedMs": 3882,
+      "httpStatus": 200,
+      "error": null
+    },
+    {
+      "case": "health",
+      "warmup": false,
+      "requestId": "2f1006d8-eb52-414d-9d1e-0ac0b3cf80ea",
+      "requestBytes": 98,
+      "responseBytes": 275,
+      "elapsedMs": 3397,
+      "httpStatus": 200,
+      "error": null
+    },
+    {
+      "case": "echo-ascii-1024",
+      "warmup": false,
+      "requestId": "25d1cd4f-ae4b-4222-b56e-dce3d3999afe",
+      "requestBytes": 1132,
+      "responseBytes": 1150,
+      "elapsedMs": 3853,
+      "httpStatus": 200,
+      "error": null
+    },
+    {
+      "case": "echo-unicode-1024",
+      "warmup": false,
+      "requestId": "6614edfb-d765-47f9-a12c-347ef2a1a87e",
+      "requestBytes": 3180,
+      "responseBytes": 3198,
+      "elapsedMs": 2400,
+      "httpStatus": 200,
+      "error": null
+    }
+  ],
+  "source": {
+    "revision": "55139044b52f435512f97f7998cf27c5e905b6c7",
+    "worktreeDirty": true,
+    "bundleSha256": "84bc09aede0ffea37f7ece7f5a28fe3f7f93a812bb1bcb4884ea6860887f17fd"
+  }
+}

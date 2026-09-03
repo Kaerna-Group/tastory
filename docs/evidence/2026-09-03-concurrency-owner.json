@@ -1,0 +1,65 @@
+{
+  "runId": "7e422ddc-53e2-4315-9c46-21d47592c2d8",
+  "startedAt": "2026-09-03T07:41:04.563Z",
+  "finishedAt": "2026-09-03T07:41:45.252Z",
+  "passed": true,
+  "steps": [
+    {
+      "label": "Исходное состояние",
+      "outcome": "read",
+      "revision": 0,
+      "operations": 0,
+      "elapsedMs": 5886
+    },
+    {
+      "label": "Запись 1",
+      "outcome": "applied",
+      "revision": 1,
+      "operations": 1,
+      "elapsedMs": 5082
+    },
+    {
+      "label": "Запись 2",
+      "outcome": "conflict",
+      "revision": 1,
+      "operations": 1,
+      "elapsedMs": 6185
+    },
+    {
+      "label": "Чтение после двух запросов",
+      "outcome": "read",
+      "revision": 1,
+      "operations": 1,
+      "elapsedMs": 7305
+    },
+    {
+      "label": "Повтор сохранённой записи",
+      "outcome": "replayed",
+      "revision": 1,
+      "operations": 1,
+      "elapsedMs": 4784
+    },
+    {
+      "label": "Вторая запись с актуальной версией",
+      "outcome": "applied",
+      "revision": 2,
+      "operations": 2,
+      "elapsedMs": 6144
+    },
+    {
+      "label": "Повтор старой операции после новой",
+      "outcome": "replayed",
+      "revision": 2,
+      "operations": 2,
+      "elapsedMs": 6238
+    },
+    {
+      "label": "Итоговое чтение",
+      "outcome": "read",
+      "revision": 2,
+      "operations": 2,
+      "elapsedMs": 4147
+    }
+  ],
+  "message": "Проверка пройдена: две записи сохранены по очереди, устаревшая запись отклонена, дубликатов нет."
+}

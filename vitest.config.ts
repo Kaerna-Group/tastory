@@ -10,6 +10,7 @@ export default defineConfig({
       'apps/apps-script/src/**/*.test.ts',
       'apps/web/src/**/*.test.ts',
       'scripts/**/*.test.mjs',
+      'scripts/**/*.test.ts',
     ],
     coverage: {
       provider: 'v8',
