@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="640" viewBox="0 0 1280 640" fill="none">
+  <title>Tastory — Every recipe has a story.</title>
+  <rect width="1280" height="640" fill="#F4EFE7"/>
+  <path d="M0 620h1280v20H0Z" fill="#B9576B"/>
+  <path d="M64 64h1152v508H64Z" stroke="#DDD2C5"/>
+  <text x="108" y="133" fill="#766C63" font-family="Segoe UI, sans-serif" font-size="16" letter-spacing="4">YOUR PERSONAL RECIPE BOOK</text>
+  <text x="103" y="284" fill="#302A25" font-family="Georgia, serif" font-size="128" font-weight="700" letter-spacing="-7">tastory<tspan fill="#B9576B">.</tspan></text>
+  <text x="108" y="377" fill="#302A25" font-family="Georgia, serif" font-size="45" font-style="italic">Every recipe has a story.</text>
+  <path d="M108 430h64" stroke="#B9576B" stroke-width="3"/>
+  <text x="108" y="489" fill="#766C63" font-family="Segoe UI, sans-serif" font-size="22">Личная кулинарная тетрадь</text>
+  <g transform="translate(864 161) rotate(8 120 150)">
+    <rect x="10" y="10" width="234" height="306" rx="16" fill="#E7DBCE" stroke="#CDBEAE"/>
+    <rect x="5" y="5" width="234" height="306" rx="16" fill="#FFFDF8" stroke="#DDD2C5"/>
+    <rect width="234" height="306" rx="16" fill="#B9576B"/>
+    <path d="M24 0v306" stroke="#A6495C" stroke-width="2"/>
+    <path d="M177 0h25v65l-12.5-10L177 65Z" fill="#E6BF6D"/>
+    <svg x="51" y="73" width="140" height="140" viewBox="0 0 64 64">
+      <path d="M32 25c-5-5-12-7-21-5v27c9-2 16 0 21 5 5-5 12-7 21-5V20c-9-2-16 0-21 5Z" stroke="#FFFDF8" stroke-width="3.5" stroke-linejoin="round"/>
+      <path d="M32 29v22M18 29c3 0 5 1 7 2m-7 6c3 0 5 1 7 2m14-8c2-1 4-2 7-2m-7 10c2-1 4-2 7-2" stroke="#FFFDF8" stroke-width="2.5" stroke-linecap="round"/>
+      <path d="M32 14v20" stroke="#FFFDF8" stroke-width="3" stroke-linecap="round"/>
+      <ellipse cx="32" cy="13" rx="4.5" ry="6.5" fill="#FFFDF8"/>
+    </svg>
+    <text x="123" y="255" text-anchor="middle" fill="#FFFDF8" font-family="Georgia, serif" font-weight="700" font-size="25">tastory.</text>
+  </g>
+</svg>

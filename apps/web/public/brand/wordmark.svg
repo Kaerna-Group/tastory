@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 80" fill="none">
+  <title>Tastory</title>
+  <svg x="0" y="8" width="64" height="64" viewBox="0 0 64 64">
+    <rect width="64" height="64" rx="18" fill="#B9576B"/>
+    <path d="M32 25c-5-5-12-7-21-5v27c9-2 16 0 21 5 5-5 12-7 21-5V20c-9-2-16 0-21 5Z" stroke="#FFFDF8" stroke-width="3.5" stroke-linejoin="round"/>
+    <path d="M32 29v22M18 29c3 0 5 1 7 2m-7 6c3 0 5 1 7 2m14-8c2-1 4-2 7-2m-7 10c2-1 4-2 7-2" stroke="#FFFDF8" stroke-width="2.5" stroke-linecap="round"/>
+    <path d="M32 14v20" stroke="#FFFDF8" stroke-width="3" stroke-linecap="round"/>
+    <ellipse cx="32" cy="13" rx="4.5" ry="6.5" fill="#FFFDF8"/>
+  </svg>
+  <text x="82" y="59" fill="#302A25" font-family="Georgia, serif" font-size="58" font-weight="700" letter-spacing="-3">tastory<tspan fill="#B9576B">.</tspan></text>
+</svg>

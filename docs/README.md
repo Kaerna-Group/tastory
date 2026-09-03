@@ -4,6 +4,8 @@
 
 Ближайшая последовательность работ: [что делать дальше](next-steps.md).
 
+Логотип, слоган, иконки и карточка ссылки: [оформление и Open Graph](branding.md).
+
 Текущий результат интеграции: [проверка Google staging](staging-verification.md).
 
 Публикация и проверки настоящего HTTPS адреса: [staging на GitHub Pages](staging-hosting.md).

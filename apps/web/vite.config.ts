@@ -26,9 +26,67 @@ export default defineConfig(({ mode }) => {
   if (!base.startsWith('/') || !base.endsWith('/') || base.includes('..')) {
     throw new Error('VITE_BASE_PATH должен начинаться и заканчиваться /, например /tastory/.');
   }
+  const siteUrl = new URL(env['VITE_SITE_URL'] || 'https://kaerna-group.github.io/tastory/');
+  if (
+    siteUrl.protocol !== 'https:' ||
+    siteUrl.username ||
+    siteUrl.password ||
+    siteUrl.search ||
+    siteUrl.hash
+  ) {
+    throw new Error('VITE_SITE_URL должен быть публичным HTTPS URL без credentials, query и hash.');
+  }
+  if (!siteUrl.pathname.endsWith('/')) siteUrl.pathname += '/';
+  const socialImageUrl = new URL('brand/social-preview.png', siteUrl).href;
   return {
     base,
-    plugins: [react(), tailwindcss()],
+    plugins: [
+      react(),
+      tailwindcss(),
+      {
+        name: 'tastory-social-metadata',
+        transformIndexHtml() {
+          return [
+            { tag: 'link', attrs: { rel: 'canonical', href: siteUrl.href }, injectTo: 'head' },
+            { tag: 'meta', attrs: { property: 'og:url', content: siteUrl.href }, injectTo: 'head' },
+            {
+              tag: 'meta',
+              attrs: { property: 'og:image', content: socialImageUrl },
+              injectTo: 'head',
+            },
+            {
+              tag: 'meta',
+              attrs: { property: 'og:image:type', content: 'image/png' },
+              injectTo: 'head',
+            },
+            {
+              tag: 'meta',
+              attrs: { property: 'og:image:width', content: '1280' },
+              injectTo: 'head',
+            },
+            {
+              tag: 'meta',
+              attrs: { property: 'og:image:height', content: '640' },
+              injectTo: 'head',
+            },
+            {
+              tag: 'meta',
+              attrs: {
+                property: 'og:image:alt',
+                content:
+                  'Tastory. Every recipe has a story. Розовая кулинарная тетрадь с логотипом книги и ложки на кремовом фоне.',
+              },
+              injectTo: 'head',
+            },
+            {
+              tag: 'meta',
+              attrs: { name: 'twitter:image', content: socialImageUrl },
+              injectTo: 'head',
+            },
+          ];
+        },
+      },
+    ],
     resolve: { alias: { '@': fileURLToPath(new URL('./src', import.meta.url)) } },
     server: { host: '127.0.0.1' },
     build: {

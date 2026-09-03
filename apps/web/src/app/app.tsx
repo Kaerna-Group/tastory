@@ -20,7 +20,19 @@ export function App(): React.JSX.Element {
       </a>
       <header className="app-header">
         <NavLink to="/" className="brand" aria-label="Tastory — главная">
-          tastory<span aria-hidden="true">.</span>
+          <img
+            className="brand-icon"
+            src={`${import.meta.env.BASE_URL}brand/mark.svg`}
+            width="40"
+            height="40"
+            alt=""
+          />
+          <span className="brand-wordmark">
+            tastory
+            <span className="brand-dot" aria-hidden="true">
+              .
+            </span>
+          </span>
         </NavLink>
         <nav aria-label="Основная навигация">
           <NavLink to="/" end>
@@ -45,7 +57,9 @@ export function App(): React.JSX.Element {
           </Routes>
         </Suspense>
       </main>
-      <footer className="app-footer">Сохраняйте вкусные моменты.</footer>
+      <footer className="app-footer" lang="en">
+        Every recipe has a story.
+      </footer>
     </>
   );
 }

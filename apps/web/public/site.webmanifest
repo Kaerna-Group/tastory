@@ -1,0 +1,16 @@
+{
+  "name": "Tastory — Every recipe has a story.",
+  "short_name": "Tastory",
+  "description": "Личная кулинарная тетрадь для любимых рецептов.",
+  "lang": "ru",
+  "id": "./",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#F4EFE7",
+  "theme_color": "#B9576B",
+  "icons": [
+    { "src": "./icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "./icon-512.png", "sizes": "512x512", "type": "image/png" }
+  ]
+}

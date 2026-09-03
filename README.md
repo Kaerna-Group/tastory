@@ -1,6 +1,10 @@
 # Tastory
 
-Личная кулинарная тетрадь. Реализована основа репозитория (этап 1), опубликован HTTPS staging и проверена связь с Google API в целевых браузерах (часть этапа 0). Код входа Google и приглашений подготовлен; требуется [настройка OAuth и реальный прогон](docs/google-auth-staging.md). Хранение рецептов ещё впереди.
+<img src="apps/web/public/brand/mark.svg" width="64" height="64" alt="Логотип Tastory: книга рецептов и ложка" />
+
+**Every recipe has a story.**
+
+Личная кулинарная тетрадь. Основа репозитория и HTTPS staging опубликованы. Подтверждены вход владельца и читателя, отказ при входе без приглашения и конкурентные записи; фото приняты владельцем. Начинается этап 2 — схема и миграции. Оставшиеся проверки платформы отмечены в [roadmap](docs/roadmap.md); хранение рецептов ещё впереди.
 
 [Открыть Tastory staging](https://kaerna-group.github.io/tastory/) · [Результаты health/echo](docs/staging-verification.md#проверка-опубликованного-https-origin)
 
@@ -41,5 +45,7 @@ npm run check:all
 | `staging-tests`          | Health/echo опубликованного сайта в Chrome, Edge, Firefox и WebKit |
 
 Начните с [оглавления документации](docs/README.md), [настройки среды](docs/environment.md) и [статуса roadmap](docs/roadmap.md).
+
+Логотип, иконки и карточка ссылки: [оформление Tastory и Open Graph](docs/branding.md).
 
 Исходный [blueprint](recipe-book-project-blueprint.md) сохранён как продуктовый и технический ориентир. Реализованный статус фиксируется отдельно в документации.

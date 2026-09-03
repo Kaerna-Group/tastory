@@ -53,6 +53,8 @@ npm run dev
 
 Сборки staging/production отклоняют mock и отсутствующий URL. Успешная сборка не доказывает, что удалённый API прошёл gate.
 
+Для превью ссылок `VITE_SITE_URL` задаёт полный публичный HTTPS адрес сайта, включая каталог. По умолчанию это `https://kaerna-group.github.io/tastory/`. При переносе сайта задайте новый адрес вместе с `VITE_BASE_PATH`. [Логотип, иконки и Open Graph](branding.md).
+
 ## Текущее подключение Google staging
 
 На рабочем компьютере заполнен `apps/web/.env.staging.local` с опубликованным `/exec`. Для запуска приложения с настоящим API:

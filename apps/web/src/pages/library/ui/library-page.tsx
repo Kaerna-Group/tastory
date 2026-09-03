@@ -13,9 +13,13 @@ export function LibraryPage(): React.JSX.Element {
         <span className="notebook-tab" aria-hidden="true">
           01
         </span>
-        <div className="book-mark" aria-hidden="true">
-          t.
-        </div>
+        <img
+          className="book-mark"
+          src={`${import.meta.env.BASE_URL}brand/mark.svg`}
+          width="64"
+          height="64"
+          alt=""
+        />
         <p className="eyebrow">Первая страница</p>
         <h2 id="empty-title">Всё начинается с одного рецепта</h2>
         <p className="muted mx-auto max-w-lg">

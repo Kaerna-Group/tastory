@@ -80,13 +80,21 @@ a {
   border-bottom: 1px solid var(--app-border);
 }
 .brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
   font-family: Georgia, serif;
   font-size: 36px;
   font-weight: 700;
   letter-spacing: -2px;
   line-height: 1;
 }
-.brand span {
+.brand-icon {
+  width: 40px;
+  height: 40px;
+}
+.brand-dot {
   color: var(--app-primary);
 }
 nav {
@@ -179,15 +187,8 @@ h2 {
 .book-mark {
   width: 64px;
   height: 64px;
-  display: grid;
-  place-items: center;
+  display: block;
   margin: 0 auto 26px;
-  border: 1px solid var(--app-border);
-  border-radius: 50%;
-  font:
-    italic 36px Georgia,
-    serif;
-  color: var(--app-primary);
 }
 .stage-label {
   display: inline-block;
@@ -276,14 +277,19 @@ h2 {
 @media (max-width: 700px) {
   .app-header {
     padding: 24px;
-    gap: 30px;
+    gap: 16px;
     justify-content: space-between;
   }
   .brand {
-    font-size: 32px;
+    font-size: 28px;
+    gap: 8px;
+  }
+  .brand-icon {
+    width: 32px;
+    height: 32px;
   }
   nav {
-    gap: 20px;
+    gap: 16px;
   }
   .edition {
     display: none;
@@ -313,5 +319,13 @@ h2 {
   }
   .panel {
     padding: 24px;
+  }
+}
+@media (max-width: 380px) {
+  .app-header {
+    flex-wrap: wrap;
+  }
+  .app-header nav {
+    width: 100%;
   }
 }
