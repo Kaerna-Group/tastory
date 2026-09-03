@@ -119,7 +119,8 @@ export function checkSchemaRuntime(code) {
     },
     console: { info: () => {} },
   };
-  runInNewContext(code, sandbox, { timeout: 5000 });
+  // The server targets ES2020; do not depend on the ES2022 Array.at runtime API.
+  runInNewContext(`Array.prototype.at = undefined;\n${code}`, sandbox, { timeout: 5000 });
   const planned = sandbox.planStagingSchema();
   assert.equal(planned.ok, true);
   assert.equal(planned.actions.length, 6);

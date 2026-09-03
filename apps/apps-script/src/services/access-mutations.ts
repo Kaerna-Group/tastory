@@ -388,7 +388,8 @@ function start(store: AccessStore, operation: JournalOperation, options: AccessO
   options.assertLive();
   writeOperation(store.journal, state.operations.length, operation);
   store.journal.flush();
-  if (!same(readJournal(store.journal).operations.at(-1), operation)) throw new AccessError();
+  const saved = readJournal(store.journal).operations;
+  if (!same(saved[saved.length - 1], operation)) throw new AccessError();
   return resumeAccess(store, operation, options);
 }
 export function mutateAccess(

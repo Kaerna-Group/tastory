@@ -84,10 +84,10 @@ export const accessPlanSchema = z
   .refine(
     (p) =>
       p.toRevision === p.fromRevision + 1 &&
-      p.writes.at(-1)?.table === 'Meta' &&
+      p.writes[p.writes.length - 1]?.table === 'Meta' &&
       p.writes.filter((w) => w.table === 'Meta').length === 1 &&
-      p.writes.at(-1)?.before?.[1] === String(p.fromRevision) &&
-      p.writes.at(-1)?.after[1] === String(p.toRevision) &&
+      p.writes[p.writes.length - 1]?.before?.[1] === String(p.fromRevision) &&
+      p.writes[p.writes.length - 1]?.after[1] === String(p.toRevision) &&
       new Set(p.writes.map((w) => `${w.table}:${w.row}`)).size === p.writes.length,
   );
 export type AccessPlan = z.infer<typeof accessPlanSchema>;
