@@ -9,6 +9,8 @@ import {
   subscribeSession,
   requestSessionPhoto,
   requestSessionConcurrency,
+  requestSessionUsers,
+  requestSessionHealth,
 } from './session-store';
 const data = () => ({
   requestId: 'c3dcd2e8-e2f8-428b-9e26-3e715f678fac',
@@ -22,6 +24,41 @@ afterEach(() => {
   vi.useRealTimers();
 });
 describe('memory-only Google session', () => {
+  it('cancels admin reads on logout and discards late successful results', async () => {
+    vi.spyOn(apiClient, 'authenticate').mockResolvedValue(data());
+    const report = {
+      workspace: { id: data().requestId, name: 'Книга' },
+      checkedAt: new Date().toISOString(),
+      users: [],
+    };
+    let complete: ((result: typeof report) => void) | undefined;
+    const users = vi.spyOn(apiClient, 'adminUsers').mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          complete = resolve;
+        }),
+    );
+    await signIn('memory-token');
+    const pending = requestSessionUsers();
+    const rejected = expect(pending).rejects.toBeInstanceOf(DOMException);
+    expect(users).toHaveBeenCalledWith('memory-token', expect.any(AbortSignal));
+    const signal = users.mock.calls[0]?.[1];
+    signOut();
+    expect(signal?.aborted).toBe(true);
+    complete?.(report);
+    await rejected;
+    expect(getSession().status).toBe('signed-out');
+  });
+  it('clears the session when an admin read reports revoked access', async () => {
+    vi.spyOn(apiClient, 'authenticate').mockResolvedValue(data());
+    vi.spyOn(apiClient, 'adminHealth').mockRejectedValue(
+      new ApiClientError('ACCESS_DENIED', 'Доступ закрыт.'),
+    );
+    await signIn('memory-token');
+    await expect(requestSessionHealth()).rejects.toMatchObject({ code: 'ACCESS_DENIED' });
+    expect(apiClient.adminHealth).toHaveBeenCalledWith('memory-token', expect.any(AbortSignal));
+    expect(getSession().status).toBe('signed-out');
+  });
   it('records only completed auth requests and explicit logout, preserving no credential or profile', async () => {
     const authenticate = vi.spyOn(apiClient, 'authenticate').mockResolvedValue(data());
     accessCheck.start('https://example.test/', 'Browser');

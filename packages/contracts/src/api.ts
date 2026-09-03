@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { adminUsersDataSchema, adminHealthDataSchema } from './admin';
 import { photoUploadSchema, photoDataSchema } from './photo';
 import {
   concurrencyReadSchema,
@@ -15,6 +16,18 @@ const requestFields = {
 };
 
 export const apiRequestSchema = z.discriminatedUnion('action', [
+  z.strictObject({
+    ...requestFields,
+    action: z.literal('admin.users.list'),
+    credential: z.string().min(1).max(6144),
+    payload: z.strictObject({}),
+  }),
+  z.strictObject({
+    ...requestFields,
+    action: z.literal('admin.health'),
+    credential: z.string().min(1).max(6144),
+    payload: z.strictObject({}),
+  }),
   z.strictObject({
     ...requestFields,
     action: z.literal('spike.concurrency.read'),
@@ -84,6 +97,7 @@ export const apiErrorSchema = z.strictObject({
       'PROBE_UNAVAILABLE',
       'PROBE_LIMIT',
       'OPERATION_MISMATCH',
+      'ADMIN_UNAVAILABLE',
     ]),
     message: z.string(),
   }),
@@ -169,3 +183,24 @@ export const concurrencyResponseSchema = z.union([
   apiErrorSchema,
 ]);
 export type ConcurrencyResponse = z.infer<typeof concurrencyResponseSchema>;
+
+export const adminUsersResponseSchema = z.union([
+  z.strictObject({
+    ok: z.literal(true),
+    requestId: z.uuid(),
+    data: adminUsersDataSchema,
+    meta: responseMetaSchema,
+  }),
+  apiErrorSchema,
+]);
+export const adminHealthResponseSchema = z.union([
+  z.strictObject({
+    ok: z.literal(true),
+    requestId: z.uuid(),
+    data: adminHealthDataSchema,
+    meta: responseMetaSchema,
+  }),
+  apiErrorSchema,
+]);
+export type AdminResponse =
+  z.infer<typeof adminUsersResponseSchema> | z.infer<typeof adminHealthResponseSchema>;

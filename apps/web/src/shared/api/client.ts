@@ -4,6 +4,8 @@ import {
   authResponseSchema,
   photoResponseSchema,
   concurrencyResponseSchema,
+  adminUsersResponseSchema,
+  adminHealthResponseSchema,
 } from '@tastory/contracts';
 import type {
   ApiRequest,
@@ -14,6 +16,8 @@ import type {
   PhotoData,
   ConcurrencyCommand,
   ConcurrencyData,
+  AdminUsersData,
+  AdminHealthData,
 } from '@tastory/contracts';
 
 export type ApiTransport = (request: ApiRequest, signal?: AbortSignal) => Promise<unknown>;
@@ -36,6 +40,8 @@ export function createApiClient(
   createRequestId: () => string = () => crypto.randomUUID(),
 ): {
   health: (signal?: AbortSignal) => Promise<HealthData>;
+  adminUsers: (credential: string, signal?: AbortSignal) => Promise<AdminUsersData>;
+  adminHealth: (credential: string, signal?: AbortSignal) => Promise<AdminHealthData>;
   photo: (command: PhotoCommand, credential: string, signal?: AbortSignal) => Promise<PhotoData>;
   concurrency: (
     command: ConcurrencyCommand,
@@ -49,6 +55,40 @@ export function createApiClient(
   ) => Promise<AuthResult>;
 } {
   return {
+    async adminUsers(credential, signal) {
+      const requestId = createRequestId();
+      const raw = await transport(
+        { apiVersion: API_VERSION, requestId, action: 'admin.users.list', credential, payload: {} },
+        signal,
+      );
+      const parsed = adminUsersResponseSchema.safeParse(raw);
+      if (!parsed.success || parsed.data.requestId !== requestId)
+        throw new ApiClientError(
+          'INVALID_RESPONSE',
+          'Сервер вернул несовместимый ответ.',
+          requestId,
+        );
+      if (!parsed.data.ok)
+        throw new ApiClientError(parsed.data.error.code, parsed.data.error.message, requestId);
+      return parsed.data.data;
+    },
+    async adminHealth(credential, signal) {
+      const requestId = createRequestId();
+      const raw = await transport(
+        { apiVersion: API_VERSION, requestId, action: 'admin.health', credential, payload: {} },
+        signal,
+      );
+      const parsed = adminHealthResponseSchema.safeParse(raw);
+      if (!parsed.success || parsed.data.requestId !== requestId)
+        throw new ApiClientError(
+          'INVALID_RESPONSE',
+          'Сервер вернул несовместимый ответ.',
+          requestId,
+        );
+      if (!parsed.data.ok)
+        throw new ApiClientError(parsed.data.error.code, parsed.data.error.message, requestId);
+      return parsed.data.data;
+    },
     async concurrency(command, credential, signal) {
       const requestId = createRequestId();
       const raw = await transport(
@@ -119,7 +159,11 @@ export function createApiClient(
 export function createHttpTransport(url: string, fetcher: typeof fetch = fetch): ApiTransport {
   return async (request, signal) => {
     try {
-      const timeout = AbortSignal.timeout(request.action.startsWith('spike.') ? 60_000 : 15_000);
+      const timeout = AbortSignal.timeout(
+        request.action.startsWith('spike.') || request.action.startsWith('admin.')
+          ? 60_000
+          : 15_000,
+      );
       const response = await fetcher(url, {
         method: 'POST',
         // Apps Script не обрабатывает произвольный preflight. Реальный CORS проверяется на этапе 0.

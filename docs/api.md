@@ -1,4 +1,4 @@
-# API v1: диагностика, staging auth и фото
+# API v1: доступ, участники и диагностика
 
 Источник схем — `packages/contracts/src/api.ts`. DTO выводятся из Zod. API version = 1, транспортный schema version = 0 сохранён для совместимости; фактическая схема таблиц 1 создана и подтверждена. [Разделение версий](schema-migrations.md). После [переключения входа на Sheets](sheets-auth-staging.md) роль берётся из членства в таблице, формат ответа auth/spike остаётся прежним.
 
@@ -13,9 +13,9 @@
 }
 ```
 
-Поддержаны health, echo, auth.signIn, auth.me, три действия spike.photo и два spike.concurrency. Неизвестные поля, действия и версия отклоняются. Поле `credential` требуется для auth, фото и пробы записей; health/echo его не принимают. `expectedRevision` используется в ограниченной пробе записей; версия схемы рецептов по-прежнему 0.
+Поддержаны health, echo, auth.signIn, auth.me, admin.users.list, admin.health, три действия spike.photo и два spike.concurrency. Неизвестные поля, действия и версия отклоняются. Поле `credential` требуется для всех защищённых действий; health/echo его не принимают. `expectedRevision` используется в ограниченной пробе записей; схемы рецептов ещё нет.
 
-POST отправляет JSON с Content-Type `text/plain;charset=utf-8`, без cookies/Authorization. Это избегает собственного preflight, но реальная работа CORS/redirect должна быть доказана на опубликованном origin. Таймаут — 15 секунд, для фото — 60 секунд; поддержана отмена ожидания. Серверная запись может завершиться после отмены клиентом.
+POST отправляет JSON с Content-Type `text/plain;charset=utf-8`, без cookies/Authorization. Это избегает собственного preflight, но реальная работа CORS/redirect должна быть доказана на опубликованном origin. Таймаут — 15 секунд, для spike и admin — 60 секунд; поддержана отмена ожидания. Серверная запись может завершиться после отмены клиентом.
 
 ## Health
 
@@ -39,13 +39,22 @@ GET вызывает health. POST принимает action health и пусто
 
 Status ok доказывает выполнение обработчика. Health не проверяет Sheets/Drive, auth, квоты или готовность хранить данные. Ответ не содержит приватных ID и credentials.
 
-Поле `auth` равно `staging`, когда заданы staging-конфигурация клиента и приглашения, иначе `not-configured`. Это признак наличия настроек, не доказательство действительности OAuth client или успешного входа.
+Поле `auth` равно `staging`, когда заданы staging-конфигурация клиента и настройка Sheets либо старые приглашения, иначе `not-configured`. Это признак наличия настроек, не доказательство действительности OAuth client или успешного входа. Реальная проверка структуры таблиц доступна отдельно через защищённый `admin.health`.
 
 ## Staging auth
 
-`auth.signIn` и `auth.me` принимают пустой `payload` и строку `credential` на верхнем уровне (Google ID token, максимум 6144 символа). В обоих случаях сервер проверяет Google-подпись и claims. Только `auth.signIn` может впервые принять приглашение; `auth.me` требует ранее закреплённый Google `sub`.
+`auth.signIn` и `auth.me` принимают пустой `payload` и строку `credential` на верхнем уровне (Google ID token, максимум 6144 символа). В обоих случаях сервер проверяет Google-подпись и claims. После включения Sheets оба действия допускают уже перенесённых пользователей с активным членством. Новый путь принятия приглашений ещё впереди. В прежнем staging-реестре до переключения только `auth.signIn` мог впервые принять приглашение.
 
-Успешный `data`: `{ user: { id, email, name, role }, expiresAt }`; `id` — проверенный `sub`, role — из серверного приглашения, срок — из проверенного токена. Ключи и список приглашений не возвращаются. Общие envelope и meta сохраняются; schemaVersion остаётся 0. [Настройки, отзыв доступа и ограничения](google-auth-staging.md).
+Успешный `data`: `{ user: { id, email, name, role }, expiresAt }`; `id` — проверенный `sub`, role — из активного членства в выбранной книге после переключения, срок — из проверенного токена. Ключи и список приглашений не возвращаются. Общие envelope и meta сохраняются; schemaVersion остаётся 0. [Доступ по таблицам и ограничения](sheets-auth-staging.md).
+
+## Раздел владельца
+
+`admin.users.list` и `admin.health` требуют credential, пустой payload и активного владельца выбранного на сервере workspace. Клиент не выбирает книгу и не передаёт роль. Читатель и участник получают `ACCESS_DENIED`; повреждённый каталог — `AUTH_UNAVAILABLE`, сбой административной проверки — `ADMIN_UNAVAILABLE`. Права и срок токена проверяются повторно под общей блокировкой.
+
+- `admin.users.list`: `{ workspace: { id, name }, checkedAt, users: [{ id, email, displayName, role, userStatus, membershipStatus, joinedAt }] }`. Здесь `users[].id` — внутренний UUID, а не wire ID прежнего auth/spike. Возвращаются только участники выбранной книги, максимум 10.
+- `admin.health`: `{ workspace: { id, name }, checkedAt, status: "ok", schemaVersion: 1, tablesChecked: 6, members, activeMembers }`. Проверяются структура и журнал миграции шести таблиц, состав и связи пользователей/членств. Это не проверка Drive, квот, содержимого приглашений или резервных копий.
+
+Оба действия только читают данные и не возвращают Google sub или идентификаторы ресурсов Google. Схемы находятся в `packages/contracts/src/admin.ts`; envelope и meta прежние. [Интерфейс и границы](workspace-admin.md).
 
 ## Пробное фото
 

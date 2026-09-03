@@ -3,6 +3,8 @@ import {
   SCHEMA_VERSION,
   PHOTO_BODY_LIMIT,
   apiRequestSchema,
+  adminUsersResponseSchema,
+  adminHealthResponseSchema,
 } from '@tastory/contracts';
 import type {
   ApiErrorResponse,
@@ -16,10 +18,15 @@ import type {
   ConcurrencyCommand,
   ConcurrencyData,
   ConcurrencyResponse,
+  AdminAction,
+  AdminUsersData,
+  AdminHealthData,
+  AdminResponse,
 } from '@tastory/contracts';
 import { AuthError } from '../auth/google-token';
 import { PhotoError } from '../services/photo-error';
 import { ProbeError } from '../services/concurrency-probe';
+import { AdminError } from '../services/admin-directory';
 
 export type RequestContext = Readonly<{
   now: () => Date;
@@ -30,6 +37,7 @@ export type RequestContext = Readonly<{
   authenticate?: (credential: string, allowJoin: boolean) => AuthData;
   photo?: (command: PhotoCommand, session: AuthData) => PhotoData;
   concurrency?: (command: ConcurrencyCommand, session: AuthData) => ConcurrencyData;
+  admin?: (action: AdminAction, session: AuthData) => AdminUsersData | AdminHealthData;
 }>;
 
 function invalidRequest(context: RequestContext): ApiErrorResponse {
@@ -43,7 +51,13 @@ function invalidRequest(context: RequestContext): ApiErrorResponse {
 export function handleRequest(
   input: unknown,
   context: RequestContext,
-): HealthResponse | EchoResponse | AuthResponse | PhotoResponse | ConcurrencyResponse {
+):
+  | HealthResponse
+  | EchoResponse
+  | AuthResponse
+  | PhotoResponse
+  | ConcurrencyResponse
+  | AdminResponse {
   const parsed = apiRequestSchema.safeParse(input);
   if (!parsed.success) return invalidRequest(context);
   const request = parsed.data;
@@ -71,6 +85,18 @@ export function handleRequest(
       if (request.action === 'auth.signIn' || request.action === 'auth.me')
         return { ok: true, requestId: request.requestId, data: session, meta };
       if (session.user.role !== 'owner') throw new AuthError('ACCESS_DENIED');
+      if (request.action === 'admin.users.list' || request.action === 'admin.health') {
+        if (!context.admin) throw new AdminError();
+        const response = {
+          ok: true,
+          requestId: request.requestId,
+          data: context.admin(request.action, session),
+          meta,
+        };
+        return request.action === 'admin.users.list'
+          ? adminUsersResponseSchema.parse(response)
+          : adminHealthResponseSchema.parse(response);
+      }
       if (
         request.action === 'spike.concurrency.read' ||
         request.action === 'spike.concurrency.write'
@@ -92,7 +118,10 @@ export function handleRequest(
       };
     } catch (error) {
       const code =
-        error instanceof AuthError || error instanceof PhotoError || error instanceof ProbeError
+        error instanceof AuthError ||
+        error instanceof PhotoError ||
+        error instanceof ProbeError ||
+        error instanceof AdminError
           ? error.code
           : 'AUTH_UNAVAILABLE';
       const messages = {
@@ -112,6 +141,7 @@ export function handleRequest(
         PROBE_LIMIT:
           'Достигнут лимит тестовых запусков. Сохраните результаты и обратитесь к владельцу.',
         OPERATION_MISMATCH: 'Повторный запрос отличается от исходного. Начните новую проверку.',
+        ADMIN_UNAVAILABLE: 'Не удалось прочитать данные тетради. Попробуйте позже.',
       };
       return { ok: false, requestId: request.requestId, error: { code, message: messages[code] } };
     }
@@ -129,7 +159,13 @@ export function handleRequest(
 export function handlePostBody(
   body: string,
   context: RequestContext,
-): HealthResponse | EchoResponse | AuthResponse | PhotoResponse | ConcurrencyResponse {
+):
+  | HealthResponse
+  | EchoResponse
+  | AuthResponse
+  | PhotoResponse
+  | ConcurrencyResponse
+  | AdminResponse {
   if (body.length > PHOTO_BODY_LIMIT) return invalidRequest(context);
   let input: unknown;
   try {

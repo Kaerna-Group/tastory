@@ -11,7 +11,12 @@ export {
   authResponseSchema,
   photoResponseSchema,
   concurrencyResponseSchema,
+  adminUsersResponseSchema,
+  adminHealthResponseSchema,
 } from './api';
+export type { AdminResponse } from './api';
+export { adminUsersDataSchema, adminHealthDataSchema } from './admin';
+export type { AdminAction, AdminUsersData, AdminHealthData } from './admin';
 export type { ApiRequest, ApiErrorResponse, HealthData, HealthResponse, EchoResponse } from './api';
 export type { AuthData, AuthResponse } from './api';
 export type { PhotoResponse } from './api';

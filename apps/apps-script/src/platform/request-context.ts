@@ -3,6 +3,7 @@ import { authenticateGoogle } from './google-auth';
 import { privatePhoto } from './private-photo';
 import { concurrencyProbe } from './concurrency-probe';
 import { SHEETS_AUTH_CONFIG_KEY } from './workspace-directory';
+import { readAdminDirectory } from './admin-directory';
 
 export function createRequestContext(): RequestContext {
   const properties = PropertiesService.getScriptProperties();
@@ -21,5 +22,6 @@ export function createRequestContext(): RequestContext {
     authenticate: authenticateGoogle,
     photo: privatePhoto,
     concurrency: concurrencyProbe,
+    admin: readAdminDirectory,
   };
 }

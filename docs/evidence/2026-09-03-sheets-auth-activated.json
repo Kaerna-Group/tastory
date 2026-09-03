@@ -1,0 +1,18 @@
+{
+  "formatVersion": 1,
+  "source": "Owner-provided Apps Script execution log and explicit confirmation of both account checks",
+  "reportedDate": "2026-09-03",
+  "reportedTimezone": "Europe/Simferopol",
+  "activation": {
+    "reportedTime": "14:37:18",
+    "result": { "ok": true, "result": "enabled", "backend": "sheets", "users": 2, "memberships": 2 }
+  },
+  "accessChecks": {
+    "ownerConfirmedWorking": true,
+    "viewerConfirmedWorking": true,
+    "evidenceType": "owner confirmation in conversation, no separate request report",
+    "revocationAndRestorationConfirmed": false
+  },
+  "stage": "D-02b complete",
+  "deploymentVersion": 5
+}

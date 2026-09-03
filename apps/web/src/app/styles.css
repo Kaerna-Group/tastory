@@ -229,6 +229,48 @@ h2 {
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 24px;
 }
+.workspace-admin {
+  grid-column: 1 / -1;
+}
+.member-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+.member-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 18px 0;
+  border-top: 1px solid var(--app-border);
+}
+.member-identity {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.member-row p,
+.workspace-health p {
+  margin: 0;
+}
+.member-access {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+}
+.member-role {
+  border: 1px solid var(--app-border);
+  border-radius: 6px;
+  padding: 3px 10px;
+  font-size: 13px;
+}
+.workspace-health {
+  margin-top: 24px;
+  padding-top: 20px;
+  border-top: 1px solid var(--app-border);
+}
 .panel {
   background: var(--app-surface);
   border: 1px solid var(--app-border);

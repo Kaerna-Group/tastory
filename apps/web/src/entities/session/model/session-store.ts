@@ -113,6 +113,12 @@ export async function requestSessionConcurrency(command: ConcurrencyCommand, sig
     signal,
   );
 }
+export async function requestSessionUsers(signal?: AbortSignal) {
+  return protectedRequest((token, combined) => apiClient.adminUsers(token, combined), signal);
+}
+export async function requestSessionHealth(signal?: AbortSignal) {
+  return protectedRequest((token, combined) => apiClient.adminHealth(token, combined), signal);
+}
 async function protectedRequest<T>(
   request: (token: string, signal: AbortSignal) => Promise<T>,
   signal?: AbortSignal,

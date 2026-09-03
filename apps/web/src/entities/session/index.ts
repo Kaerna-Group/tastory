@@ -6,6 +6,8 @@ export {
   recheckSession,
   requestSessionPhoto,
   requestSessionConcurrency,
+  requestSessionUsers,
+  requestSessionHealth,
 } from './model/session-store';
 export type { SessionState } from './model/session-store';
 export {

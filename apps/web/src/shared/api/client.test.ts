@@ -5,6 +5,77 @@ import { mockTransport } from './mock-transport';
 const requestId = 'c3dcd2e8-e2f8-428b-9e26-3e715f678fac';
 const request = { apiVersion: 1, requestId, action: 'health', payload: {} } as const;
 describe('typed API client', () => {
+  it.each(['adminUsers', 'adminHealth'] as const)(
+    'validates %s responses and request correlation',
+    async (method) => {
+      const common = {
+        workspace: { id: requestId, name: 'Книга' },
+        checkedAt: '2026-09-03T12:00:00Z',
+      };
+      const data =
+        method === 'adminUsers'
+          ? {
+              ...common,
+              users: [
+                {
+                  id: requestId,
+                  email: 'owner@example.test',
+                  displayName: '',
+                  role: 'owner',
+                  userStatus: 'active',
+                  membershipStatus: 'active',
+                  joinedAt: common.checkedAt,
+                },
+              ],
+            }
+          : {
+              ...common,
+              status: 'ok',
+              schemaVersion: 1,
+              tablesChecked: 6,
+              members: 2,
+              activeMembers: 2,
+            };
+      const response = { ok: true, requestId, data, meta: { apiVersion: 1, schemaVersion: 0 } };
+      const transport = vi.fn().mockResolvedValue(response);
+      const client = createApiClient(transport, () => requestId);
+      expect(await client[method]('memory-token')).toEqual(data);
+      expect(transport).toHaveBeenCalledWith(
+        {
+          apiVersion: 1,
+          requestId,
+          action: method === 'adminUsers' ? 'admin.users.list' : 'admin.health',
+          payload: {},
+          credential: 'memory-token',
+        },
+        undefined,
+      );
+      transport.mockResolvedValue({
+        ...response,
+        requestId: 'a3dcd2e8-e2f8-428b-9e26-3e715f678fac',
+      });
+      await expect(client[method]('memory-token')).rejects.toMatchObject({
+        code: 'INVALID_RESPONSE',
+        requestId,
+      });
+      transport.mockResolvedValue({
+        ...response,
+        data: { ...data, google_sub: 'should-not-be-returned' },
+      });
+      await expect(client[method]('memory-token')).rejects.toMatchObject({
+        code: 'INVALID_RESPONSE',
+      });
+      transport.mockResolvedValue({
+        ok: false,
+        requestId,
+        error: { code: 'ACCESS_DENIED', message: 'Доступ закрыт.' },
+      });
+      await expect(client[method]('memory-token')).rejects.toMatchObject({
+        code: 'ACCESS_DENIED',
+        requestId,
+      });
+    },
+  );
   it('correlates concurrency responses with both request and run and preserves errors', async () => {
     const command = { action: 'spike.concurrency.read', payload: { runId: requestId } } as const;
     const data = {

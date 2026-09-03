@@ -2,7 +2,7 @@
 
 Первый шаг D-02 после [подтверждённого D-01](evidence/2026-09-03-core-schema-applied.json). Данные пользователей и приглашений переносятся из текущих Script Properties в Users, Invites, Workspaces и WorkspaceMembers. Рабочее пространство одно, с названием «Моя кулинарная тетрадь».
 
-Функции `planStagingUsers` и `setupStagingUsers` загружены 3 сентября в 10:49:48 UTC. Владелец выполнил план, перенос и повтор: 2 пользователя, 1 книга, 2 членства, 2 приглашения; owner и viewer, `pendingRows: 0`, `already-applied`. [Отчёты](evidence/2026-09-03-users-import-applied.json). **D-02a выполнен.** Следующий шаг — [переключение проверки доступа на таблицы](sheets-auth-staging.md); весь D-02 ещё открыт.
+Функции `planStagingUsers` и `setupStagingUsers` загружены 3 сентября в 10:49:48 UTC. Владелец выполнил план, перенос и повтор: 2 пользователя, 1 книга, 2 членства, 2 приглашения; owner и viewer, `pendingRows: 0`, `already-applied`. [Отчёты](evidence/2026-09-03-users-import-applied.json). **D-02a выполнен.** Следующее переключение проверки доступа на таблицы [также подтверждено](sheets-auth-staging.md). Дальше — [раздел владельца](workspace-admin.md); весь D-02 ещё открыт.
 
 ## Действия владельца
 

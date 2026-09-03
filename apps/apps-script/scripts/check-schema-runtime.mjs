@@ -222,6 +222,21 @@ export function checkSchemaRuntime(code) {
   assert.equal(ownerSession.data.user.id, legacySession.data.user.id);
   assert.equal(ownerSession.data.user.role, 'owner');
   assert.equal(request('private-viewer', 'viewer@example.test').data.user.role, 'viewer');
+  const ownerUsers = request('private-owner', 'owner@example.test', 'admin.users.list');
+  assert.equal(ownerUsers.ok, true);
+  assert.equal(ownerUsers.data.users.length, 2);
+  assert.equal(ownerUsers.data.users[0].role, 'owner');
+  assert.equal(JSON.stringify(ownerUsers).includes('private-'), false);
+  const ownerHealth = request('private-owner', 'owner@example.test', 'admin.health');
+  assert.equal(ownerHealth.ok, true);
+  assert.equal(ownerHealth.data.tablesChecked, 6);
+  assert.equal(ownerHealth.data.activeMembers, 2);
+  for (const action of ['admin.users.list', 'admin.health']) {
+    assert.equal(
+      request('private-viewer', 'viewer@example.test', action).error.code,
+      'ACCESS_DENIED',
+    );
+  }
   assert.equal(
     request('private-viewer', 'viewer@example.test', 'spike.concurrency.read').error.code,
     'ACCESS_DENIED',
@@ -236,6 +251,10 @@ export function checkSchemaRuntime(code) {
   assert.equal(request('private-viewer', 'viewer@example.test').data.user.role, 'member');
   member[3] = 'disabled';
   assert.equal(request('private-viewer', 'viewer@example.test').error.code, 'ACCESS_DENIED');
+  assert.equal(
+    request('private-owner', 'owner@example.test', 'admin.health').data.activeMembers,
+    1,
+  );
   member[2] = 'viewer';
   member[3] = 'active';
   const originalUsers = sheets.get('Users');
@@ -263,6 +282,6 @@ export function checkSchemaRuntime(code) {
   assert.equal(writes, beforeWrites);
   assert.equal(held, false);
   console.log(
-    'Apps Script: schema/import, owner activation, real JWT Sheets authorization, revocation and HTTP isolation passed in compiled runtime.',
+    'Apps Script: schema/import, Sheets JWT authorization, owner directory/health, revocation and HTTP isolation passed in compiled runtime.',
   );
 }
