@@ -1,0 +1,10 @@
+{
+  "formatVersion": 1,
+  "date": "2026-09-03",
+  "source": "owner message in the project conversation after the invitation and role-management release",
+  "ownerMessage": "Все работает",
+  "acceptedModule": "invitations-and-membership-management",
+  "ownerReportedWorking": true,
+  "scenarioBreakdownProvided": false,
+  "limitations": "Functional acceptance of the released module by the owner. No new structured export, independent storage inspection, per-scenario results or full browser matrix were supplied. This does not close production authentication or the remaining platform decisions."
+}
