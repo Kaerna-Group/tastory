@@ -1,6 +1,6 @@
-# API v1: доступ, участники и диагностика
+# API v1: доступ, участники, журнал и диагностика
 
-Источник схем — `packages/contracts/src/api.ts`. DTO выводятся из Zod. API version = 1, транспортный schema version = 0 сохранён для совместимости; фактическая схема таблиц 1 создана и подтверждена. [Разделение версий](schema-migrations.md). После [переключения входа на Sheets](sheets-auth-staging.md) роль берётся из членства в таблице, формат ответа auth/spike остаётся прежним.
+Источник схем — `packages/contracts/src/api.ts`. DTO выводятся из Zod. API version = 1, транспортный schema version = 0 сохранён для совместимости; фактическая схема таблиц 1 создана и подтверждена, схема 2 применяется при подготовке журнала. [Разделение версий](schema-migrations.md). После [переключения входа на Sheets](sheets-auth-staging.md) роль берётся из членства в таблице, формат ответа auth/spike остаётся прежним.
 
 ## Запрос
 
@@ -13,7 +13,7 @@
 }
 ```
 
-Поддержаны health, echo, auth.signIn, auth.me, admin.users.list, admin.health, три действия spike.photo и два spike.concurrency. Неизвестные поля, действия и версия отклоняются. Поле `credential` требуется для всех защищённых действий; health/echo его не принимают. `expectedRevision` используется в ограниченной пробе записей; схемы рецептов ещё нет.
+Поддержаны health, echo, auth.signIn, auth.me, admin.users.list, admin.health, три действия admin.operations, три действия spike.photo и два spike.concurrency. Неизвестные поля, действия и версия отклоняются. Поле `credential` требуется для всех защищённых действий; health/echo его не принимают. `expectedRevision` используется в ограниченной пробе записей; схемы рецептов ещё нет.
 
 POST отправляет JSON с Content-Type `text/plain;charset=utf-8`, без cookies/Authorization. Это избегает собственного preflight, но реальная работа CORS/redirect должна быть доказана на опубликованном origin. Таймаут — 15 секунд, для spike и admin — 60 секунд; поддержана отмена ожидания. Серверная запись может завершиться после отмены клиентом.
 
@@ -55,6 +55,22 @@ Status ok доказывает выполнение обработчика. Heal
 - `admin.health`: `{ workspace: { id, name }, checkedAt, status: "ok", schemaVersion: 1, tablesChecked: 6, members, activeMembers }`. Проверяются структура и журнал миграции шести таблиц, состав и связи пользователей/членств. Это не проверка Drive, квот, содержимого приглашений или резервных копий.
 
 Оба действия только читают данные и не возвращают Google sub или идентификаторы ресурсов Google. Схемы находятся в `packages/contracts/src/admin.ts`; envelope и meta прежние. [Интерфейс и границы](workspace-admin.md).
+
+## Журнал операций
+
+Три дополнительных действия требуют credential, строго пустой payload, staging и активного владельца. Повторная проверка прав и срока токена выполняется под ScriptLock. Приготовленная миграцией 002 фактическая схема таблиц — 2; вход также поддерживает прежнюю схему 1. `admin.health` возвращает пару `schemaVersion: 1, tablesChecked: 6` либо `schemaVersion: 2, tablesChecked: 8`. Транспортное meta не меняется.
+
+| Действие                      | Результат data                                                                                                    |
+| ----------------------------- | ----------------------------------------------------------------------------------------------------------------- |
+| `admin.operations.list`       | `{ kind: "list", ready, schemaVersion, checkedAt, total, entries }`                                               |
+| `admin.operations.initialize` | `{ kind: "initialized", schemaVersion: 2, alreadyApplied }`                                                       |
+| `admin.operations.check`      | `{ kind: "check", outcome: "committed" \| "replayed", entry, result: { kind: "journal-check", verified: true } }` |
+
+`entry`: `{ id, action: "admin.operations.check", actorName, status, startedAt, completedAt, auditRecorded, canRetry }`. Статус — `started` или `committed`; незавершённая запись имеет `completedAt: null`. Выдаются последние 50 операций текущей книги, total ограничен 1000. `canRetry` разрешён только для незавершённой записи текущего владельца. Неподготовленный журнал возвращает пустой список с `ready: false` и схемой 1.
+
+`requestId` проверочной операции сохраняется для всех повторов, включая потерю ответа; клиент сверяет его с envelope и entry.id. Повтор с другим пользователем, книгой или содержимым отклоняется. Подготовка повторяется по собственному маркеру миграции. Запись требует готового журнала и не изменяет бизнес-данные или `Meta.data_revision`.
+
+Ошибки: `JOURNAL_NOT_READY` — требуется подготовка; `JOURNAL_UNAVAILABLE` — блокировка, несовместимая схема/состояние или сбой; `JOURNAL_LIMIT` — лимит хранения; `OPERATION_MISMATCH` — другая привязка ключа. Повтор после неопределённого результата использует прежний ID. Контракты — `packages/contracts/src/journal.ts`. [Алгоритм, границы и действия владельца](operation-journal.md).
 
 ## Пробное фото
 

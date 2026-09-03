@@ -13,7 +13,11 @@ export {
   concurrencyResponseSchema,
   adminUsersResponseSchema,
   adminHealthResponseSchema,
+  journalResponseSchema,
 } from './api';
+export type { JournalResponse } from './api';
+export { journalDataSchema, journalEntrySchema } from './journal';
+export type { JournalData, JournalEntry, JournalAction } from './journal';
 export type { AdminResponse } from './api';
 export { adminUsersDataSchema, adminHealthDataSchema } from './admin';
 export type { AdminAction, AdminUsersData, AdminHealthData } from './admin';

@@ -5,6 +5,55 @@ import { mockTransport } from './mock-transport';
 const requestId = 'c3dcd2e8-e2f8-428b-9e26-3e715f678fac';
 const request = { apiVersion: 1, requestId, action: 'health', payload: {} } as const;
 describe('typed API client', () => {
+  it('keeps journal request IDs stable and rejects mismatched actions or operation receipts', async () => {
+    const entry = {
+      id: requestId,
+      action: 'admin.operations.check',
+      actorName: 'Owner',
+      status: 'committed',
+      startedAt: '2026-09-03T12:00:00Z',
+      completedAt: '2026-09-03T12:00:00Z',
+      auditRecorded: true,
+      canRetry: false,
+    };
+    const response = {
+      ok: true,
+      requestId,
+      meta: { apiVersion: 1, schemaVersion: 0 },
+      data: {
+        kind: 'check',
+        outcome: 'replayed',
+        entry,
+        result: { kind: 'journal-check', verified: true },
+      },
+    };
+    const transport = vi.fn().mockResolvedValue(response);
+    const client = createApiClient(transport);
+    await client.journal('admin.operations.check', 'memory-token', requestId);
+    await client.journal('admin.operations.check', 'memory-token', requestId);
+    expect(transport.mock.calls.map(([request]) => request.requestId)).toEqual([
+      requestId,
+      requestId,
+    ]);
+    await expect(
+      client.journal('admin.operations.list', 'memory-token', requestId),
+    ).rejects.toMatchObject({ code: 'INVALID_RESPONSE' });
+    transport.mockResolvedValue({
+      ...response,
+      data: { ...response.data, entry: { ...entry, id: 'a3dcd2e8-e2f8-428b-9e26-3e715f678fac' } },
+    });
+    await expect(
+      client.journal('admin.operations.check', 'memory-token', requestId),
+    ).rejects.toMatchObject({ code: 'INVALID_RESPONSE' });
+    transport.mockResolvedValue({
+      ok: false,
+      requestId,
+      error: { code: 'JOURNAL_LIMIT', message: 'Заполнен.' },
+    });
+    await expect(
+      client.journal('admin.operations.check', 'memory-token', requestId),
+    ).rejects.toMatchObject({ code: 'JOURNAL_LIMIT', requestId });
+  });
   it.each(['adminUsers', 'adminHealth'] as const)(
     'validates %s responses and request correlation',
     async (method) => {

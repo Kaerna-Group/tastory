@@ -2,10 +2,8 @@ import type { AdminAction, AdminHealthData, AdminUsersData, AuthData } from '@ta
 import { AuthError } from '../auth/google-token';
 import { sheetsAuthConfigSchema } from '../auth/workspace-access';
 import { AdminError, listWorkspaceUsers } from '../services/admin-directory';
-import { planCoreSchema } from '../services/core-migration';
-import { CORE_SCHEMA_FINGERPRINT } from '../schema/core-schema';
 import { readWorkspaceDirectory, SHEETS_AUTH_CONFIG_KEY } from './workspace-directory';
-import { createSchemaStore } from './schema-store';
+import { inspectCurrentSchema } from './current-schema';
 
 export function readAdminDirectory(
   action: AdminAction,
@@ -43,26 +41,16 @@ export function readAdminDirectory(
       checkExpiry();
       return users;
     }
-    const checksum = Utilities.computeDigest(
-      Utilities.DigestAlgorithm.SHA_256,
-      CORE_SCHEMA_FINGERPRINT,
-      Utilities.Charset.UTF_8,
-    )
-      .map((byte) => (byte & 255).toString(16).padStart(2, '0'))
-      .join('');
-    const plan = planCoreSchema(createSchemaStore(spreadsheet), {
-      checksum,
-      driveRootId: properties.getProperty('DRIVE_FOLDER_ID') ?? '',
-      now: () => new Date(),
-    });
-    if (!plan.alreadyApplied) throw new AdminError();
+    const schema = inspectCurrentSchema(
+      spreadsheet,
+      properties.getProperty('DRIVE_FOLDER_ID') ?? '',
+    );
     checkExpiry();
     return {
       workspace: users.workspace,
       checkedAt: new Date().toISOString(),
       status: 'ok',
-      schemaVersion: 1,
-      tablesChecked: 6,
+      ...schema,
       members: users.users.length,
       activeMembers: users.users.filter(
         (user) => user.userStatus === 'active' && user.membershipStatus === 'active',

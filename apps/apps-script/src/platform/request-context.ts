@@ -4,6 +4,7 @@ import { privatePhoto } from './private-photo';
 import { concurrencyProbe } from './concurrency-probe';
 import { SHEETS_AUTH_CONFIG_KEY } from './workspace-directory';
 import { readAdminDirectory } from './admin-directory';
+import { operationJournal } from './operation-journal';
 
 export function createRequestContext(): RequestContext {
   const properties = PropertiesService.getScriptProperties();
@@ -23,5 +24,6 @@ export function createRequestContext(): RequestContext {
     photo: privatePhoto,
     concurrency: concurrencyProbe,
     admin: readAdminDirectory,
+    journal: operationJournal,
   };
 }

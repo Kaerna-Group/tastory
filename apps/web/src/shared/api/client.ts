@@ -6,6 +6,7 @@ import {
   concurrencyResponseSchema,
   adminUsersResponseSchema,
   adminHealthResponseSchema,
+  journalResponseSchema,
 } from '@tastory/contracts';
 import type {
   ApiRequest,
@@ -18,6 +19,8 @@ import type {
   ConcurrencyData,
   AdminUsersData,
   AdminHealthData,
+  JournalAction,
+  JournalData,
 } from '@tastory/contracts';
 
 export type ApiTransport = (request: ApiRequest, signal?: AbortSignal) => Promise<unknown>;
@@ -40,6 +43,12 @@ export function createApiClient(
   createRequestId: () => string = () => crypto.randomUUID(),
 ): {
   health: (signal?: AbortSignal) => Promise<HealthData>;
+  journal: (
+    action: JournalAction,
+    credential: string,
+    requestId: string,
+    signal?: AbortSignal,
+  ) => Promise<JournalData>;
   adminUsers: (credential: string, signal?: AbortSignal) => Promise<AdminUsersData>;
   adminHealth: (credential: string, signal?: AbortSignal) => Promise<AdminHealthData>;
   photo: (command: PhotoCommand, credential: string, signal?: AbortSignal) => Promise<PhotoData>;
@@ -55,6 +64,33 @@ export function createApiClient(
   ) => Promise<AuthResult>;
 } {
   return {
+    async journal(action, credential, requestId, signal) {
+      const raw = await transport(
+        { apiVersion: API_VERSION, requestId, action, credential, payload: {} },
+        signal,
+      );
+      const parsed = journalResponseSchema.safeParse(raw);
+      const kind = {
+        'admin.operations.list': 'list',
+        'admin.operations.initialize': 'initialized',
+        'admin.operations.check': 'check',
+      }[action];
+      if (
+        !parsed.success ||
+        parsed.data.requestId !== requestId ||
+        (parsed.data.ok &&
+          (parsed.data.data.kind !== kind ||
+            (parsed.data.data.kind === 'check' && parsed.data.data.entry.id !== requestId)))
+      )
+        throw new ApiClientError(
+          'INVALID_RESPONSE',
+          'Сервер вернул несовместимый ответ.',
+          requestId,
+        );
+      if (!parsed.data.ok)
+        throw new ApiClientError(parsed.data.error.code, parsed.data.error.message, requestId);
+      return parsed.data.data;
+    },
     async adminUsers(credential, signal) {
       const requestId = createRequestId();
       const raw = await transport(

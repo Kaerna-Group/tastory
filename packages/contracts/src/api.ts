@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { adminUsersDataSchema, adminHealthDataSchema } from './admin';
+import { journalDataSchema } from './journal';
 import { photoUploadSchema, photoDataSchema } from './photo';
 import {
   concurrencyReadSchema,
@@ -16,6 +17,24 @@ const requestFields = {
 };
 
 export const apiRequestSchema = z.discriminatedUnion('action', [
+  z.strictObject({
+    ...requestFields,
+    action: z.literal('admin.operations.list'),
+    credential: z.string().min(1).max(6144),
+    payload: z.strictObject({}),
+  }),
+  z.strictObject({
+    ...requestFields,
+    action: z.literal('admin.operations.initialize'),
+    credential: z.string().min(1).max(6144),
+    payload: z.strictObject({}),
+  }),
+  z.strictObject({
+    ...requestFields,
+    action: z.literal('admin.operations.check'),
+    credential: z.string().min(1).max(6144),
+    payload: z.strictObject({}),
+  }),
   z.strictObject({
     ...requestFields,
     action: z.literal('admin.users.list'),
@@ -98,6 +117,9 @@ export const apiErrorSchema = z.strictObject({
       'PROBE_LIMIT',
       'OPERATION_MISMATCH',
       'ADMIN_UNAVAILABLE',
+      'JOURNAL_NOT_READY',
+      'JOURNAL_UNAVAILABLE',
+      'JOURNAL_LIMIT',
     ]),
     message: z.string(),
   }),
@@ -204,3 +226,14 @@ export const adminHealthResponseSchema = z.union([
 ]);
 export type AdminResponse =
   z.infer<typeof adminUsersResponseSchema> | z.infer<typeof adminHealthResponseSchema>;
+
+export const journalResponseSchema = z.union([
+  z.strictObject({
+    ok: z.literal(true),
+    requestId: z.uuid(),
+    data: journalDataSchema,
+    meta: responseMetaSchema,
+  }),
+  apiErrorSchema,
+]);
+export type JournalResponse = z.infer<typeof journalResponseSchema>;

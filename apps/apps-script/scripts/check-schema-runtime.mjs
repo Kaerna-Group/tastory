@@ -179,7 +179,7 @@ export function checkSchemaRuntime(code) {
   assert.equal(JSON.stringify([...sheets]), before);
   assert.equal(writes, beforeWrites);
   assert.equal(held, false);
-  function request(subject, email, action = 'auth.me') {
+  function request(subject, email, action = 'auth.me', requestId = randomUUID()) {
     const now = Math.floor(Date.now() / 1000);
     const data = [
       { alg: 'RS256', typ: 'JWT', kid: 'cutover-key' },
@@ -203,7 +203,7 @@ export function checkSchemaRuntime(code) {
         postData: {
           contents: JSON.stringify({
             apiVersion: 1,
-            requestId: randomUUID(),
+            requestId,
             action,
             credential,
             payload: action === 'spike.concurrency.read' ? { runId: randomUUID() } : {},
@@ -281,7 +281,79 @@ export function checkSchemaRuntime(code) {
   assert.equal(JSON.stringify([...sheets]), before);
   assert.equal(writes, beforeWrites);
   assert.equal(held, false);
+  assert.equal(
+    request('private-owner', 'owner@example.test', 'admin.operations.list').data.ready,
+    false,
+  );
+  for (const action of [
+    'admin.operations.list',
+    'admin.operations.initialize',
+    'admin.operations.check',
+  ]) {
+    assert.equal(
+      request('private-viewer', 'viewer@example.test', action).error.code,
+      'ACCESS_DENIED',
+    );
+  }
+  const originalUsersForJournal = JSON.stringify(sheets.get('Users'));
+  const coreMigration = JSON.stringify(sheets.get('SchemaMigrations')[1]);
+  assert.equal(
+    request('private-owner', 'owner@example.test', 'admin.operations.initialize').data
+      .alreadyApplied,
+    false,
+  );
+  const afterSetup = writes;
+  assert.equal(
+    request('private-owner', 'owner@example.test', 'admin.operations.initialize').data
+      .alreadyApplied,
+    true,
+  );
+  assert.equal(writes, afterSetup);
+  assert.equal(request('private-viewer', 'viewer@example.test').data.user.role, 'viewer');
+  assert.equal(request('private-owner', 'owner@example.test').data.user.role, 'owner');
+  assert.equal(
+    request('private-owner', 'owner@example.test', 'admin.health').data.tablesChecked,
+    8,
+  );
+  const journalRequestId = randomUUID();
+  assert.equal(
+    request('private-owner', 'owner@example.test', 'admin.operations.check', journalRequestId).data
+      .outcome,
+    'committed',
+  );
+  const afterCheck = writes;
+  assert.equal(
+    request('private-owner', 'owner@example.test', 'admin.operations.check', journalRequestId).data
+      .outcome,
+    'replayed',
+  );
+  assert.equal(writes, afterCheck);
+  const operation = sheets.get('Operations')[1];
+  operation[7] = 'started';
+  operation[8] = '';
+  operation[11] = '';
+  assert.equal(
+    request('private-owner', 'owner@example.test', 'admin.operations.list').data.entries[0]
+      .canRetry,
+    true,
+  );
+  assert.equal(
+    request('private-owner', 'owner@example.test', 'admin.operations.check', journalRequestId).data
+      .outcome,
+    'committed',
+  );
+  assert.equal(sheets.get('Operations').length, 2);
+  assert.equal(sheets.get('AuditLog').length, 2);
+  const journal = request('private-owner', 'owner@example.test', 'admin.operations.list');
+  assert.equal(journal.data.total, 1);
+  assert.equal(journal.data.entries[0].auditRecorded, true);
+  assert.equal(JSON.stringify(journal).includes('private-'), false);
+  assert.equal(JSON.stringify(sheets.get('Users')), originalUsersForJournal);
+  assert.equal(JSON.stringify(sheets.get('SchemaMigrations')[1]), coreMigration);
+  assert.equal(sheets.get('Meta').find(([key]) => key === 'data_revision')[1], '1');
+  assert.equal(propertyWrites, 1);
+  assert.equal(held, false);
   console.log(
-    'Apps Script: schema/import, Sheets JWT authorization, owner directory/health, revocation and HTTP isolation passed in compiled runtime.',
+    'Apps Script: schema/import, Sheets JWT auth, owner directory, journal migration/check/replay/recovery and HTTP isolation passed in compiled runtime.',
   );
 }

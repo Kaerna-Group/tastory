@@ -43,7 +43,7 @@ export function readWorkspaceDirectory(spreadsheet: GoogleAppsScript.Spreadsheet
   if (
     meta.size !== metaRows.length ||
     metaRows.some((row) => !row.key) ||
-    meta.get('schema_version') !== '1' ||
+    !['1', '2'].includes(meta.get('schema_version') ?? '') ||
     meta.get('maintenance_mode') !== 'false'
   )
     throw new AuthError('AUTH_UNAVAILABLE');

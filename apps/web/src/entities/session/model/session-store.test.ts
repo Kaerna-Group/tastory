@@ -11,6 +11,7 @@ import {
   requestSessionConcurrency,
   requestSessionUsers,
   requestSessionHealth,
+  requestSessionJournal,
 } from './session-store';
 const data = () => ({
   requestId: 'c3dcd2e8-e2f8-428b-9e26-3e715f678fac',
@@ -24,6 +25,23 @@ afterEach(() => {
   vi.useRealTimers();
 });
 describe('memory-only Google session', () => {
+  it('uses the private session and stable journal ID, then clears revoked access', async () => {
+    vi.spyOn(apiClient, 'authenticate').mockResolvedValue(data());
+    vi.spyOn(apiClient, 'journal').mockRejectedValue(
+      new ApiClientError('ACCESS_DENIED', 'Доступ закрыт.'),
+    );
+    await signIn('memory-token');
+    await expect(
+      requestSessionJournal('admin.operations.check', data().requestId),
+    ).rejects.toMatchObject({ code: 'ACCESS_DENIED' });
+    expect(apiClient.journal).toHaveBeenCalledWith(
+      'admin.operations.check',
+      'memory-token',
+      data().requestId,
+      expect.any(AbortSignal),
+    );
+    expect(getSession().status).toBe('signed-out');
+  });
   it('cancels admin reads on logout and discards late successful results', async () => {
     vi.spyOn(apiClient, 'authenticate').mockResolvedValue(data());
     const report = {

@@ -8,6 +8,7 @@ export {
   requestSessionConcurrency,
   requestSessionUsers,
   requestSessionHealth,
+  requestSessionJournal,
 } from './model/session-store';
 export type { SessionState } from './model/session-store';
 export {

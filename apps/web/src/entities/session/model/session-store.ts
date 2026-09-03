@@ -1,5 +1,5 @@
 import { apiClient, ApiClientError } from '@/shared/api';
-import type { AuthData, PhotoCommand, ConcurrencyCommand } from '@tastory/contracts';
+import type { AuthData, PhotoCommand, ConcurrencyCommand, JournalAction } from '@tastory/contracts';
 import { accessCheck } from './access-check';
 
 export type SessionState = Readonly<{
@@ -118,6 +118,16 @@ export async function requestSessionUsers(signal?: AbortSignal) {
 }
 export async function requestSessionHealth(signal?: AbortSignal) {
   return protectedRequest((token, combined) => apiClient.adminHealth(token, combined), signal);
+}
+export async function requestSessionJournal(
+  action: JournalAction,
+  requestId: string,
+  signal?: AbortSignal,
+) {
+  return protectedRequest(
+    (token, combined) => apiClient.journal(action, token, requestId, combined),
+    signal,
+  );
 }
 async function protectedRequest<T>(
   request: (token: string, signal: AbortSignal) => Promise<T>,

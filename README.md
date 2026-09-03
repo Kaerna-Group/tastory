@@ -8,6 +8,8 @@
 
 [Открыть Tastory staging](https://kaerna-group.github.io/tastory/) · [Результаты health/echo](docs/staging-verification.md#проверка-опубликованного-https-origin)
 
+Добавлена [основа журнала операций и аудита](docs/operation-journal.md): подготовка из настроек владельца, сохранение и повтор без дубликатов, продолжение прерванной проверки.
+
 ## Быстрый старт
 
 Нужны Node.js **24.14.0** и npm **11.9.0**.
