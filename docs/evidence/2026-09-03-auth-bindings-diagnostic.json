@@ -1,0 +1,12 @@
+{
+  "formatVersion": 1,
+  "checkedAt": "2026-09-03T09:36:49.657Z",
+  "environment": "staging",
+  "clientIds": "valid",
+  "invitations": { "status": "valid", "count": 2 },
+  "bindings": { "status": "invalid-schema", "fields": ["1.sub", "1.joinedAt", "1"] },
+  "keyCache": { "status": "valid", "count": 4 },
+  "keyRefreshMarker": "absent",
+  "googleKeys": { "status": "valid", "count": 2 },
+  "scriptLock": "available"
+}
