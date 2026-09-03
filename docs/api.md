@@ -1,6 +1,6 @@
 # API v1: диагностика, staging auth и фото
 
-Источник схем — `packages/contracts/src/api.ts`. DTO выводятся из Zod. API version = 1, schema version = 0: таблицы и миграции ещё не созданы.
+Источник схем — `packages/contracts/src/api.ts`. DTO выводятся из Zod. API version = 1, транспортный schema version = 0 сохранён для совместимости; фактическая схема таблиц 1 создана и подтверждена. [Разделение версий](schema-migrations.md). После [переключения входа на Sheets](sheets-auth-staging.md) роль берётся из членства в таблице, формат ответа auth/spike остаётся прежним.
 
 ## Запрос
 

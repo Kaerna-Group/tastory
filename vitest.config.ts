@@ -22,6 +22,8 @@ export default defineConfig({
         'apps/apps-script/src/services/core-migration.ts',
         'apps/apps-script/src/services/users-import.ts',
         'apps/apps-script/src/platform/users-import-store.ts',
+        'apps/apps-script/src/platform/workspace-directory.ts',
+        'apps/apps-script/src/entrypoints/sheets-auth-staging.ts',
         'apps/apps-script/src/entrypoints/users-staging.ts',
         'apps/apps-script/src/platform/schema-store.ts',
         'apps/apps-script/src/entrypoints/schema-staging.ts',

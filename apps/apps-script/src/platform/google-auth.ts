@@ -1,6 +1,7 @@
 import { AuthError, googleKeysSchema, verifyGoogleToken } from '../auth/google-token';
 import { admitIdentity, bindingsSchema, invitationsSchema } from '../auth/invitations';
 import type { GoogleKey } from '../auth/google-token';
+import { authenticateSheets, SHEETS_AUTH_CONFIG_KEY } from './workspace-directory';
 
 const keyCacheName = 'google-jwks-v1';
 const refreshCacheName = 'google-jwks-refreshed-v1';
@@ -78,6 +79,12 @@ export function authenticateGoogle(credential: string, allowJoin: boolean) {
   const lock = LockService.getScriptLock();
   if (!lock.tryLock(5000)) throw new AuthError('AUTH_UNAVAILABLE');
   try {
+    // Read the switch under the same lock as activation and authorization. A configured but
+    // unavailable Sheets backend never falls back to the old invitation registry.
+    if (Date.parse(identity.expiresAt) <= Date.now()) throw new AuthError('UNAUTHENTICATED');
+    const sheetsConfig = properties.getProperty(SHEETS_AUTH_CONFIG_KEY);
+    if (sheetsConfig !== null)
+      return authenticateSheets(identity, sheetsConfig, properties.getProperty('SPREADSHEET_ID'));
     const rawInvites = properties.getProperty('STAGING_INVITES');
     if (!rawInvites) throw new AuthError('AUTH_NOT_CONFIGURED');
     const invitations = invitationsSchema.parse(JSON.parse(rawInvites));

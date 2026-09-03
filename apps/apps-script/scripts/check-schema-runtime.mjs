@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { createHash, randomUUID } from 'node:crypto';
+import { createHash, randomUUID, generateKeyPairSync, sign } from 'node:crypto';
 import { runInNewContext } from 'node:vm';
 
 export function checkSchemaRuntime(code) {
@@ -7,10 +7,20 @@ export function checkSchemaRuntime(code) {
     APP_ENV: 'staging',
     SPREADSHEET_ID: 'test-sheet',
     DRIVE_FOLDER_ID: 'test-drive',
+    GOOGLE_CLIENT_IDS: 'client.apps.googleusercontent.com',
   };
   const sheets = new Map([['Sheet1', [['preserve-existing-data']]]]);
   let writes = 0;
   let held = false;
+  let propertyWrites = 0;
+  const pair = generateKeyPairSync('rsa', { modulusLength: 2048 });
+  const jwk = pair.publicKey.export({ format: 'jwk' });
+  const cache = new Map([
+    [
+      'google-jwks-v1',
+      JSON.stringify({ keys: [{ ...jwk, kid: 'cutover-key', alg: 'RS256', use: 'sig' }] }),
+    ],
+  ]);
   function sheet(name) {
     const rows = sheets.get(name);
     if (!rows) return null;
@@ -47,7 +57,19 @@ export function checkSchemaRuntime(code) {
   const sandbox = {
     Session: { getEffectiveUser: () => ({ getEmail: () => 'owner@example.test' }) },
     PropertiesService: {
-      getScriptProperties: () => ({ getProperty: (key) => properties[key] ?? null }),
+      getScriptProperties: () => ({
+        getProperty: (key) => properties[key] ?? null,
+        setProperty: (key, value) => {
+          properties[key] = value;
+          propertyWrites += 1;
+        },
+      }),
+    },
+    CacheService: {
+      getScriptCache: () => ({
+        get: (key) => cache.get(key) ?? null,
+        put: (key, value) => cache.set(key, value),
+      }),
     },
     SpreadsheetApp: {
       openById: (id) => {
@@ -76,6 +98,8 @@ export function checkSchemaRuntime(code) {
         );
       },
       getUuid: randomUUID,
+      base64DecodeWebSafe: (text) => [...Buffer.from(text, 'base64url')],
+      newBlob: (bytes) => ({ getDataAsString: () => Buffer.from(bytes).toString('utf8') }),
     },
     LockService: {
       getScriptLock: () => ({
@@ -155,7 +179,90 @@ export function checkSchemaRuntime(code) {
   assert.equal(JSON.stringify([...sheets]), before);
   assert.equal(writes, beforeWrites);
   assert.equal(held, false);
+  function request(subject, email, action = 'auth.me') {
+    const now = Math.floor(Date.now() / 1000);
+    const data = [
+      { alg: 'RS256', typ: 'JWT', kid: 'cutover-key' },
+      {
+        iss: 'https://accounts.google.com',
+        aud: properties.GOOGLE_CLIENT_IDS,
+        sub: subject,
+        email,
+        email_verified: true,
+        name: 'Повар',
+        iat: now - 10,
+        exp: now + 3600,
+      },
+    ]
+      .map((value) => Buffer.from(JSON.stringify(value)).toString('base64url'))
+      .join('.');
+    const credential =
+      data + '.' + sign('RSA-SHA256', Buffer.from(data), pair.privateKey).toString('base64url');
+    return JSON.parse(
+      sandbox.doPost({
+        postData: {
+          contents: JSON.stringify({
+            apiVersion: 1,
+            requestId: randomUUID(),
+            action,
+            credential,
+            payload: action === 'spike.concurrency.read' ? { runId: randomUUID() } : {},
+          }),
+        },
+      }),
+    );
+  }
+  const legacySession = request('private-owner', 'owner@example.test');
+  assert.equal(legacySession.ok, true);
+  assert.equal(sandbox.activateStagingSheetsAuth().result, 'enabled');
+  assert.equal(sandbox.activateStagingSheetsAuth().result, 'already-enabled');
+  assert.equal(propertyWrites, 1);
+  const ownerSession = request('private-owner', 'owner@example.test');
+  assert.equal(ownerSession.ok, true);
+  assert.equal(ownerSession.data.user.id, legacySession.data.user.id);
+  assert.equal(ownerSession.data.user.role, 'owner');
+  assert.equal(request('private-viewer', 'viewer@example.test').data.user.role, 'viewer');
+  assert.equal(
+    request('private-viewer', 'viewer@example.test', 'spike.concurrency.read').error.code,
+    'ACCESS_DENIED',
+  );
+  assert.equal(
+    request('different-sub', 'owner@example.test', 'auth.signIn').error.code,
+    'ACCESS_DENIED',
+  );
+  const viewer = sheets.get('Users').find((row) => row[1] === 'private-viewer');
+  const member = sheets.get('WorkspaceMembers').find((row) => row[1] === viewer[0]);
+  member[2] = 'member';
+  assert.equal(request('private-viewer', 'viewer@example.test').data.user.role, 'member');
+  member[3] = 'disabled';
+  assert.equal(request('private-viewer', 'viewer@example.test').error.code, 'ACCESS_DENIED');
+  member[2] = 'viewer';
+  member[3] = 'active';
+  const originalUsers = sheets.get('Users');
+  sheets.set('Users', undefined);
+  assert.equal(request('private-owner', 'owner@example.test').error.code, 'AUTH_UNAVAILABLE');
+  sheets.set('Users', originalUsers);
+  const forbidden = JSON.parse(
+    sandbox.doPost({
+      postData: {
+        contents: JSON.stringify({
+          apiVersion: 1,
+          requestId: randomUUID(),
+          action: 'activateStagingSheetsAuth',
+          payload: {},
+        }),
+      },
+    }),
+  );
+  assert.equal(forbidden.error.code, 'INVALID_REQUEST');
+  assert.equal(propertyWrites, 1);
+  const { SHEETS_AUTH_CONFIG, ...preservedProperties } = properties;
+  assert.equal(JSON.stringify(preservedProperties), propertiesBefore);
+  assert.equal(JSON.parse(SHEETS_AUTH_CONFIG).backend, 'sheets');
+  assert.equal(JSON.stringify([...sheets]), before);
+  assert.equal(writes, beforeWrites);
+  assert.equal(held, false);
   console.log(
-    'Apps Script: schema and identity plan/apply/repeat, preserved auth registry and HTTP isolation passed in compiled runtime.',
+    'Apps Script: schema/import, owner activation, real JWT Sheets authorization, revocation and HTTP isolation passed in compiled runtime.',
   );
 }

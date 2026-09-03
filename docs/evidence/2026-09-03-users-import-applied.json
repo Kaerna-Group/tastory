@@ -1,0 +1,67 @@
+{
+  "formatVersion": 1,
+  "source": "User-provided Apps Script execution logs; Markdown escapes in importId normalized",
+  "reportedDate": "2026-09-03",
+  "reportedTimezone": "Europe/Simferopol",
+  "runs": [
+    {
+      "reportedLocalTime": "13:58:05",
+      "report": {
+        "ok": true,
+        "mode": "plan",
+        "importId": "users_import_v1",
+        "alreadyApplied": false,
+        "users": 2,
+        "workspaces": 1,
+        "memberships": 2,
+        "invitations": 2,
+        "pendingRows": 7,
+        "roles": {
+          "owner": 1,
+          "member": 0,
+          "viewer": 1
+        }
+      }
+    },
+    {
+      "reportedLocalTime": "13:58:34",
+      "report": {
+        "ok": true,
+        "mode": "apply",
+        "importId": "users_import_v1",
+        "alreadyApplied": true,
+        "users": 2,
+        "workspaces": 1,
+        "memberships": 2,
+        "invitations": 2,
+        "pendingRows": 0,
+        "roles": {
+          "owner": 1,
+          "member": 0,
+          "viewer": 1
+        },
+        "result": "applied"
+      }
+    },
+    {
+      "reportedLocalTime": "14:07:15",
+      "report": {
+        "ok": true,
+        "mode": "apply",
+        "importId": "users_import_v1",
+        "alreadyApplied": true,
+        "users": 2,
+        "workspaces": 1,
+        "memberships": 2,
+        "invitations": 2,
+        "pendingRows": 0,
+        "roles": {
+          "owner": 1,
+          "member": 0,
+          "viewer": 1
+        },
+        "result": "already-applied"
+      }
+    }
+  ]
+}

@@ -25,7 +25,7 @@ type ImportOptions = Readonly<{
   sha256: (value: string) => string;
 }>;
 type ImportData = Record<IdentityTable, string[][]>;
-const checkpointSchema = z.strictObject({
+export const usersImportCheckpointSchema = z.strictObject({
   version: z.literal(1),
   state: z.enum(['prepared', 'applied']),
   sourceHash: z.string().regex(/^[a-f0-9]{64}$/),
@@ -41,7 +41,7 @@ const checkpointSchema = z.strictObject({
     .max(21)
     .refine((ids) => new Set(ids).size === ids.length),
 });
-type Checkpoint = z.infer<typeof checkpointSchema>;
+type Checkpoint = z.infer<typeof usersImportCheckpointSchema>;
 
 function source(options: ImportOptions) {
   const invitesResult = invitationsSchema.safeParse(options.invitations);
@@ -158,7 +158,7 @@ function prepare(store: UsersImportStore, options: ImportOptions) {
   if (previous !== undefined) {
     try {
       if (previous.length > 4096) throw new Error();
-      checkpoint = checkpointSchema.parse(JSON.parse(previous));
+      checkpoint = usersImportCheckpointSchema.parse(JSON.parse(previous));
     } catch {
       throw new UsersImportError('IMPORT_CHECKPOINT_INVALID');
     }
@@ -183,7 +183,7 @@ function prepare(store: UsersImportStore, options: ImportOptions) {
       ids.push(id);
       return id;
     });
-    const parsed = checkpointSchema.safeParse({
+    const parsed = usersImportCheckpointSchema.safeParse({
       version: 1,
       state: 'prepared',
       sourceHash,
