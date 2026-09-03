@@ -20,20 +20,21 @@
 
 Повторяемые замеры задержек и размеров запросов: [измерения staging](staging-measurements.md).
 
-| Документ                                | Что здесь искать                                |
-| --------------------------------------- | ----------------------------------------------- |
-| [Среда и запуск](environment.md)        | Установка, команды, local/staging/production    |
-| [Архитектура](architecture.md)          | Workspaces, FSD, public API и границы           |
-| [Контракт API](api.md)                  | health/echo, envelope, ошибки и transport       |
-| [Apps Script](apps-script.md)           | Сборка, clasp, тестовый Google-проект           |
-| [Google staging](google-staging.md)     | Действия владельца для создания таблицы и папки |
-| [Технический spike](spike-checklist.md) | Проверки этапа 0 и доказательства               |
-| [Тестирование](testing.md)              | Проверки, coverage, smoke и ограничения         |
-| [CI и выпуск](ci-cd.md)                 | GitHub Actions, артефакты, будущий deployment   |
-| [Roadmap и backlog](roadmap.md)         | Готовое, следующие задачи, критерии этапов      |
-| [Журнал изменений](changelog.md)        | Что сделано и чем проверено                     |
-| [ADR](adr/README.md)                    | Реестр архитектурных решений                    |
-| [Зависимости](dependencies.md)          | Версии, лицензии, правила обновления            |
+| Документ                                 | Что здесь искать                                   |
+| ---------------------------------------- | -------------------------------------------------- |
+| [Среда и запуск](environment.md)         | Установка, команды, local/staging/production       |
+| [Архитектура](architecture.md)           | Workspaces, FSD, public API и границы              |
+| [Контракт API](api.md)                   | health/echo, envelope, ошибки и transport          |
+| [Apps Script](apps-script.md)            | Сборка, clasp, тестовый Google-проект              |
+| [Схема и миграции](schema-migrations.md) | D-01: состав листов, настройка и безопасный повтор |
+| [Google staging](google-staging.md)      | Действия владельца для создания таблицы и папки    |
+| [Технический spike](spike-checklist.md)  | Проверки этапа 0 и доказательства                  |
+| [Тестирование](testing.md)               | Проверки, coverage, smoke и ограничения            |
+| [CI и выпуск](ci-cd.md)                  | GitHub Actions, артефакты, будущий deployment      |
+| [Roadmap и backlog](roadmap.md)          | Готовое, следующие задачи, критерии этапов         |
+| [Журнал изменений](changelog.md)         | Что сделано и чем проверено                        |
+| [ADR](adr/README.md)                     | Реестр архитектурных решений                       |
+| [Зависимости](dependencies.md)           | Версии, лицензии, правила обновления               |
 
 ## Как вести документы
 

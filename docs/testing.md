@@ -18,6 +18,8 @@ Unit tests подписывают токены настоящим RSA-ключо
 
 ## Основной цикл
 
+D-01 дополнительно проверяется 34 тестами сервиса миграции, адаптера Sheets и редакторских функций. Сбои моделируются до и после каждой записи/flush, включая потерянный ответ после фиксации версии. Собранный IIFE проходит plan/apply/repeat и отказ HTTP-вызова. Настоящий запуск в Google фиксируется отдельно по [инструкции миграций](schema-migrations.md).
+
 ```sh
 npm run check
 npx playwright install chromium
@@ -38,7 +40,7 @@ npm run test:e2e
 | Apps Script build | doGet/doPost из bundle в изолированном runtime без Node/browser API                                   |
 | E2E               | Навигация, mock health, повторная проверка, сохранение темы, 404, клавиатурный переход, ширина mobile |
 
-Vitest: пороги lines/functions/statements — 85%, branches — 80%. Измеряется выбранный фундамент (packages, controller, shared API), а не весь интерфейс. UI проверяется браузерными smoke. Wiring runtime транспорта пока не покрыт отдельным unit test.
+Vitest: пороги lines/functions/statements — 85%, branches — 80%. Измеряются выбранные модули packages, controller, auth, session, shared API и миграции D-01, а не весь интерфейс. UI проверяется браузерными smoke. Wiring runtime транспорта пока не покрыт отдельным unit test.
 
 Playwright выполняет одни сценарии в desktop Chromium и mobile Chromium (Pixel 7). Это эмуляция экрана, не реальный Android; Firefox/WebKit и visual regression будут добавлены при реализации продуктовых экранов.
 

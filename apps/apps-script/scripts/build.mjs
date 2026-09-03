@@ -2,6 +2,7 @@ import { build } from 'esbuild';
 import { copyFile, mkdir, readFile } from 'node:fs/promises';
 import { runInNewContext } from 'node:vm';
 import { checkAuthRuntime } from './check-auth-runtime.mjs';
+import { checkSchemaRuntime } from './check-schema-runtime.mjs';
 import ts from 'typescript';
 
 await mkdir('dist', { recursive: true });
@@ -14,7 +15,7 @@ await build({
   target: 'es2020',
   outfile: 'dist/Code.js',
   footer: {
-    js: 'function doGet(e) { return Tastory.doGet(e); }\nfunction doPost(e) { return Tastory.doPost(e); }\nfunction setupStaging() { return Tastory.setupStaging(); }\nfunction setupStagingAuth() { return Tastory.setupStagingAuth(); }\nfunction diagnoseStagingAuth() { return Tastory.diagnoseStagingAuth(); }',
+    js: 'function doGet(e) { return Tastory.doGet(e); }\nfunction doPost(e) { return Tastory.doPost(e); }\nfunction setupStaging() { return Tastory.setupStaging(); }\nfunction setupStagingAuth() { return Tastory.setupStagingAuth(); }\nfunction diagnoseStagingAuth() { return Tastory.diagnoseStagingAuth(); }\nfunction planStagingSchema() { return Tastory.planStagingSchema(); }\nfunction setupStagingSchema() { return Tastory.setupStagingSchema(); }',
   },
   legalComments: 'eof',
 });
@@ -110,3 +111,4 @@ if (
   throw new Error('Apps Script bundle staging setup smoke failed.');
 console.log('Apps Script: dist/Code.js, global entrypoints and isolated runtime smoke passed.');
 checkAuthRuntime(code);
+checkSchemaRuntime(code);
