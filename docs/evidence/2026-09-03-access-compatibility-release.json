@@ -1,0 +1,98 @@
+{
+  "formatVersion": 1,
+  "sourceCommit": "5a91e3dd0a34001b739240cb0f8f5af4a1b407a7",
+  "codeSha256": "7eeeecf5ab52dc0f911b96d5add997dd0a7f99057478e1d50ee0c6c61491ec32",
+  "deploymentVersion": 9,
+  "publishedAt": "2026-09-03T14:00:34.343Z",
+  "editorCodeVerified": true,
+  "manifestPreserved": true,
+  "checks": [
+    {
+      "name": "public-health",
+      "passed": true,
+      "attempts": [
+        {
+          "attempt": 1,
+          "passed": true,
+          "elapsedMs": 4068
+        }
+      ]
+    },
+    {
+      "name": "access-list-invalid-credential",
+      "passed": true,
+      "attempts": [
+        {
+          "attempt": 1,
+          "passed": true,
+          "elapsedMs": 3397,
+          "code": "UNAUTHENTICATED"
+        }
+      ]
+    },
+    {
+      "name": "invite-create-invalid-credential",
+      "passed": true,
+      "attempts": [
+        {
+          "attempt": 1,
+          "passed": true,
+          "elapsedMs": 5225,
+          "code": "UNAUTHENTICATED"
+        }
+      ]
+    },
+    {
+      "name": "invite-revoke-invalid-credential",
+      "passed": true,
+      "attempts": [
+        {
+          "attempt": 1,
+          "passed": true,
+          "elapsedMs": 4711,
+          "code": "UNAUTHENTICATED"
+        }
+      ]
+    },
+    {
+      "name": "membership-update-invalid-credential",
+      "passed": true,
+      "attempts": [
+        {
+          "attempt": 1,
+          "passed": true,
+          "elapsedMs": 3152,
+          "code": "UNAUTHENTICATED"
+        }
+      ]
+    },
+    {
+      "name": "access-resume-invalid-credential",
+      "passed": true,
+      "attempts": [
+        {
+          "attempt": 1,
+          "passed": true,
+          "elapsedMs": 3627,
+          "code": "UNAUTHENTICATED"
+        }
+      ]
+    },
+    {
+      "name": "invite-create-missing-credential",
+      "passed": true,
+      "attempts": [
+        {
+          "attempt": 1,
+          "passed": true,
+          "elapsedMs": 4218,
+          "code": "INVALID_REQUEST"
+        }
+      ]
+    }
+  ],
+  "priorJournalInitialization": "owner confirmed journal check and replay working",
+  "realOwnerAccessCheck": "pending invitation and role-change verification by owner",
+  "priorSheetsActivation": "owner confirmed enabled and both accounts working before this release",
+  "checkedAt": "2026-09-03T14:01:37.015Z"
+}
