@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { createHash } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import { runInNewContext } from 'node:vm';
 
 export function checkSchemaRuntime(code) {
@@ -45,6 +45,7 @@ export function checkSchemaRuntime(code) {
     };
   }
   const sandbox = {
+    Session: { getEffectiveUser: () => ({ getEmail: () => 'owner@example.test' }) },
     PropertiesService: {
       getScriptProperties: () => ({ getProperty: (key) => properties[key] ?? null }),
     },
@@ -74,7 +75,7 @@ export function checkSchemaRuntime(code) {
           byte > 127 ? byte - 256 : byte,
         );
       },
-      getUuid: () => 'c3dcd2e8-e2f8-428b-9e26-3e715f678fac',
+      getUuid: randomUUID,
     },
     LockService: {
       getScriptLock: () => ({
@@ -105,10 +106,38 @@ export function checkSchemaRuntime(code) {
   assert.equal(sheets.size, 7); // Six core sheets plus the original sheet.
   assert.equal(sheets.get('SchemaMigrations')[1][2].length, 64);
   assert.equal(sheets.get('Meta').find(([key]) => key === 'schema_version')[1], '1');
+  properties.STAGING_INVITES = JSON.stringify([
+    { email: 'owner@example.test', role: 'owner', expiresAt: '2027-01-01T00:00:00Z' },
+    { email: 'viewer@example.test', role: 'viewer', expiresAt: '2027-01-01T00:00:00Z' },
+  ]);
+  properties.STAGING_AUTH_BINDINGS = JSON.stringify([
+    { email: 'owner@example.test', sub: 'private-owner', joinedAt: '2026-09-02T10:00:00Z' },
+    { email: 'viewer@example.test', sub: 'private-viewer', joinedAt: '2026-09-02T10:00:00Z' },
+  ]);
+  const propertiesBefore = JSON.stringify(properties);
+  const writesBeforePlan = writes;
+  const usersPlan = sandbox.planStagingUsers();
+  assert.equal(usersPlan.ok, true);
+  assert.equal(usersPlan.pendingRows, 7);
+  assert.equal(writes, writesBeforePlan);
+  const imported = sandbox.setupStagingUsers();
+  assert.equal(imported.ok, true);
+  assert.equal(imported.result, 'applied');
+  assert.equal(imported.roles.owner, 1);
+  assert.equal(imported.roles.viewer, 1);
+  assert.equal(JSON.stringify(imported).includes('private'), false);
+  assert.equal(sheets.get('Meta').find(([key]) => key === 'data_revision')[1], '1');
   const before = JSON.stringify([...sheets]);
   const beforeWrites = writes;
   assert.equal(sandbox.setupStagingSchema().result, 'already-applied');
-  for (const action of ['planStagingSchema', 'setupStagingSchema']) {
+  assert.equal(sandbox.setupStagingUsers().result, 'already-applied');
+  assert.equal(JSON.stringify(properties), propertiesBefore);
+  for (const action of [
+    'planStagingSchema',
+    'setupStagingSchema',
+    'planStagingUsers',
+    'setupStagingUsers',
+  ]) {
     const response = JSON.parse(
       sandbox.doPost({
         postData: {
@@ -127,6 +156,6 @@ export function checkSchemaRuntime(code) {
   assert.equal(writes, beforeWrites);
   assert.equal(held, false);
   console.log(
-    'Apps Script: schema plan/apply/repeat and HTTP isolation passed in compiled runtime.',
+    'Apps Script: schema and identity plan/apply/repeat, preserved auth registry and HTTP isolation passed in compiled runtime.',
   );
 }

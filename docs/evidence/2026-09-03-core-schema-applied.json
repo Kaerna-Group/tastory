@@ -1,0 +1,121 @@
+{
+  "formatVersion": 1,
+  "source": "User-provided Apps Script execution logs",
+  "reportedDate": "2026-09-03",
+  "reportedTimezone": "Europe/Simferopol",
+  "runs": [
+    {
+      "reportedLocalTime": "13:31:48",
+      "report": {
+        "ok": true,
+        "mode": "plan",
+        "fromVersion": 0,
+        "toVersion": 1,
+        "migrationId": "001-core-schema",
+        "actions": [
+          {
+            "table": "Meta",
+            "action": "create"
+          },
+          {
+            "table": "SchemaMigrations",
+            "action": "create"
+          },
+          {
+            "table": "Users",
+            "action": "create"
+          },
+          {
+            "table": "Invites",
+            "action": "create"
+          },
+          {
+            "table": "Workspaces",
+            "action": "create"
+          },
+          {
+            "table": "WorkspaceMembers",
+            "action": "create"
+          }
+        ],
+        "alreadyApplied": false
+      }
+    },
+    {
+      "reportedLocalTime": "13:32:38",
+      "report": {
+        "ok": true,
+        "mode": "apply",
+        "fromVersion": 0,
+        "toVersion": 1,
+        "migrationId": "001-core-schema",
+        "actions": [
+          {
+            "table": "Meta",
+            "action": "create"
+          },
+          {
+            "table": "SchemaMigrations",
+            "action": "create"
+          },
+          {
+            "table": "Users",
+            "action": "create"
+          },
+          {
+            "table": "Invites",
+            "action": "create"
+          },
+          {
+            "table": "Workspaces",
+            "action": "create"
+          },
+          {
+            "table": "WorkspaceMembers",
+            "action": "create"
+          }
+        ],
+        "alreadyApplied": false,
+        "result": "applied"
+      }
+    },
+    {
+      "reportedLocalTime": "13:33:45",
+      "report": {
+        "ok": true,
+        "mode": "apply",
+        "fromVersion": 1,
+        "toVersion": 1,
+        "migrationId": "001-core-schema",
+        "actions": [
+          {
+            "table": "Meta",
+            "action": "keep"
+          },
+          {
+            "table": "SchemaMigrations",
+            "action": "keep"
+          },
+          {
+            "table": "Users",
+            "action": "keep"
+          },
+          {
+            "table": "Invites",
+            "action": "keep"
+          },
+          {
+            "table": "Workspaces",
+            "action": "keep"
+          },
+          {
+            "table": "WorkspaceMembers",
+            "action": "keep"
+          }
+        ],
+        "alreadyApplied": true,
+        "result": "already-applied"
+      }
+    }
+  ]
+}
