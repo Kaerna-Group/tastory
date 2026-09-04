@@ -1793,9 +1793,10 @@ h2 {
     width: 100%;
   }
   .help-button {
-    right: auto;
-    bottom: 12px;
-    left: 12px;
+    position: static;
+    display: block;
+    width: fit-content;
+    margin: 18px auto 24px;
   }
   .dialog-backdrop {
     place-items: end center;
