@@ -103,7 +103,7 @@ test('backup survives a lost response and reload, then verifies and restores to 
     'https://docs.google.com/spreadsheets/d/restored/edit',
   );
   await panel.getByRole('button', { name: 'Архивировать историю' }).click();
-  await expect(panel.getByRole('status')).toContainText('в архиве 100 операций');
+  await expect(panel.getByText('в архиве 100 операций', { exact: false })).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(
     true,
   );

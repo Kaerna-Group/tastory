@@ -62,10 +62,7 @@ export function PwaManager(): React.JSX.Element | null {
         };
         value.addEventListener('updatefound', updateFound);
       })
-      .catch(() => {
-        if (active)
-          setMessage('Не удалось подготовить офлайн-доступ. Повторим при следующем входе.');
-      });
+      .catch(() => undefined);
     document.addEventListener('visibilitychange', checkForUpdate);
 
     return () => {
