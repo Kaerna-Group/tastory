@@ -19,7 +19,7 @@ export default [
   },
   js.configs.recommended,
   ...tseslint.configs.recommended,
-  { files: ['**/*.mjs'], languageOptions: { globals: globals.node } },
+  { files: ['**/*.{cjs,mjs}'], languageOptions: { globals: globals.node } },
   {
     files: ['**/*.{ts,tsx}'],
     rules: {

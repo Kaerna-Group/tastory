@@ -2,6 +2,9 @@ import { z } from 'zod';
 import { adminUsersDataSchema, adminHealthDataSchema } from './admin';
 import { journalDataSchema } from './journal';
 import { accessCommandSchema, accessDataSchema } from './access';
+import { recipeCommandSchema, recipeDataSchema } from './recipe-api';
+import { backupCommandSchema, backupDataSchema } from './backup';
+import { userSettingsCommandSchema, userSettingsDataSchema } from './user-settings';
 import { photoUploadSchema, photoDataSchema } from './photo';
 import {
   concurrencyReadSchema,
@@ -19,7 +22,11 @@ const requestFields = {
 const accessFields = { ...requestFields, credential: z.string().min(1).max(6144) };
 
 export const apiRequestSchema = z.discriminatedUnion('action', [
+  userSettingsCommandSchema.options[0].extend(accessFields),
+  userSettingsCommandSchema.options[1].extend(accessFields),
   accessCommandSchema.options[0].extend(accessFields),
+  ...backupCommandSchema.options.map((command) => command.extend(accessFields)),
+  ...recipeCommandSchema.options.map((command) => command.extend(accessFields)),
   accessCommandSchema.options[1].extend(accessFields),
   accessCommandSchema.options[2].extend(accessFields),
   accessCommandSchema.options[3].extend(accessFields),
@@ -116,6 +123,7 @@ export const apiErrorSchema = z.strictObject({
       'UNAUTHENTICATED',
       'ACCESS_DENIED',
       'AUTH_UNAVAILABLE',
+      'RATE_LIMITED',
       'PHOTO_INVALID',
       'PHOTO_EXISTS',
       'PHOTO_UNAVAILABLE',
@@ -132,6 +140,23 @@ export const apiErrorSchema = z.strictObject({
       'ACCESS_LIMIT',
       'ACCESS_INVALID',
       'ACCESS_UNAVAILABLE',
+      'RECIPE_NOT_READY',
+      'RECIPE_INVALID',
+      'RECIPE_UNAVAILABLE',
+      'RECIPE_CONFLICT',
+      'RECIPE_PENDING',
+      'RECIPE_LIMIT',
+      'RECIPE_CANCELLED',
+      'BACKUP_UNAVAILABLE',
+      'BACKUP_INVALID',
+      'BACKUP_PENDING',
+      'BACKUP_LIMIT',
+      'FILE_UNAVAILABLE',
+      'FILE_CONFLICT',
+      'FILE_LIMIT',
+      'SETTINGS_NOT_READY',
+      'SETTINGS_CONFLICT',
+      'SETTINGS_UNAVAILABLE',
     ]),
     message: z.string(),
   }),
@@ -148,7 +173,7 @@ export const healthDataSchema = z.strictObject({
   deploymentVersion: z.string().min(1),
   timestamp: z.iso.datetime(),
   storage: z.literal('not-configured'),
-  auth: z.enum(['not-configured', 'staging']),
+  auth: z.enum(['not-configured', 'staging', 'production']),
 });
 
 export const healthResponseSchema = z.union([
@@ -260,3 +285,33 @@ export const accessResponseSchema = z.union([
   apiErrorSchema,
 ]);
 export type AccessResponse = z.infer<typeof accessResponseSchema>;
+export const recipeResponseSchema = z.union([
+  z.strictObject({
+    ok: z.literal(true),
+    requestId: z.uuid(),
+    data: recipeDataSchema,
+    meta: responseMetaSchema,
+  }),
+  apiErrorSchema,
+]);
+export type RecipeResponse = z.infer<typeof recipeResponseSchema>;
+export const backupResponseSchema = z.union([
+  z.strictObject({
+    ok: z.literal(true),
+    requestId: z.uuid(),
+    data: backupDataSchema,
+    meta: responseMetaSchema,
+  }),
+  apiErrorSchema,
+]);
+export type BackupResponse = z.infer<typeof backupResponseSchema>;
+export const userSettingsResponseSchema = z.union([
+  z.strictObject({
+    ok: z.literal(true),
+    requestId: z.uuid(),
+    data: userSettingsDataSchema,
+    meta: responseMetaSchema,
+  }),
+  apiErrorSchema,
+]);
+export type UserSettingsResponse = z.infer<typeof userSettingsResponseSchema>;

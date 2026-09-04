@@ -67,8 +67,21 @@ describe('protected API routes', () => {
     expect(
       handleRequest(
         { apiVersion: 1, requestId, action: 'health', payload: {} },
-        { ...context, isAuthConfigured: true },
+        { ...context, authEnvironment: 'staging' },
       ),
     ).toMatchObject({ data: { auth: 'staging' } });
+  });
+  it('reports production auth and rejects an admitted request before authentication', () => {
+    expect(
+      handleRequest(
+        { apiVersion: 1, requestId, action: 'health', payload: {} },
+        { ...context, authEnvironment: 'production' },
+      ),
+    ).toMatchObject({ data: { auth: 'production' } });
+    const authenticate = vi.fn();
+    expect(
+      handleRequest(request, { ...context, admitRequest: () => false, authenticate }),
+    ).toMatchObject({ error: { code: 'RATE_LIMITED' } });
+    expect(authenticate).not.toHaveBeenCalled();
   });
 });

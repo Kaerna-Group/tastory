@@ -42,7 +42,14 @@ const claimsSchema = z.object({
   nbf: z.number().int().positive().optional(),
   email: z.email().max(254),
   email_verified: z.literal(true),
-  hd: z.string().min(1).optional(),
+  hd: z
+    .string()
+    .min(1)
+    .max(253)
+    .regex(
+      /^(?=.{1,253}$)(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/i,
+    )
+    .optional(),
   name: z.string().max(200).optional(),
 });
 export type GoogleIdentity = Readonly<{

@@ -33,7 +33,7 @@ test('access recording follows actual auth outcomes across logout and downloads 
         deploymentVersion: 'fixture',
         timestamp: new Date().toISOString(),
         storage: 'not-configured',
-        auth: 'staging',
+        auth: 'production',
       };
     else if (request.action.startsWith('spike.photo.'))
       data = { photo: null, thumbnailBase64: null };
@@ -125,7 +125,7 @@ test('access recording follows actual auth outcomes across logout and downloads 
       .every((event) => Boolean(event.requestId)),
   ).toBe(true);
   expect(report.finishedAt).not.toBeNull();
-  expect(report.origin).toBe('http://127.0.0.1:4188');
+  expect(report.origin).toBe(new URL(page.url()).origin);
   expect(text).not.toMatch(/private-|@gmail.com|synthetic-|Тестовый|credential/);
   expect(download.suggestedFilename()).toMatch(/^tastory-access-[\w-]+\.json$/);
   await expect(account.getByRole('button', { name: 'Начать проверку', exact: true })).toBeEnabled();

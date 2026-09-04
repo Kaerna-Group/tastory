@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { getSession, subscribeSession, requestSessionPhoto } from '@/entities/session';
-import { preparePhoto } from '../model/prepare-photo';
+import { preparePhoto } from '@/shared/api';
 import { env } from '@/shared/config';
-import type { PreparedPhoto } from '../model/prepare-photo';
+import type { PreparedPhoto } from '@/shared/api';
 
 type Saved = Awaited<ReturnType<typeof requestSessionPhoto>>;
 const size = (bytes: number) => `${(bytes / 1024).toFixed(1)} КБ`;

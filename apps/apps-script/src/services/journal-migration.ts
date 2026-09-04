@@ -7,6 +7,16 @@ import {
 } from '../schema/journal-schema';
 import type { JournalTableName } from '../schema/journal-schema';
 import { JournalError } from './journal-error';
+import {
+  LEGACY_RECIPE_MIGRATION_ID,
+  LEGACY_RECIPE_MIGRATION_NAME,
+  PHOTO_RECIPE_MIGRATION_ID,
+  PHOTO_RECIPE_MIGRATION_NAME,
+  RECIPE_MIGRATION_ID,
+  RECIPE_MIGRATION_NAME,
+  SETTINGS_RECIPE_MIGRATION_ID,
+  SETTINGS_RECIPE_MIGRATION_NAME,
+} from '../schema/recipe-schema';
 
 export type JournalStore = {
   core: SchemaStore;
@@ -17,6 +27,10 @@ export type JournalStore = {
 };
 export type JournalMigrationOptions = MigrationOptions & {
   journalChecksum: string;
+  recipeChecksum?: string;
+  legacyRecipeChecksum?: string;
+  photoRecipeChecksum?: string;
+  settingsRecipeChecksum?: string;
   beforeWrite?: () => void;
 };
 
@@ -25,7 +39,67 @@ export function planJournalSchema(store: JournalStore, options: JournalMigration
   const meta = store.core.read('Meta');
   const log = store.core.read('SchemaMigrations');
   const version = meta?.rows.find((row) => row[0] === 'schema_version')?.[1];
-  if (!meta || !log || (version !== '1' && version !== '2')) throw new JournalError();
+  if (!meta || !log || !['1', '2', '3', '4', '5', '6'].includes(version ?? ''))
+    throw new JournalError();
+  const legacyRecipeRecords = log.rows.filter((row) => row[0] === LEGACY_RECIPE_MIGRATION_ID);
+  const legacyRecipeRecord = legacyRecipeRecords[0];
+  const recipeRecords = log.rows.filter((row) => row[0] === RECIPE_MIGRATION_ID);
+  const recipeRecord = recipeRecords[0];
+  const photoRecipeRecords = log.rows.filter((row) => row[0] === PHOTO_RECIPE_MIGRATION_ID);
+  const photoRecipeRecord = photoRecipeRecords[0];
+  const settingsRecipeRecords = log.rows.filter((row) => row[0] === SETTINGS_RECIPE_MIGRATION_ID);
+  const settingsRecipeRecord = settingsRecipeRecords[0];
+  if (
+    legacyRecipeRecords.length > 1 ||
+    photoRecipeRecords.length > 1 ||
+    recipeRecords.length > 1 ||
+    settingsRecipeRecords.length > 1 ||
+    (version === '3' && !legacyRecipeRecord) ||
+    (version === '4' && (!legacyRecipeRecord || !photoRecipeRecord)) ||
+    (version === '5' && (!legacyRecipeRecord || !photoRecipeRecord || !recipeRecord)) ||
+    (version === '6' &&
+      (!legacyRecipeRecord || !photoRecipeRecord || !recipeRecord || !settingsRecipeRecord)) ||
+    (legacyRecipeRecord &&
+      (version === '1' ||
+        legacyRecipeRecord.length !== 6 ||
+        legacyRecipeRecord[1] !== LEGACY_RECIPE_MIGRATION_NAME ||
+        !/^[a-f0-9]{64}$/.test(options.legacyRecipeChecksum ?? '') ||
+        legacyRecipeRecord[2] !== options.legacyRecipeChecksum ||
+        !/^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d(?:\.\d{3})?Z$/.test(legacyRecipeRecord[3] ?? '') ||
+        !Number.isFinite(Date.parse(legacyRecipeRecord[3] ?? '')) ||
+        legacyRecipeRecord[4] !== 'system:setupRecipes' ||
+        legacyRecipeRecord[5] !== 'applied')) ||
+    (photoRecipeRecord &&
+      (version === '1' ||
+        photoRecipeRecord.length !== 6 ||
+        photoRecipeRecord[1] !== PHOTO_RECIPE_MIGRATION_NAME ||
+        !/^[a-f0-9]{64}$/.test(options.photoRecipeChecksum ?? '') ||
+        photoRecipeRecord[2] !== options.photoRecipeChecksum ||
+        !/^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d(?:\.\d{3})?Z$/.test(photoRecipeRecord[3] ?? '') ||
+        !Number.isFinite(Date.parse(photoRecipeRecord[3] ?? '')) ||
+        photoRecipeRecord[4] !== 'system:setupRecipes' ||
+        photoRecipeRecord[5] !== 'applied')) ||
+    (recipeRecord &&
+      (version === '1' ||
+        recipeRecord.length !== 6 ||
+        recipeRecord[1] !== RECIPE_MIGRATION_NAME ||
+        !/^[a-f0-9]{64}$/.test(options.recipeChecksum ?? '') ||
+        recipeRecord[2] !== options.recipeChecksum ||
+        !/^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d(?:\.\d{3})?Z$/.test(recipeRecord[3] ?? '') ||
+        !Number.isFinite(Date.parse(recipeRecord[3] ?? '')) ||
+        recipeRecord[4] !== 'system:setupRecipes' ||
+        recipeRecord[5] !== 'applied')) ||
+    (settingsRecipeRecord &&
+      (settingsRecipeRecord.length !== 6 ||
+        settingsRecipeRecord[1] !== SETTINGS_RECIPE_MIGRATION_NAME ||
+        !/^[a-f0-9]{64}$/.test(options.settingsRecipeChecksum ?? '') ||
+        settingsRecipeRecord[2] !== options.settingsRecipeChecksum ||
+        !/^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d(?:\.\d{3})?Z$/.test(settingsRecipeRecord[3] ?? '') ||
+        !Number.isFinite(Date.parse(settingsRecipeRecord[3] ?? '')) ||
+        settingsRecipeRecord[4] !== 'system:setupRecipes' ||
+        settingsRecipeRecord[5] !== 'applied'))
+  )
+    throw new JournalError();
   if (meta.rows.find((row) => row[0] === 'maintenance_mode')?.[1] !== 'false')
     throw new JournalError();
   const records = log.rows.filter((row) => row[0] === JOURNAL_MIGRATION_ID);
@@ -55,8 +129,15 @@ export function planJournalSchema(store: JournalStore, options: JournalMigration
           ),
         };
       if (name === 'SchemaMigrations') {
-        const rows = log.rows.filter((row) => row[0] !== JOURNAL_MIGRATION_ID);
-        return { ...log, rows, rowCount: rows.length + 1 };
+        const known = log.rows.filter(
+          (row) =>
+            row[0] !== JOURNAL_MIGRATION_ID &&
+            row[0] !== RECIPE_MIGRATION_ID &&
+            row[0] !== PHOTO_RECIPE_MIGRATION_ID &&
+            row[0] !== LEGACY_RECIPE_MIGRATION_ID &&
+            row[0] !== SETTINGS_RECIPE_MIGRATION_ID,
+        );
+        return { ...log, rows: known, rowCount: known.length + 1 };
       }
       return store.core.read(name);
     },
@@ -75,15 +156,15 @@ export function planJournalSchema(store: JournalStore, options: JournalMigration
     if (version === '1' && !record && table.rowCount > 1) throw new JournalError();
     return { table: name, action: 'keep' as const };
   });
-  if ((version === '2' || record) && actions.some(({ action }) => action !== 'keep'))
+  if ((version !== '1' || record) && actions.some(({ action }) => action !== 'keep'))
     throw new JournalError();
-  if (version === '2' && !record) throw new JournalError();
+  if (version !== '1' && !record) throw new JournalError();
   return {
     fromVersion: Number(version),
     toVersion: 2 as const,
     migrationId: JOURNAL_MIGRATION_ID,
     actions,
-    alreadyApplied: version === '2',
+    alreadyApplied: version !== '1',
   };
 }
 

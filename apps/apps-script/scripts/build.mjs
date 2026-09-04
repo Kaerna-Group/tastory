@@ -15,7 +15,7 @@ await build({
   target: 'es2020',
   outfile: 'dist/Code.js',
   footer: {
-    js: 'function doGet(e) { return Tastory.doGet(e); }\nfunction doPost(e) { return Tastory.doPost(e); }\nfunction setupStaging() { return Tastory.setupStaging(); }\nfunction setupStagingAuth() { return Tastory.setupStagingAuth(); }\nfunction diagnoseStagingAuth() { return Tastory.diagnoseStagingAuth(); }\nfunction planStagingSchema() { return Tastory.planStagingSchema(); }\nfunction setupStagingSchema() { return Tastory.setupStagingSchema(); }\nfunction planStagingUsers() { return Tastory.planStagingUsers(); }\nfunction setupStagingUsers() { return Tastory.setupStagingUsers(); }\nfunction activateStagingSheetsAuth() { return Tastory.activateStagingSheetsAuth(); }',
+    js: 'function doGet(e) { return Tastory.doGet(e); }\nfunction doPost(e) { return Tastory.doPost(e); }\nfunction setupStaging() { return Tastory.setupStaging(); }\nfunction setupStagingAuth() { return Tastory.setupStagingAuth(); }\nfunction diagnoseStagingAuth() { return Tastory.diagnoseStagingAuth(); }\nfunction planStagingSchema() { return Tastory.planStagingSchema(); }\nfunction setupStagingSchema() { return Tastory.setupStagingSchema(); }\nfunction planStagingUsers() { return Tastory.planStagingUsers(); }\nfunction setupStagingUsers() { return Tastory.setupStagingUsers(); }\nfunction activateStagingSheetsAuth() { return Tastory.activateStagingSheetsAuth(); }\nfunction recoverBookBackup() { return Tastory.recoverBookBackup(); }',
   },
   legalComments: 'eof',
 });

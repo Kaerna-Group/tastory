@@ -8,6 +8,7 @@ import type { JournalOperation } from '../services/operation-journal';
 import { JournalError } from '../services/journal-error';
 import { createJournalStore } from './journal-store';
 import { journalMigrationOptions, sha256 } from './current-schema';
+import { runtimeEnvironment } from './runtime-environment';
 
 export function operationJournal(
   action: JournalAction,
@@ -32,7 +33,7 @@ export function operationJournal(
       JSON.parse(properties.getProperty(SHEETS_AUTH_CONFIG_KEY) ?? 'null'),
     );
     if (
-      properties.getProperty('APP_ENV') !== 'staging' ||
+      !runtimeEnvironment(properties.getProperty('APP_ENV')) ||
       !spreadsheetId ||
       !driveRootId ||
       !config.success
@@ -65,7 +66,11 @@ export function operationJournal(
       assertLive();
       applyJournalSchema(store, options);
       assertLive();
-      return { kind: 'initialized', schemaVersion: 2, alreadyApplied: plan.alreadyApplied };
+      return {
+        kind: 'initialized',
+        schemaVersion: plan.fromVersion === 3 ? 3 : 2,
+        alreadyApplied: plan.alreadyApplied,
+      };
     }
     if (action === 'admin.operations.list') {
       const state = plan.alreadyApplied ? readJournal(store) : { operations: [], audit: [] };
@@ -81,7 +86,7 @@ export function operationJournal(
       return {
         kind: 'list',
         ready: plan.alreadyApplied,
-        schemaVersion: plan.alreadyApplied ? 2 : 1,
+        schemaVersion: plan.fromVersion === 3 ? 3 : plan.alreadyApplied ? 2 : 1,
         checkedAt: new Date().toISOString(),
         total: operations.length,
         entries,

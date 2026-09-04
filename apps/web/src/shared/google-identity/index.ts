@@ -5,6 +5,7 @@ type IdentityApi = {
     auto_select: false;
     ux_mode: 'popup';
     itp_support: true;
+    use_fedcm_for_button: true;
   }) => void;
   renderButton: (
     element: HTMLElement,
@@ -40,6 +41,7 @@ export function listenGoogleCredential(
       auto_select: false,
       ux_mode: 'popup',
       itp_support: true,
+      use_fedcm_for_button: true,
       callback: ({ credential }) => credentialListener?.(credential),
     });
     initialized = true;

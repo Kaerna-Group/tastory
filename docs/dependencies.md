@@ -27,7 +27,7 @@ React Hook Form, Tiptap, dnd-kit, Lucide и PWA-плагины пока не н�
 
 ## Обновление
 
-Выбор RSA-проверки для staging, ограничения и условие production review: [ADR 0004](adr/0004-staging-google-auth.md). В браузер криптографическая библиотека не включается.
+Выбор RSA-проверки для staging описан в [ADR 0004](adr/0004-staging-google-auth.md), принятое ограниченное production-решение — в [ADR 0005](adr/0005-production-google-auth.md). В браузер криптографическая библиотека не включается.
 
 1. Проверить release notes, совместимость Node и peer dependencies.
 2. Проверить лицензию новой зависимости.

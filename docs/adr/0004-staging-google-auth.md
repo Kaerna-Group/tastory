@@ -1,6 +1,6 @@
 # ADR 0004: проверка Google ID token в Apps Script staging
 
-Дата: 2026-09-03. Статус: **эксперимент для staging; production-решение не принято**.
+Дата: 2026-09-03. Статус: **эксперимент для staging; production-часть заменена [ADR 0005](0005-production-google-auth.md)**.
 
 ## Контекст
 

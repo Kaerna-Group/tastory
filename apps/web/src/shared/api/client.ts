@@ -8,6 +8,9 @@ import {
   adminHealthResponseSchema,
   journalResponseSchema,
   accessResponseSchema,
+  recipeResponseSchema,
+  backupResponseSchema,
+  userSettingsResponseSchema,
 } from '@tastory/contracts';
 import type {
   ApiRequest,
@@ -24,6 +27,12 @@ import type {
   JournalData,
   AccessCommand,
   AccessData,
+  RecipeCommand,
+  RecipeData,
+  BackupCommand,
+  BackupData,
+  UserSettingsCommand,
+  UserSettingsData,
 } from '@tastory/contracts';
 
 export type ApiTransport = (request: ApiRequest, signal?: AbortSignal) => Promise<unknown>;
@@ -46,6 +55,24 @@ export function createApiClient(
   createRequestId: () => string = () => crypto.randomUUID(),
 ): {
   health: (signal?: AbortSignal) => Promise<HealthData>;
+  settings: (
+    command: UserSettingsCommand,
+    credential: string,
+    requestId: string,
+    signal?: AbortSignal,
+  ) => Promise<UserSettingsData>;
+  backups: (
+    command: BackupCommand,
+    credential: string,
+    requestId: string,
+    signal?: AbortSignal,
+  ) => Promise<BackupData>;
+  recipes: (
+    command: RecipeCommand,
+    credential: string,
+    requestId: string,
+    signal?: AbortSignal,
+  ) => Promise<RecipeData>;
   access: (
     command: AccessCommand,
     credential: string,
@@ -73,6 +100,162 @@ export function createApiClient(
   ) => Promise<AuthResult>;
 } {
   return {
+    async settings(command, credential, requestId, signal) {
+      const raw = await transport(
+        { ...command, apiVersion: API_VERSION, requestId, credential },
+        signal,
+      );
+      const parsed = userSettingsResponseSchema.safeParse(raw);
+      if (
+        !parsed.success ||
+        parsed.data.requestId !== requestId ||
+        (parsed.data.ok &&
+          (parsed.data.data.kind !== 'userSettings' ||
+            (command.action === 'user.settings.get'
+              ? parsed.data.data.outcome !== 'read'
+              : parsed.data.data.outcome === 'read')))
+      )
+        throw new ApiClientError(
+          'INVALID_RESPONSE',
+          'Сервер вернул несовместимый ответ.',
+          requestId,
+        );
+      if (!parsed.data.ok)
+        throw new ApiClientError(parsed.data.error.code, parsed.data.error.message, requestId);
+      return parsed.data.data;
+    },
+    async backups(command, credential, requestId, signal) {
+      const raw = await transport(
+        { ...command, apiVersion: API_VERSION, requestId, credential },
+        signal,
+      );
+      const parsed = backupResponseSchema.safeParse(raw);
+      const expectedKind =
+        command.action === 'admin.backups.list'
+          ? 'backups'
+          : command.action === 'admin.backups.restore'
+            ? 'restored'
+            : 'backup';
+      const backupId =
+        command.action === 'admin.backups.create'
+          ? requestId
+          : 'backupId' in command.payload
+            ? command.payload.backupId
+            : null;
+      if (
+        !parsed.success ||
+        parsed.data.requestId !== requestId ||
+        (parsed.data.ok &&
+          (parsed.data.data.kind !== expectedKind ||
+            (parsed.data.data.kind !== 'backups' && parsed.data.data.backup.id !== backupId)))
+      )
+        throw new ApiClientError(
+          'INVALID_RESPONSE',
+          'Сервер вернул несовместимый ответ.',
+          requestId,
+        );
+      if (!parsed.data.ok)
+        throw new ApiClientError(parsed.data.error.code, parsed.data.error.message, requestId);
+      return parsed.data.data;
+    },
+    async recipes(command, credential, requestId, signal) {
+      const raw = await transport(
+        { ...command, apiVersion: API_VERSION, requestId, credential },
+        signal,
+      );
+      const parsed = recipeResponseSchema.safeParse(raw);
+      const expectedKind = {
+        'recipes.history': 'history',
+        'admin.files.audit': 'files',
+        'admin.files.trash': 'files',
+        'admin.files.trashUnused': 'files',
+        'admin.files.restore': 'files',
+        'admin.files.cleanup': 'files',
+        'recipes.version': 'recipe',
+        'recipes.version.restore': 'saved',
+        'admin.recipes.archiveHistory': 'archivedHistory',
+        'recipes.list': 'recipes',
+        'recipes.favorite.set': 'favorite',
+        'recipes.get': 'recipe',
+        'recipes.photos.read': 'photo',
+        'tags.list': 'tags',
+        'recipes.operations.list': 'operations',
+        'admin.recipes.initialize': 'initialized',
+        'recipes.create': 'saved',
+        'recipes.updateContent': 'saved',
+        'recipes.archive': 'saved',
+        'recipes.restore': 'saved',
+        'recipes.photos.add': 'saved',
+        'recipes.photos.delete': 'saved',
+        'tags.create': 'saved',
+        'recipes.operations.resume': 'saved',
+        'recipes.operations.cancel': 'saved',
+      }[command.action];
+      const operationId =
+        command.action === 'recipes.operations.resume' ||
+        command.action === 'recipes.operations.cancel'
+          ? command.payload.operationId
+          : requestId;
+      const expectedEntityType =
+        command.action === 'tags.create'
+          ? 'tag'
+          : [
+                'recipes.create',
+                'recipes.updateContent',
+                'recipes.archive',
+                'recipes.restore',
+                'recipes.version.restore',
+                'recipes.photos.add',
+                'recipes.photos.delete',
+              ].includes(command.action)
+            ? 'recipe'
+            : null;
+      if (
+        !parsed.success ||
+        parsed.data.requestId !== requestId ||
+        (parsed.data.ok &&
+          (parsed.data.data.kind !== expectedKind ||
+            (parsed.data.data.kind === 'saved' &&
+              (parsed.data.data.operationId !== operationId ||
+                (expectedEntityType !== null &&
+                  parsed.data.data.entityType !== expectedEntityType) ||
+                (command.action === 'recipes.operations.cancel'
+                  ? parsed.data.data.outcome !== 'cancelled'
+                  : parsed.data.data.outcome === 'cancelled') ||
+                ((command.action === 'recipes.updateContent' ||
+                  command.action === 'recipes.archive' ||
+                  command.action === 'recipes.restore' ||
+                  command.action === 'recipes.version.restore' ||
+                  command.action === 'recipes.photos.add' ||
+                  command.action === 'recipes.photos.delete') &&
+                  parsed.data.data.entityId !== command.payload.recipeId))) ||
+            (parsed.data.data.kind === 'recipe' &&
+              (command.action === 'recipes.get' || command.action === 'recipes.version') &&
+              (parsed.data.data.aggregate.recipe.id !== command.payload.recipeId ||
+                (command.action === 'recipes.version' &&
+                  parsed.data.data.aggregate.recipe.revision !== command.payload.revision))) ||
+            (parsed.data.data.kind === 'history' &&
+              command.action === 'recipes.history' &&
+              parsed.data.data.recipeId !== command.payload.recipeId) ||
+            (parsed.data.data.kind === 'favorite' &&
+              command.action === 'recipes.favorite.set' &&
+              (parsed.data.data.recipeId !== command.payload.recipeId ||
+                parsed.data.data.favorite !== command.payload.favorite)) ||
+            (parsed.data.data.kind === 'photo' &&
+              command.action === 'recipes.photos.read' &&
+              (parsed.data.data.photo.id !== command.payload.photoId ||
+                parsed.data.data.photo.recipeId !== command.payload.recipeId ||
+                parsed.data.data.variant !== command.payload.variant))))
+      )
+        throw new ApiClientError(
+          'INVALID_RESPONSE',
+          'Сервер вернул несовместимый ответ.',
+          requestId,
+        );
+      if (!parsed.data.ok)
+        throw new ApiClientError(parsed.data.error.code, parsed.data.error.message, requestId);
+      return parsed.data.data;
+    },
     async access(command, credential, requestId, signal) {
       const raw = await transport(
         { ...command, apiVersion: API_VERSION, requestId, credential },
@@ -232,7 +415,9 @@ export function createHttpTransport(url: string, fetcher: typeof fetch = fetch):
       const timeout = AbortSignal.timeout(
         request.action.startsWith('spike.') ||
           request.action.startsWith('admin.') ||
-          request.action.startsWith('auth.')
+          request.action.startsWith('auth.') ||
+          request.action.startsWith('recipes.') ||
+          request.action.startsWith('tags.')
           ? 60_000
           : 15_000,
       );

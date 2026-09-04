@@ -1,6 +1,12 @@
 import { expect, test } from '@playwright/test';
 const googleFixture = `window.google = { accounts: { id: {
-  initialize(options) { this.callback = options.callback; },
+  initialize(options) {
+    window.__googleInit = {
+      auto_select: options.auto_select, ux_mode: options.ux_mode,
+      itp_support: options.itp_support, use_fedcm_for_button: options.use_fedcm_for_button
+    };
+    this.callback = options.callback;
+  },
   renderButton(element) {
     const button = document.createElement('button'); button.textContent = 'Google (тест)';
     button.onclick = () => this.callback({ credential: 'synthetic-test-credential' });
@@ -28,12 +34,12 @@ test('sign-in, recheck, revocation, retry and logout with provider fixtures', as
         deploymentVersion: 'fixture',
         timestamp: new Date().toISOString(),
         storage: 'not-configured',
-        auth: 'staging',
+        auth: 'production',
       };
     else if (request.action.startsWith('spike.photo.'))
       data = { photo: null, thumbnailBase64: null };
     else {
-      actions.push(request.action);
+      if (request.action.startsWith('auth.')) actions.push(request.action);
       expect(request.credential).toBe('synthetic-test-credential');
       expect(route.request().headers()['content-type']).toBe('text/plain;charset=utf-8');
       if (revoked) {
@@ -69,6 +75,14 @@ test('sign-in, recheck, revocation, retry and logout with provider fixtures', as
     });
   });
   await page.goto('/#/settings');
+  await expect
+    .poll(() => page.evaluate(() => (window as unknown as { __googleInit?: unknown }).__googleInit))
+    .toEqual({
+      auto_select: false,
+      ux_mode: 'popup',
+      itp_support: true,
+      use_fedcm_for_button: true,
+    });
   const account = page.getByRole('region', { name: 'Ваш аккаунт' });
   await account.getByRole('button', { name: 'Google (тест)' }).click();
   await expect(account.getByText('Тестовый повар')).toBeVisible();

@@ -4,6 +4,7 @@ import { sheetsAuthConfigSchema } from '../auth/workspace-access';
 import { AdminError, listWorkspaceUsers } from '../services/admin-directory';
 import { readWorkspaceDirectory, SHEETS_AUTH_CONFIG_KEY } from './workspace-directory';
 import { inspectCurrentSchema } from './current-schema';
+import { runtimeEnvironment } from './runtime-environment';
 
 export function readAdminDirectory(
   action: AdminAction,
@@ -25,7 +26,7 @@ export function readAdminDirectory(
     const config = sheetsAuthConfigSchema.safeParse(
       JSON.parse(properties.getProperty(SHEETS_AUTH_CONFIG_KEY) ?? 'null'),
     );
-    if (properties.getProperty('APP_ENV') !== 'staging' || !spreadsheetId || !config.success)
+    if (!runtimeEnvironment(properties.getProperty('APP_ENV')) || !spreadsheetId || !config.success)
       throw new AdminError();
     const spreadsheet = SpreadsheetApp.openById(spreadsheetId);
     const directory = readWorkspaceDirectory(spreadsheet);

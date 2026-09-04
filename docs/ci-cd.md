@@ -7,7 +7,7 @@
 1. Checkout и Node из .nvmrc, npm 11.9.0.
 2. npm ci.
 3. npm run check: формат, lint, архитектура/циклы, типы, coverage, обе сборки, bundle budgets.
-4. Установка Chromium и Playwright smoke.
+4. Установка Chromium, Firefox и WebKit; Playwright smoke и production auth fixtures.
 5. Сохранение coverage, отчётов браузера и сборок на 7 дней.
 
 Job имеет read-only доступ к содержимому репозитория; Google credentials ему не нужны. Повторный push отменяет устаревшую проверку той же ветки.

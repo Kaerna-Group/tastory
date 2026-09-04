@@ -440,7 +440,7 @@ describe('protected access endpoint', () => {
       manageAccess({ action: 'admin.access.list', payload: {} }, randomUUID(), ownerSession),
     ).toThrow('ACCESS_UNAVAILABLE');
     state.formulas.clear();
-    state.properties.APP_ENV = 'production';
+    state.properties.APP_ENV = 'invalid';
     expect(() => manageAccess(create(), randomUUID(), ownerSession)).toThrow('ACCESS_UNAVAILABLE');
   });
 });

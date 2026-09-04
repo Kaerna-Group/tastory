@@ -15,15 +15,18 @@ jobs:
       STAGING_URL: https://kaerna-group.github.io/tastory/
       STAGING_API_URL: ${{ vars.STAGING_API_URL }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - name: Configure initial Git branch
+        run: git config --global init.defaultBranch main
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version-file: .nvmrc
+          package-manager-cache: false
       - name: Enable isolated Safari automation on the CI runner
         run: sudo /usr/bin/safaridriver --enable
       - name: Check UI, health and echo in real Safari
         run: node scripts/check-safari-staging.mjs
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: always()
         with:
           name: safari-staging-checks

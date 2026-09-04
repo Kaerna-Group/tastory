@@ -4,6 +4,14 @@ import { planCoreSchema } from '../services/core-migration';
 import { planJournalSchema } from '../services/journal-migration';
 import { JournalError } from '../services/journal-error';
 import { createJournalStore } from './journal-store';
+import {
+  LEGACY_RECIPE_SCHEMA_FINGERPRINT,
+  PHOTO_RECIPE_SCHEMA_FINGERPRINT,
+  RECIPE_SCHEMA_FINGERPRINT,
+  SETTINGS_RECIPE_SCHEMA_FINGERPRINT,
+} from '../schema/recipe-schema';
+import { planRecipeSchema } from '../services/recipe-migration';
+import { createRecipeStore } from './recipe-store';
 
 export function sha256(value: string) {
   return Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, value, Utilities.Charset.UTF_8)
@@ -14,6 +22,10 @@ export function journalMigrationOptions(driveRootId: string) {
   return {
     checksum: sha256(CORE_SCHEMA_FINGERPRINT),
     journalChecksum: sha256(JOURNAL_SCHEMA_FINGERPRINT),
+    recipeChecksum: sha256(RECIPE_SCHEMA_FINGERPRINT),
+    legacyRecipeChecksum: sha256(LEGACY_RECIPE_SCHEMA_FINGERPRINT),
+    photoRecipeChecksum: sha256(PHOTO_RECIPE_SCHEMA_FINGERPRINT),
+    settingsRecipeChecksum: sha256(SETTINGS_RECIPE_SCHEMA_FINGERPRINT),
     driveRootId,
     now: () => new Date(),
   };
@@ -29,5 +41,22 @@ export function inspectCurrentSchema(
     return { schemaVersion: 1 as const, tablesChecked: 6 as const };
   if (version === '2' && planJournalSchema(store, options).alreadyApplied)
     return { schemaVersion: 2 as const, tablesChecked: 8 as const };
+  if (
+    version === '3' &&
+    planRecipeSchema(createRecipeStore(spreadsheet), options).fromVersion === 3
+  )
+    return { schemaVersion: 3 as const, tablesChecked: 14 as const };
+  if (
+    version === '4' &&
+    planRecipeSchema(createRecipeStore(spreadsheet), options).fromVersion === 4
+  )
+    return { schemaVersion: 4 as const, tablesChecked: 15 as const };
+  if (
+    version === '5' &&
+    planRecipeSchema(createRecipeStore(spreadsheet), options).fromVersion === 5
+  )
+    return { schemaVersion: 5 as const, tablesChecked: 16 as const };
+  if (version === '6' && planRecipeSchema(createRecipeStore(spreadsheet), options).alreadyApplied)
+    return { schemaVersion: 6 as const, tablesChecked: 17 as const };
   throw new JournalError();
 }

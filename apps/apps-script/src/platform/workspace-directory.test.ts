@@ -132,6 +132,21 @@ describe('Sheets-backed Google authorization', () => {
     expect(setProperty).not.toHaveBeenCalled();
     expect(releaseLock).toHaveBeenCalledOnce();
   });
+  it('uses a production-only audience and never falls back to staging invitations', () => {
+    properties.APP_ENV = 'production';
+    properties.PRODUCTION_GOOGLE_CLIENT_IDS = 'production.apps.googleusercontent.com';
+    delete properties.GOOGLE_CLIENT_IDS;
+    expect(authenticateGoogle('credential', false).user.role).toBe('viewer');
+    expect(verifier.mock.calls.at(-1)?.[1]).toMatchObject({
+      audiences: ['production.apps.googleusercontent.com'],
+    });
+    delete properties.SHEETS_AUTH_CONFIG;
+    properties.STAGING_INVITES = JSON.stringify([
+      { email: 'viewer@example.test', role: 'viewer', expiresAt: '2050-01-01T00:00:00Z' },
+    ]);
+    expect(() => authenticateGoogle('credential', true)).toThrow('AUTH_NOT_CONFIGURED');
+    expect(getProperty.mock.calls.flat()).not.toContain('STAGING_AUTH_BINDINGS');
+  });
   it('rereads revocation and role changes on the next request without cached membership', () => {
     expect(authenticateGoogle('credential', false).user.role).toBe('viewer');
     row('WorkspaceMembers', 2)[2] = 'member';

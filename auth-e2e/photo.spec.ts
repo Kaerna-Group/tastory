@@ -29,7 +29,7 @@ test('owner optimizes, uploads, reloads private thumbnail and deletes the test p
         deploymentVersion: 'fixture',
         timestamp: new Date().toISOString(),
         storage: 'not-configured',
-        auth: 'staging',
+        auth: 'production',
       };
     else if (request.action === 'auth.signIn' || request.action === 'auth.me')
       data = {

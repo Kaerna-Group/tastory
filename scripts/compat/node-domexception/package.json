@@ -1,0 +1,10 @@
+{
+  "name": "node-domexception",
+  "version": "1.0.0-native.0",
+  "private": true,
+  "description": "Expose the native Node.js DOMException to clasp's fetch-blob dependency.",
+  "main": "index.cjs",
+  "engines": {
+    "node": ">=24.14.0 <25"
+  }
+}

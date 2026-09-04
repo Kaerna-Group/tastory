@@ -22,6 +22,13 @@ export default defineConfig(({ mode }) => {
   ) {
     throw new Error('VITE_API_URL должен указывать на опубликованный Apps Script /exec.');
   }
+  if (
+    mode === 'production' &&
+    (!/^[\w-]+\.apps\.googleusercontent\.com$/.test(env['VITE_GOOGLE_CLIENT_ID'] ?? '') ||
+      env['VITE_GOOGLE_CLIENT_ID']?.includes('REPLACE'))
+  ) {
+    throw new Error('Для production требуется корректный VITE_GOOGLE_CLIENT_ID.');
+  }
   const base = env['VITE_BASE_PATH'] || '/';
   if (!base.startsWith('/') || !base.endsWith('/') || base.includes('..')) {
     throw new Error('VITE_BASE_PATH должен начинаться и заканчиваться /, например /tastory/.');

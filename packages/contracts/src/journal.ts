@@ -27,7 +27,7 @@ export const journalDataSchema = z.discriminatedUnion('kind', [
     .strictObject({
       kind: z.literal('list'),
       ready: z.boolean(),
-      schemaVersion: z.union([z.literal(1), z.literal(2)]),
+      schemaVersion: z.union([z.literal(1), z.literal(2), z.literal(3)]),
       checkedAt: z.iso.datetime(),
       total: z.number().int().min(0).max(1000),
       entries: z.array(journalEntrySchema).max(50),
@@ -36,12 +36,12 @@ export const journalDataSchema = z.discriminatedUnion('kind', [
       (data) =>
         data.total >= data.entries.length &&
         (data.ready
-          ? data.schemaVersion === 2
+          ? data.schemaVersion >= 2
           : data.schemaVersion === 1 && data.total === 0 && data.entries.length === 0),
     ),
   z.strictObject({
     kind: z.literal('initialized'),
-    schemaVersion: z.literal(2),
+    schemaVersion: z.union([z.literal(2), z.literal(3)]),
     alreadyApplied: z.boolean(),
   }),
   z

@@ -54,7 +54,7 @@ async function fixture(page: Page) {
         deploymentVersion: 'fixture',
         timestamp: new Date().toISOString(),
         storage: 'not-configured',
-        auth: 'staging',
+        auth: 'production',
       };
     else if (request.action === 'auth.signIn' || request.action === 'auth.me') {
       const role = request.credential === 'synthetic-owner' ? 'owner' : 'viewer';

@@ -35,24 +35,42 @@ export function fixture() {
     if (count === failAt && failAfter) throw new Error('lost write response');
   };
   const book = {
+    getId: () => 'private-sheet',
+    getUrl: () => 'https://docs.google.com/spreadsheets/d/private-sheet/edit',
+    getSheets(): unknown[] {
+      return [...sheets.keys()].map((name) => book.getSheetByName(name));
+    },
     getSheetByName(name: string) {
       const rows = sheets.get(name);
       if (!rows) return null;
       return {
+        getName: () => name,
+        getMaxColumns: () => 26,
+        insertColumnsAfter: () => mutate(() => {}),
+        getMaxRows: () => Math.max(1000, rows.length),
+        insertRowsAfter: () => mutate(() => {}),
+        deleteRows: (row: number, count: number) =>
+          mutate(() => {
+            rows.splice(row - 1, count);
+          }),
         getLastRow: () => rows.length,
         getLastColumn: () => Math.max(0, ...rows.map((row) => row.length)),
-        getRange(row: number, _column: number, height: number, width: number) {
+        getRange(row: number, column: number, height: number, width: number) {
           const range = {
             getValues: () =>
               Array.from({ length: height }, (_, i) =>
-                Array.from({ length: width }, (_, j) => rows[row - 1 + i]?.[j] ?? ''),
+                Array.from({ length: width }, (_, j) => rows[row - 1 + i]?.[column - 1 + j] ?? ''),
               ),
             getFormulas: () => (formulas.has(name) ? [['=SECRET()']] : []),
             setNumberFormat: () => range,
             setValues: (values: string[][]) => {
               mutate(() => {
                 values.forEach((value, i) => {
-                  rows[row - 1 + i] = [...value];
+                  const target = rows[row - 1 + i] ?? [];
+                  value.forEach((cell, j) => {
+                    target[column - 1 + j] = cell;
+                  });
+                  rows[row - 1 + i] = target;
                 });
               });
               return range;

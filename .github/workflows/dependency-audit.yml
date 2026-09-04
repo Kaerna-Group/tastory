@@ -10,11 +10,14 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - name: Configure initial Git branch
+        run: git config --global init.defaultBranch main
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version-file: .nvmrc
           cache: npm
       - run: npm install --global npm@11.9.0
       - run: npm ci --ignore-scripts
+      - run: npm run check:dependencies
       - run: npm run audit:dependencies

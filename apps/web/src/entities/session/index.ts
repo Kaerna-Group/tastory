@@ -9,6 +9,8 @@ export {
   requestSessionUsers,
   requestSessionHealth,
   requestSessionJournal,
+  requestSessionRecipes,
+  requestSessionSettings,
 } from './model/session-store';
 export type { SessionState } from './model/session-store';
 export {
@@ -20,3 +22,4 @@ export {
 } from './model/access-check';
 export type { AccessEvent, AccessReport } from './model/access-check';
 export { requestSessionAccess } from './model/session-store';
+export { requestSessionBackups } from './model/session-store';

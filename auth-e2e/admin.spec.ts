@@ -3,7 +3,19 @@ import type { Page } from '@playwright/test';
 import { apiRequestSchema } from '../packages/contracts/src/index';
 
 async function fixture(page: Page) {
-  const state = { deny: false, fail: false, adminCalls: 0 };
+  const state = {
+    deny: false,
+    fail: false,
+    adminCalls: 0,
+    files: [
+      {
+        fileId: 'orphan-file',
+        name: 'tastory-recipe-11111111-1111-4111-8111-111111111111-22222222-2222-4222-8222-222222222222-image.jpg',
+        status: 'orphaned' as 'orphaned' | 'trashed',
+        recipeId: null,
+      },
+    ],
+  };
   await page.route('https://accounts.google.com/gsi/client', (route) =>
     route.fulfill({
       contentType: 'text/javascript',
@@ -30,13 +42,46 @@ async function fixture(page: Page) {
         deploymentVersion: 'fixture',
         timestamp: common.checkedAt,
         storage: 'not-configured',
-        auth: 'staging',
+        auth: 'production',
       };
     else if (request.action === 'auth.signIn' || request.action === 'auth.me') {
       const role = request.credential === 'synthetic-owner' ? 'owner' : 'viewer';
       data = {
         user: { id: role, name: 'Повар', email: `${role}@example.test`, role },
         expiresAt: new Date(Date.now() + 3600_000).toISOString(),
+      };
+    } else if (
+      request.action === 'admin.files.audit' ||
+      request.action === 'admin.files.trash' ||
+      request.action === 'admin.files.trashUnused' ||
+      request.action === 'admin.files.restore' ||
+      request.action === 'admin.files.cleanup'
+    ) {
+      expect(request.credential).toBe('synthetic-owner');
+      if (request.action === 'admin.files.trashUnused')
+        state.files.forEach((file) => (file.status = 'trashed'));
+      if (request.action === 'admin.files.trash') {
+        const file = state.files.find((item) => item.fileId === request.payload.fileId);
+        if (file) file.status = 'trashed';
+      }
+      if (request.action === 'admin.files.restore') {
+        const file = state.files.find((item) => item.fileId === request.payload.fileId);
+        if (file) file.status = 'orphaned';
+      }
+      if (request.action === 'admin.files.cleanup')
+        state.files = state.files.filter((file) => file.status !== 'trashed');
+      data = {
+        kind: 'files',
+        checkedAt: common.checkedAt,
+        summary: {
+          healthy: 2,
+          missing: 0,
+          damaged: 0,
+          orphaned: state.files.filter((file) => file.status === 'orphaned').length,
+          unknown: 0,
+          trashed: state.files.filter((file) => file.status === 'trashed').length,
+        },
+        items: state.files,
       };
     } else if (request.action === 'admin.users.list' || request.action === 'admin.health') {
       state.adminCalls += 1;
@@ -131,6 +176,25 @@ test('owner reads participants and schema health, then logout removes the direct
   await expect(panel).toHaveCount(0);
   expect(state.adminCalls).toBe(2);
   await expect(page.getByText('Анна', { exact: true })).toHaveCount(0);
+});
+
+test('owner audits unused files, restores them from the Tastory basket and cleans it', async ({
+  page,
+}) => {
+  await fixture(page);
+  await page.getByRole('button', { name: 'Google owner' }).click();
+  const panel = page.getByRole('region', { name: 'Файлы книги' });
+  await expect(panel).toContainText('не используются: 1');
+  await panel.getByRole('button', { name: 'В корзину все неиспользуемые' }).click();
+  await expect(panel).toContainText('в корзине: 1');
+  await panel.getByRole('button', { name: 'Восстановить' }).click();
+  await expect(panel).toContainText('не используются: 1');
+  await panel.getByRole('button', { name: 'В корзину все неиспользуемые' }).click();
+  await panel.getByRole('button', { name: 'Очистить корзину Tastory' }).click();
+  await expect(panel).toContainText('Автоматическое восстановление после этого станет недоступно');
+  await panel.getByRole('button', { name: 'Очистить корзину', exact: true }).click();
+  await expect(panel).toContainText('в корзине: 0');
+  await expect(panel.getByRole('button', { name: 'Восстановить' })).toHaveCount(0);
 });
 
 test('refresh failure clears stale members and revocation removes the owner panel', async ({

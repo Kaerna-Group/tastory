@@ -8,6 +8,13 @@ import {
   journalResponseSchema,
   accessResponseSchema,
   accessCommandSchema,
+  recipeCommandSchema,
+  recipeResponseSchema,
+  RECIPE_BODY_LIMIT,
+  backupCommandSchema,
+  backupResponseSchema,
+  userSettingsCommandSchema,
+  userSettingsResponseSchema,
 } from '@tastory/contracts';
 import type {
   ApiErrorResponse,
@@ -31,6 +38,15 @@ import type {
   AccessCommand,
   AccessData,
   AccessResponse,
+  RecipeCommand,
+  RecipeData,
+  RecipeResponse,
+  BackupCommand,
+  BackupData,
+  BackupResponse,
+  UserSettingsCommand,
+  UserSettingsData,
+  UserSettingsResponse,
 } from '@tastory/contracts';
 import { AuthError } from '../auth/google-token';
 import { PhotoError } from '../services/photo-error';
@@ -38,19 +54,32 @@ import { ProbeError } from '../services/concurrency-probe';
 import { AdminError } from '../services/admin-directory';
 import { JournalError } from '../services/journal-error';
 import { AccessError } from '../services/access-model';
+import { RecipeModelError } from '../services/recipe-model';
+import { RecipeStorageError } from '../services/recipe-storage';
+import { BackupError } from '../services/book-backup';
+import { FileLifecycleError } from '../services/file-lifecycle';
+import { UserSettingsError } from '../services/user-settings';
 
 export type RequestContext = Readonly<{
   now: () => Date;
   createRequestId: () => string;
   isEchoEnabled: boolean;
   deploymentVersion: string;
-  isAuthConfigured?: boolean;
+  authEnvironment?: 'staging' | 'production';
+  admitRequest?: (action: string, credential: string) => boolean;
   authenticate?: (credential: string, allowJoin: boolean) => AuthData;
   photo?: (command: PhotoCommand, session: AuthData) => PhotoData;
   concurrency?: (command: ConcurrencyCommand, session: AuthData) => ConcurrencyData;
   admin?: (action: AdminAction, session: AuthData) => AdminUsersData | AdminHealthData;
   journal?: (action: JournalAction, requestId: string, session: AuthData) => JournalData;
   access?: (command: AccessCommand, requestId: string, session: AuthData) => AccessData;
+  recipes?: (command: RecipeCommand, requestId: string, session: AuthData) => RecipeData;
+  backups?: (command: BackupCommand, requestId: string, session: AuthData) => BackupData;
+  settings?: (
+    command: UserSettingsCommand,
+    requestId: string,
+    session: AuthData,
+  ) => UserSettingsData;
 }>;
 
 function invalidRequest(context: RequestContext): ApiErrorResponse {
@@ -72,7 +101,10 @@ export function handleRequest(
   | ConcurrencyResponse
   | AdminResponse
   | JournalResponse
-  | AccessResponse {
+  | AccessResponse
+  | RecipeResponse
+  | BackupResponse
+  | UserSettingsResponse {
   const parsed = apiRequestSchema.safeParse(input);
   if (!parsed.success) return invalidRequest(context);
   const request = parsed.data;
@@ -88,17 +120,96 @@ export function handleRequest(
         deploymentVersion: context.deploymentVersion,
         timestamp: context.now().toISOString(),
         storage: 'not-configured',
-        auth: context.isAuthConfigured ? 'staging' : 'not-configured',
+        auth: context.authEnvironment ?? 'not-configured',
       },
       meta,
     };
   }
   if ('credential' in request) {
     try {
+      if (context.admitRequest && !context.admitRequest(request.action, request.credential))
+        return {
+          ok: false,
+          requestId: request.requestId,
+          error: {
+            code: 'RATE_LIMITED',
+            message: 'Слишком много запросов. Подождите минуту и повторите попытку.',
+          },
+        };
       if (!context.authenticate) throw new AuthError('AUTH_NOT_CONFIGURED');
       const session = context.authenticate(request.credential, request.action === 'auth.signIn');
       if (request.action === 'auth.signIn' || request.action === 'auth.me')
         return { ok: true, requestId: request.requestId, data: session, meta };
+      if (request.action === 'user.settings.get' || request.action === 'user.settings.update') {
+        if (!context.settings) throw new UserSettingsError('SETTINGS_NOT_READY');
+        return userSettingsResponseSchema.parse({
+          ok: true,
+          requestId: request.requestId,
+          data: context.settings(
+            userSettingsCommandSchema.parse({ action: request.action, payload: request.payload }),
+            request.requestId,
+            session,
+          ),
+          meta,
+        });
+      }
+      if (
+        request.action === 'admin.backups.list' ||
+        request.action === 'admin.backups.create' ||
+        request.action === 'admin.backups.verify' ||
+        request.action === 'admin.backups.restore'
+      ) {
+        if (!context.backups) throw new BackupError();
+        return backupResponseSchema.parse({
+          ok: true,
+          requestId: request.requestId,
+          data: context.backups(
+            backupCommandSchema.parse({ action: request.action, payload: request.payload }),
+            request.requestId,
+            session,
+          ),
+          meta,
+        });
+      }
+      if (
+        request.action === 'recipes.list' ||
+        request.action === 'admin.files.audit' ||
+        request.action === 'admin.files.trash' ||
+        request.action === 'admin.files.trashUnused' ||
+        request.action === 'admin.files.restore' ||
+        request.action === 'admin.files.cleanup' ||
+        request.action === 'recipes.favorite.set' ||
+        request.action === 'recipes.history' ||
+        request.action === 'recipes.version' ||
+        request.action === 'recipes.version.restore' ||
+        request.action === 'admin.recipes.archiveHistory' ||
+        request.action === 'recipes.get' ||
+        request.action === 'recipes.create' ||
+        request.action === 'recipes.updateContent' ||
+        request.action === 'recipes.archive' ||
+        request.action === 'recipes.restore' ||
+        request.action === 'recipes.photos.add' ||
+        request.action === 'recipes.photos.delete' ||
+        request.action === 'recipes.photos.read' ||
+        request.action === 'tags.list' ||
+        request.action === 'tags.create' ||
+        request.action === 'recipes.operations.list' ||
+        request.action === 'recipes.operations.resume' ||
+        request.action === 'recipes.operations.cancel' ||
+        request.action === 'admin.recipes.initialize'
+      ) {
+        if (!context.recipes) throw new RecipeStorageError('RECIPE_NOT_READY');
+        return recipeResponseSchema.parse({
+          ok: true,
+          requestId: request.requestId,
+          data: context.recipes(
+            recipeCommandSchema.parse({ action: request.action, payload: request.payload }),
+            request.requestId,
+            session,
+          ),
+          meta,
+        });
+      }
       if (session.user.role !== 'owner') throw new AuthError('ACCESS_DENIED');
       if (
         request.action === 'admin.access.list' ||
@@ -170,9 +281,21 @@ export function handleRequest(
         error instanceof ProbeError ||
         error instanceof AdminError ||
         error instanceof JournalError ||
-        error instanceof AccessError
+        error instanceof AccessError ||
+        error instanceof RecipeModelError ||
+        error instanceof RecipeStorageError ||
+        error instanceof FileLifecycleError ||
+        error instanceof BackupError ||
+        error instanceof UserSettingsError
           ? error.code
-          : 'AUTH_UNAVAILABLE';
+          : request.action.startsWith('recipes.') ||
+              request.action.startsWith('tags.') ||
+              request.action === 'admin.recipes.initialize' ||
+              request.action.startsWith('admin.files.')
+            ? 'RECIPE_UNAVAILABLE'
+            : request.action.startsWith('user.settings.')
+              ? 'SETTINGS_UNAVAILABLE'
+              : 'AUTH_UNAVAILABLE';
       const messages = {
         AUTH_NOT_CONFIGURED: 'Вход Google ещё настраивается.',
         UNAUTHENTICATED: 'Войдите в Google повторно.',
@@ -200,6 +323,26 @@ export function handleRequest(
         ACCESS_INVALID: 'Изменение недоступно: проверьте участника или действующее приглашение.',
         ACCESS_UNAVAILABLE:
           'Изменение не подтверждено. Повторите тот же запрос или откройте управление доступом.',
+        RECIPE_NOT_READY: 'Владелец должен подготовить хранилище рецептов.',
+        RECIPE_INVALID: 'Проверьте содержание рецепта и его связи.',
+        RECIPE_UNAVAILABLE:
+          'Сохранение не подтверждено. Повторите запрос с тем же идентификатором.',
+        RECIPE_CONFLICT: 'Данные уже изменились. Обновите рецепт перед сохранением.',
+        RECIPE_PENDING:
+          'Есть незавершённая запись. Повторите исходный запрос, продолжите или отмените её.',
+        RECIPE_LIMIT: 'Достигнут лимит хранилища. Сохранённые рецепты доступны для чтения.',
+        RECIPE_CANCELLED: 'Эта запись отменена. Для нового сохранения создайте новый запрос.',
+        BACKUP_UNAVAILABLE: 'Копирование не подтверждено. Повторите тот же запрос.',
+        BACKUP_INVALID: 'Проверка целостности копии не пройдена. Исходная книга сохранена.',
+        BACKUP_PENDING:
+          'Сначала завершите или отмените незавершённые операции, затем создайте копию.',
+        BACKUP_LIMIT: 'Достигнут лимит резервного копирования. Обратитесь к владельцу.',
+        FILE_UNAVAILABLE: 'Не удалось проверить файлы книги. Повторите сканирование.',
+        FILE_CONFLICT: 'Состояние файла изменилось. Обновите отчёт перед действием.',
+        FILE_LIMIT: 'В папке слишком много файлов для безопасной автоматической проверки.',
+        SETTINGS_NOT_READY: 'Владелец должен подготовить хранение настроек.',
+        SETTINGS_CONFLICT: 'Настройки уже изменились. Обновите страницу и повторите.',
+        SETTINGS_UNAVAILABLE: 'Не удалось сохранить настройки. Повторите тот же запрос.',
       };
       return { ok: false, requestId: request.requestId, error: { code, message: messages[code] } };
     }
@@ -225,21 +368,27 @@ export function handlePostBody(
   | ConcurrencyResponse
   | AdminResponse
   | JournalResponse
-  | AccessResponse {
-  if (body.length > PHOTO_BODY_LIMIT) return invalidRequest(context);
+  | AccessResponse
+  | RecipeResponse
+  | BackupResponse
+  | UserSettingsResponse {
+  if (body.length > Math.max(PHOTO_BODY_LIMIT, RECIPE_BODY_LIMIT)) return invalidRequest(context);
   let input: unknown;
   try {
     input = JSON.parse(body);
   } catch {
     return invalidRequest(context);
   }
-  if (
-    body.length > 8192 &&
-    (typeof input !== 'object' ||
-      input === null ||
-      !('action' in input) ||
-      input.action !== 'spike.photo.upload')
-  )
-    return invalidRequest(context);
+  const action =
+    typeof input === 'object' && input !== null && 'action' in input ? input.action : '';
+  const limit =
+    action === 'spike.photo.upload'
+      ? PHOTO_BODY_LIMIT
+      : action === 'recipes.create' ||
+          action === 'recipes.updateContent' ||
+          action === 'recipes.photos.add'
+        ? RECIPE_BODY_LIMIT
+        : 8192;
+  if (body.length > limit) return invalidRequest(context);
   return handleRequest(input, context);
 }

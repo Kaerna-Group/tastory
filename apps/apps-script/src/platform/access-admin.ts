@@ -15,6 +15,7 @@ import {
 } from '../services/access-mutations';
 import { AccessError } from '../services/access-model';
 import { JournalError } from '../services/journal-error';
+import { runtimeEnvironment } from './runtime-environment';
 
 export function manageAccess(
   command: AccessCommand,
@@ -37,7 +38,7 @@ export function manageAccess(
       JSON.parse(props.getProperty(SHEETS_AUTH_CONFIG_KEY) ?? 'null'),
     );
     const spreadsheetId = props.getProperty('SPREADSHEET_ID');
-    if (props.getProperty('APP_ENV') !== 'staging' || !spreadsheetId || !config.success)
+    if (!runtimeEnvironment(props.getProperty('APP_ENV')) || !spreadsheetId || !config.success)
       throw new AccessError();
     const spreadsheet = SpreadsheetApp.openById(spreadsheetId);
     const directory = readWorkspaceDirectory(spreadsheet);

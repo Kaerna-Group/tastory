@@ -2,12 +2,16 @@ import { lazy, Suspense } from 'react';
 import { NavLink, Route, Routes } from 'react-router';
 import { LibraryPage } from '@/pages/library';
 import { NotFoundPage } from '@/pages/not-found';
+import { UserSettingsSync } from '@/features/user-settings';
+import { HelpCenter } from '@/features/help-center';
 const SettingsPage = lazy(async () => ({
   default: (await import('@/pages/settings')).SettingsPage,
 }));
+const RecipePage = lazy(async () => ({ default: (await import('@/pages/recipe')).RecipePage }));
 export function App(): React.JSX.Element {
   return (
     <>
+      <UserSettingsSync />
       <a
         href="#main"
         className="skip-link"
@@ -53,6 +57,8 @@ export function App(): React.JSX.Element {
           <Routes>
             <Route path="/" element={<LibraryPage />} />
             <Route path="/settings" element={<SettingsPage />} />
+            <Route path="/drafts/:id" element={<RecipePage source="draft" />} />
+            <Route path="/recipes/:id" element={<RecipePage source="recipe" />} />
             <Route path="*" element={<NotFoundPage />} />
           </Routes>
         </Suspense>
@@ -60,6 +66,7 @@ export function App(): React.JSX.Element {
       <footer className="app-footer" lang="en">
         Every recipe has a story.
       </footer>
+      <HelpCenter />
     </>
   );
 }

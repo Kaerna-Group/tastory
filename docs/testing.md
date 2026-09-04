@@ -1,5 +1,18 @@
 # Проверки качества
 
+## Предупреждения CI и зависимости
+
+Все workflows используют Actions с Node 24, включая вложенную загрузку Pages artifact. В Safari workflow npm cache отключён: этот job не устанавливает npm-зависимости. Перед checkout задаётся `init.defaultBranch=main`, чтобы Git не предупреждал о смене имени начальной ветки.
+
+`npm run check:dependencies` проверяет lockfile на deprecated-пакеты и входит в `check` и Dependency audit. Предупреждения npm и Node не подавляются; ESLint по-прежнему запускается с `--max-warnings 0`.
+
+Для `@google/clasp@3.4.1` нужны два временных override:
+
+- `gaxios@7.1.3` заменён на `7.3.1` в пределах той же major-версии: новая версия убирает зависимость от `rimraf` и устаревшего `glob`.
+- `node-domexception` заменён локальным адаптером `scripts/compat/node-domexception`, который экспортирует встроенный `globalThis.DOMException`. Проект требует Node 24; полифилл старых Node больше не нужен, а все опубликованные версии исходного пакета deprecated. Адаптер явно объявлен в devDependencies, override ссылается на него через `$node-domexception`, чтобы `npm ci` корректно разрешал локальный путь.
+
+`scripts/dependency-compat.test.mjs` проверяет чтение файла и настоящий `NotReadableError` через `node-fetch`, а также сериализацию Apps Script updateContent и чтение ответа через Google API client с подставленным транспортом. Тест не обращается к Google и не публикует скрипт. Overrides можно убрать, когда зависимости clasp перестанут требовать эти пакеты; после изменения нужны чистый `npm ci`, `npm run check:all` и `npm run audit:dependencies`.
+
 ## Измерения staging
 
 `npm run benchmark:staging` выполняет ограниченную последовательную серию health/echo и сохраняет размеры UTF-8, ошибки и p50/p95. Это отдельный ручной запуск с сетью, не часть обычного CI; [методика и ограничения](staging-measurements.md).

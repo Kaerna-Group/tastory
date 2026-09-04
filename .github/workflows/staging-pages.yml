@@ -20,8 +20,10 @@ jobs:
       contents: read
       pages: read
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - name: Configure initial Git branch
+        run: git config --global init.defaultBranch main
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version-file: .nvmrc
           cache: npm
@@ -33,7 +35,7 @@ jobs:
       - run: npm run test:auth
       - name: Read Pages configuration
         id: pages
-        uses: actions/configure-pages@v5
+        uses: actions/configure-pages@v6
       - name: Build Google staging
         run: npm run build:staging && npm run check:bundle
         env:
@@ -42,7 +44,7 @@ jobs:
           VITE_API_URL: ${{ vars.STAGING_API_URL }}
           VITE_GOOGLE_CLIENT_ID: ${{ vars.STAGING_GOOGLE_CLIENT_ID }}
           VITE_BASE_PATH: ${{ steps.pages.outputs.base_path }}/
-      - uses: actions/upload-pages-artifact@v4
+      - uses: actions/upload-pages-artifact@v5
         with:
           path: apps/web/dist
   deploy:
@@ -60,7 +62,7 @@ jobs:
     steps:
       - name: Publish staging artifact
         id: deployment
-        uses: actions/deploy-pages@v4
+        uses: actions/deploy-pages@v5
   verify:
     needs: deploy
     runs-on: ubuntu-latest
@@ -70,8 +72,10 @@ jobs:
       STAGING_API_URL: ${{ vars.STAGING_API_URL }}
       REQUIRE_STAGING_ECHO: ${{ inputs.require_echo }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - name: Configure initial Git branch
+        run: git config --global init.defaultBranch main
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version-file: .nvmrc
           cache: npm
@@ -80,7 +84,7 @@ jobs:
       - run: npx playwright install --with-deps chrome msedge firefox webkit
       - name: Check the published origin in browsers
         run: npm run test:staging
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: always()
         with:
           name: staging-browser-checks

@@ -245,10 +245,10 @@ describe('read-only workspace administration', () => {
       expect(openById).not.toHaveBeenCalled();
     },
   );
-  it('requires staging and a configured spreadsheet', () => {
+  it('supports production and requires a configured spreadsheet', () => {
     properties.APP_ENV = 'production';
-    expect(() => readAdminDirectory('admin.health', session())).toThrow('ADMIN_UNAVAILABLE');
-    properties.APP_ENV = 'staging';
+    expect(readAdminDirectory('admin.health', session())).toMatchObject({ status: 'ok' });
+    openById.mockClear();
     properties.SPREADSHEET_ID = '';
     expect(() => readAdminDirectory('admin.health', session())).toThrow('ADMIN_UNAVAILABLE');
     expect(openById).not.toHaveBeenCalled();

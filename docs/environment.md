@@ -2,7 +2,7 @@
 
 ## Требования
 
-Node.js 24.14.0 (ветка 24 LTS), npm 11.9.0, Git. Для браузерных тестов нужен Chromium из Playwright. Google и clasp нужны только для удалённого spike.
+Node.js 24.14.0 (ветка 24 LTS), npm 11.9.0, Git. Для полного браузерного прогона нужны Chromium, Firefox и WebKit из Playwright. Google и clasp нужны только для удалённой проверки.
 
 Node/npm глобально автоматически не обновляются. Версии проверяются через `node --version` и `npm --version`. Используйте подходящий менеджер версий Node; в корне есть `.nvmrc` и `.node-version`. npm при необходимости устанавливается явно: `npm install --global npm@11.9.0`.
 
@@ -39,17 +39,18 @@ npm run dev
 
 ## Окружения
 
-| Настройка        | Local                  | Staging            | Production            |
-| ---------------- | ---------------------- | ------------------ | --------------------- |
-| `VITE_APP_ENV`   | local                  | staging            | production            |
-| `VITE_API_MODE`  | mock                   | apps-script        | apps-script           |
-| `VITE_API_URL`   | пусто                  | URL staging /exec  | URL production /exec  |
-| `VITE_BASE_PATH` | /                      | / или /tastory/    | / или /tastory/       |
-| Файл             | .env.development.local | .env.staging.local | .env.production.local |
+| Настройка               | Local                  | Staging             | Production                         |
+| ----------------------- | ---------------------- | ------------------- | ---------------------------------- |
+| `VITE_APP_ENV`          | local                  | staging             | production                         |
+| `VITE_API_MODE`         | mock                   | apps-script         | apps-script                        |
+| `VITE_API_URL`          | пусто                  | URL staging /exec   | URL production /exec               |
+| `VITE_GOOGLE_CLIENT_ID` | пусто                  | OAuth Web Client ID | отдельный production Web Client ID |
+| `VITE_BASE_PATH`        | /                      | / или /tastory/     | / или /tastory/                    |
+| Файл                    | .env.development.local | .env.staging.local  | .env.production.local              |
 
 Шаблоны — в `apps/web/.env*.example`. Значения `REPLACE_*` обязательно заменить. У production и staging разные Google-ресурсы.
 
-`VITE_*` попадает в публичный JavaScript: здесь допустимы только публичные настройки. Google ID token, service account key и clasp credentials сюда не помещаются. Публичный OAuth client ID задаётся в `VITE_GOOGLE_CLIENT_ID`; пустое значение оставляет кнопку входа выключенной. [Настройка Google auth](google-auth-staging.md).
+`VITE_*` попадает в публичный JavaScript: здесь допустимы только публичные настройки. Google ID token, service account key и clasp credentials сюда не помещаются. Публичный OAuth client ID задаётся в `VITE_GOOGLE_CLIENT_ID`; для production он обязателен. [Настройка Google auth](production-auth.md).
 
 Сборки staging/production отклоняют mock и отсутствующий URL. Успешная сборка не доказывает, что удалённый API прошёл gate.
 
@@ -69,7 +70,7 @@ npm run dev:staging -- --port 5178 --strictPort
 
 - Другой Node/npm: переключите версию, повторите `npm ci`.
 - Занят 5173: задайте другой порт.
-- Не найден браузер: `npx playwright install chromium`.
+- Не найден браузер: `npx playwright install chromium firefox webkit`.
 - PowerShell запрещает npm.ps1: запускайте `npm.cmd` без изменения системной execution policy.
 - После изменения env перезапустите Vite.
 - Ошибка Google: проверьте URL /exec, доступ, redirect и CORS по чек-листу spike.

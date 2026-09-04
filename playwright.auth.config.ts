@@ -1,34 +1,43 @@
 import { defineConfig, devices } from '@playwright/test';
 
-// Provider/API fixtures only. Real Google sign-in is a separate, token-free manual report.
+const port = Number(process.env['PLAYWRIGHT_AUTH_PORT'] ?? '45188');
+if (!Number.isInteger(port) || port < 1024 || port > 65535)
+  throw new Error('Некорректный PLAYWRIGHT_AUTH_PORT.');
+const baseURL = 'http://127.0.0.1:' + port;
+const signInTests = /sign-in\.spec\.ts/;
+const firefoxProject = {
+  name: 'desktop-firefox',
+  testMatch: signInTests,
+  use: { ...devices['Desktop Firefox'] },
+};
+
+// Provider/API fixtures in a production build. Real Google sign-in is a separate,
+// token-free acceptance report because credentials must never enter traces or fixtures.
 export default defineConfig({
   testDir: './auth-e2e',
+  globalSetup: './auth-e2e/global-setup.ts',
+  // These three screens are staging diagnostics and are intentionally absent from production.
+  testIgnore: /(access-check|concurrency|photo)\.spec\.ts/,
   fullyParallel: true,
   forbidOnly: Boolean(process.env['CI']),
   retries: process.env['CI'] ? 1 : 0,
   reporter: [['list'], ['html', { open: 'never', outputFolder: 'playwright-report/auth' }]],
   outputDir: 'test-results/auth',
   use: {
-    baseURL: 'http://127.0.0.1:4188',
+    baseURL,
     trace: 'retain-on-failure',
     screenshot: 'only-on-failure',
   },
   projects: [
     { name: 'desktop-chromium', use: { ...devices['Desktop Chrome'] } },
+    // Playwright 1.62 Firefox cannot create a page on Windows with Node 24.14.
+    // CI runs this compatibility project on Linux; real Firefox is also in the release checklist.
+    ...(process.platform === 'win32' && !process.env['CI'] ? [] : [firefoxProject]),
+    {
+      name: 'desktop-webkit',
+      testMatch: signInTests,
+      use: { ...devices['Desktop Safari'] },
+    },
     { name: 'mobile-chromium', use: { ...devices['Pixel 7'] } },
   ],
-  webServer: {
-    command:
-      'npm run build:staging && npm run preview -- --host 127.0.0.1 --port 4188 --strictPort',
-    url: 'http://127.0.0.1:4188',
-    reuseExistingServer: false,
-    timeout: 120_000,
-    env: {
-      VITE_APP_ENV: 'staging',
-      VITE_API_MODE: 'apps-script',
-      VITE_API_URL: 'https://script.google.com/macros/s/AUTH_TEST_FIXTURE/exec',
-      VITE_GOOGLE_CLIENT_ID: 'test.apps.googleusercontent.com',
-      VITE_BASE_PATH: '/',
-    },
-  },
 });

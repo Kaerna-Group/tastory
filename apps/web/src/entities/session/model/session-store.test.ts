@@ -13,6 +13,7 @@ import {
   requestSessionHealth,
   requestSessionJournal,
   requestSessionAccess,
+  requestSessionRecipes,
 } from './session-store';
 const data = () => ({
   requestId: 'c3dcd2e8-e2f8-428b-9e26-3e715f678fac',
@@ -26,6 +27,33 @@ afterEach(() => {
   vi.useRealTimers();
 });
 describe('memory-only Google session', () => {
+  it('keeps recipe credentials private, preserves the durable request ID and aborts on logout', async () => {
+    const command = { action: 'recipes.list', payload: {} } as const;
+    await expect(requestSessionRecipes(command, data().requestId)).rejects.toMatchObject({
+      code: 'UNAUTHENTICATED',
+    });
+    vi.spyOn(apiClient, 'authenticate').mockResolvedValue(data());
+    let complete: ((value: { kind: 'recipes'; recipes: [] }) => void) | undefined;
+    const request = vi.spyOn(apiClient, 'recipes').mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          complete = resolve;
+        }),
+    );
+    await signIn('memory-only-recipe-token');
+    const pending = requestSessionRecipes(command, data().requestId);
+    const rejected = expect(pending).rejects.toBeInstanceOf(DOMException);
+    expect(request).toHaveBeenCalledWith(
+      command,
+      'memory-only-recipe-token',
+      data().requestId,
+      expect.any(AbortSignal),
+    );
+    signOut();
+    complete?.({ kind: 'recipes', recipes: [] });
+    await rejected;
+    expect(request.mock.calls[0]?.[3]?.aborted).toBe(true);
+  });
   it('keeps access commands within the active session and clears revoked permissions', async () => {
     vi.spyOn(apiClient, 'authenticate').mockResolvedValue(data());
     const request = vi

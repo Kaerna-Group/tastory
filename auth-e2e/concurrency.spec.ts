@@ -52,7 +52,7 @@ test('dispatches both writes together, proves conflict and deduplication, export
         deploymentVersion: 'fixture',
         timestamp: new Date().toISOString(),
         storage: 'not-configured',
-        auth: 'staging',
+        auth: 'production',
       });
     else if (request.action === 'auth.signIn' || request.action === 'auth.me')
       await reply(route, request, {

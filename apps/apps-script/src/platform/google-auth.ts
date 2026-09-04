@@ -2,6 +2,7 @@ import { AuthError, googleKeysSchema, verifyGoogleToken } from '../auth/google-t
 import { admitIdentity, bindingsSchema, invitationsSchema } from '../auth/invitations';
 import type { GoogleKey } from '../auth/google-token';
 import { authenticateSheets, SHEETS_AUTH_CONFIG_KEY } from './workspace-directory';
+import { runtimeEnvironment } from './runtime-environment';
 
 const keyCacheName = 'google-jwks-v1';
 const refreshCacheName = 'google-jwks-refreshed-v1';
@@ -55,15 +56,22 @@ function getGoogleKey(kid: string): GoogleKey | undefined {
 
 export function authenticateGoogle(credential: string, allowJoin: boolean) {
   const properties = PropertiesService.getScriptProperties();
-  if (properties.getProperty('APP_ENV') !== 'staging') throw new AuthError('AUTH_NOT_CONFIGURED');
-  const audiences = (properties.getProperty('GOOGLE_CLIENT_IDS') ?? '')
+  const environment = runtimeEnvironment(properties.getProperty('APP_ENV'));
+  if (!environment) throw new AuthError('AUTH_NOT_CONFIGURED');
+  const audienceKey =
+    environment === 'production' ? 'PRODUCTION_GOOGLE_CLIENT_IDS' : 'GOOGLE_CLIENT_IDS';
+  const audiences = (properties.getProperty(audienceKey) ?? '')
     .split(',')
     .map((v) => v.trim())
     .filter(Boolean);
   if (
     !audiences.length ||
+    audiences.length > 5 ||
+    new Set(audiences).size !== audiences.length ||
     audiences.some((id) => !/^[\w-]+\.apps\.googleusercontent\.com$/.test(id))
   )
+    throw new AuthError('AUTH_NOT_CONFIGURED');
+  if (environment === 'production' && properties.getProperty(SHEETS_AUTH_CONFIG_KEY) === null)
     throw new AuthError('AUTH_NOT_CONFIGURED');
   const identity = verifyGoogleToken(credential, {
     audiences,
@@ -90,6 +98,7 @@ export function authenticateGoogle(credential: string, allowJoin: boolean) {
         properties.getProperty('SPREADSHEET_ID'),
         allowJoin,
       );
+    if (environment === 'production') throw new AuthError('AUTH_NOT_CONFIGURED');
     const rawInvites = properties.getProperty('STAGING_INVITES');
     if (!rawInvites) throw new AuthError('AUTH_NOT_CONFIGURED');
     const invitations = invitationsSchema.parse(JSON.parse(rawInvites));

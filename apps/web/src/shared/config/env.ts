@@ -16,6 +16,8 @@ if (environment !== 'local' && apiMode === 'mock')
 const googleClientId: string = import.meta.env['VITE_GOOGLE_CLIENT_ID'] || '';
 if (googleClientId && !/^[\w-]+\.apps\.googleusercontent\.com$/.test(googleClientId))
   throw new Error('Укажите корректный VITE_GOOGLE_CLIENT_ID.');
+if (environment === 'production' && (!googleClientId || googleClientId.includes('REPLACE')))
+  throw new Error('Для production требуется VITE_GOOGLE_CLIENT_ID.');
 export const env: Readonly<{
   environment: AppEnvironment;
   apiMode: ApiMode;

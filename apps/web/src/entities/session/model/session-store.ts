@@ -5,6 +5,9 @@ import type {
   ConcurrencyCommand,
   JournalAction,
   AccessCommand,
+  RecipeCommand,
+  BackupCommand,
+  UserSettingsCommand,
 } from '@tastory/contracts';
 import { accessCheck } from './access-check';
 
@@ -131,6 +134,36 @@ export async function requestSessionAccess(
 }
 export async function requestSessionUsers(signal?: AbortSignal) {
   return protectedRequest((token, combined) => apiClient.adminUsers(token, combined), signal);
+}
+export async function requestSessionBackups(
+  command: BackupCommand,
+  requestId: string,
+  signal?: AbortSignal,
+) {
+  return protectedRequest(
+    (token, combined) => apiClient.backups(command, token, requestId, combined),
+    signal,
+  );
+}
+export async function requestSessionRecipes(
+  command: RecipeCommand,
+  requestId: string,
+  signal?: AbortSignal,
+) {
+  return protectedRequest(
+    (token, combined) => apiClient.recipes(command, token, requestId, combined),
+    signal,
+  );
+}
+export async function requestSessionSettings(
+  command: UserSettingsCommand,
+  requestId: string,
+  signal?: AbortSignal,
+) {
+  return protectedRequest(
+    (token, combined) => apiClient.settings(command, token, requestId, combined),
+    signal,
+  );
 }
 export async function requestSessionHealth(signal?: AbortSignal) {
   return protectedRequest((token, combined) => apiClient.adminHealth(token, combined), signal);

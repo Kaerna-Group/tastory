@@ -27,15 +27,29 @@ export const adminHealthDataSchema = z
     workspace,
     checkedAt: z.iso.datetime(),
     status: z.literal('ok'),
-    schemaVersion: z.union([z.literal(1), z.literal(2)]),
-    tablesChecked: z.union([z.literal(6), z.literal(8)]),
+    schemaVersion: z.union([
+      z.literal(1),
+      z.literal(2),
+      z.literal(3),
+      z.literal(4),
+      z.literal(5),
+      z.literal(6),
+    ]),
+    tablesChecked: z.union([
+      z.literal(6),
+      z.literal(8),
+      z.literal(14),
+      z.literal(15),
+      z.literal(16),
+      z.literal(17),
+    ]),
     members: z.number().int().min(1).max(10),
     activeMembers: z.number().int().min(1).max(10),
   })
   .refine(
     (data) =>
       data.activeMembers <= data.members &&
-      data.tablesChecked === (data.schemaVersion === 1 ? 6 : 8),
+      data.tablesChecked === { 1: 6, 2: 8, 3: 14, 4: 15, 5: 16, 6: 17 }[data.schemaVersion],
   );
 
 export type AdminUsersData = z.infer<typeof adminUsersDataSchema>;

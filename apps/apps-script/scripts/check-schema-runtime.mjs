@@ -25,14 +25,18 @@ export function checkSchemaRuntime(code) {
     const rows = sheets.get(name);
     if (!rows) return null;
     return {
+      getMaxRows: () => Math.max(1000, rows.length),
+      insertRowsAfter: () => {
+        assert.equal(held, true);
+        writes += 1;
+      },
       getLastRow: () => rows.length,
       getLastColumn: () => Math.max(0, ...rows.map((row) => row.length)),
       getRange: (row, column, height, width) => {
-        assert.equal(column, 1);
         const range = {
           getValues: () =>
             Array.from({ length: height }, (_, i) =>
-              Array.from({ length: width }, (_, j) => rows[row - 1 + i]?.[j] ?? ''),
+              Array.from({ length: width }, (_, j) => rows[row - 1 + i]?.[column - 1 + j] ?? ''),
             ),
           getFormulas: () => Array.from({ length: height }, () => Array(width).fill('')),
           setNumberFormat: (format) => {
@@ -44,7 +48,11 @@ export function checkSchemaRuntime(code) {
             assert.equal(height, values.length);
             for (const [i, value] of values.entries()) {
               assert.equal(value.length, width);
-              rows[row - 1 + i] = [...value];
+              const target = rows[row - 1 + i] ?? [];
+              value.forEach((cell, j) => {
+                target[column - 1 + j] = cell;
+              });
+              rows[row - 1 + i] = target;
             }
             writes += 1;
             return range;
@@ -355,6 +363,7 @@ export function checkSchemaRuntime(code) {
   assert.equal(sheets.get('Meta').find(([key]) => key === 'data_revision')[1], '1');
   assert.equal(propertyWrites, 1);
   assert.equal(held, false);
+
   const listAccess = () => request('private-owner', 'owner@example.test', 'admin.access.list').data;
   const change = (action, payload, id = randomUUID()) =>
     request('private-owner', 'owner@example.test', action, id, payload);
@@ -461,6 +470,103 @@ export function checkSchemaRuntime(code) {
   );
   assert.equal(propertyWrites, 1);
   assert.equal(held, false);
+  const recipeCall = (action, payload = {}, requestId = randomUUID()) =>
+    request('private-owner', 'owner@example.test', action, requestId, payload);
+  assert.equal(recipeCall('admin.recipes.initialize').data.schemaVersion, 6);
+  assert.equal(recipeCall('admin.recipes.initialize').data.alreadyApplied, true);
+  const tag = recipeCall('tags.create', { name: 'Супы', colorToken: 'neutral' });
+  assert.equal(tag.ok, true, JSON.stringify(tag));
+  const recipeValue = {
+    content: {
+      title: '=буквальный текст',
+      description: '',
+      servings: 2,
+      prepMinutes: 5,
+      cookMinutes: 10,
+      sourceUrl: 'https://example.test/recipe',
+      notes: 'Личная заметка',
+    },
+    ingredients: [
+      {
+        sectionTitle: '',
+        position: 0,
+        name: 'Соль',
+        quantityValue: null,
+        quantityText: 'по вкусу',
+        unit: '',
+        note: '',
+        isOptional: false,
+      },
+    ],
+    steps: [{ sectionTitle: '', position: 0, body: 'Варить', durationSeconds: 600 }],
+    tagIds: [tag.data.entityId],
+  };
+  const recipeRequestId = randomUUID();
+  const recipeCreated = recipeCall(
+    'recipes.create',
+    { value: recipeValue, visibility: 'workspace' },
+    recipeRequestId,
+  );
+  assert.equal(recipeCreated.ok, true, JSON.stringify(recipeCreated));
+  const recipeId = recipeCreated.data.entityId;
+  assert.equal(
+    recipeCall('recipes.create', { value: recipeValue, visibility: 'workspace' }, recipeRequestId)
+      .data.outcome,
+    'replayed',
+  );
+  assert.equal(
+    recipeCall('recipes.get', { recipeId }).data.aggregate.recipe.sourceUrl,
+    'https://example.test/recipe',
+  );
+  const viewerRecipe = request(
+    'private-viewer',
+    'viewer@example.test',
+    'recipes.get',
+    randomUUID(),
+    { recipeId },
+  );
+  assert.equal(viewerRecipe.ok, true, JSON.stringify(viewerRecipe));
+  assert.equal(viewerRecipe.data.aggregate.recipe.notes, '');
+  assert.equal(
+    request('private-viewer', 'viewer@example.test', 'recipes.create', randomUUID(), {
+      value: recipeValue,
+    }).error.code,
+    'ACCESS_DENIED',
+  );
+  assert.equal(
+    recipeCall('recipes.updateContent', { recipeId, expectedRevision: 1, value: recipeValue }).data
+      .revision,
+    2,
+  );
+  assert.equal(
+    recipeCall('recipes.updateContent', { recipeId, expectedRevision: 1, value: recipeValue }).error
+      .code,
+    'RECIPE_CONFLICT',
+  );
+  assert.equal(recipeCall('recipes.archive', { recipeId, expectedRevision: 2 }).data.revision, 3);
+  assert.equal(recipeCall('recipes.restore', { recipeId, expectedRevision: 3 }).data.revision, 4);
+  assert.equal(recipeCall('recipes.get', { recipeId }).data.aggregate.recipe.status, 'draft');
+  assert.deepEqual(
+    recipeCall('recipes.history', { recipeId }).data.versions.map((entry) => entry.revision),
+    [4, 3, 2, 1],
+  );
+  assert.equal(
+    recipeCall('recipes.version', { recipeId, revision: 1 }).data.permissions.edit,
+    false,
+  );
+  assert.equal(recipeCall('admin.backups.list').data.kind, 'backups');
+  assert.equal(
+    request('private-viewer', 'viewer@example.test', 'admin.backups.list').error.code,
+    'ACCESS_DENIED',
+  );
+  assert.equal(typeof sandbox.recoverBookBackup, 'function');
+  assert.equal(recipeCall('admin.health').data.tablesChecked, 17);
+  assert.equal(recipeCall('admin.operations.list').data.schemaVersion, 2);
+  assert.equal(listAccess().revision, 8);
+  assert.equal(held, false);
+  console.log(
+    'Apps Script: recipe migration, real JWT CRUD, receipts, viewer isolation and source links passed without browser globals.',
+  );
   console.log(
     'Apps Script: schema/import, Sheets JWT auth, journal, invitations, acceptance, role updates, revocation, restore and HTTP isolation passed in compiled runtime.',
   );

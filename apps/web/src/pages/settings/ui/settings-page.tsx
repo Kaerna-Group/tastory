@@ -6,6 +6,10 @@ import { ConcurrencyProbe } from '@/features/concurrency-probe';
 import { WorkspaceAdmin } from '@/features/workspace-admin';
 import { OperationJournal } from '@/features/operation-journal';
 import { AccessAdmin } from '@/features/access-admin';
+import { BookBackups } from '@/features/book-backups';
+import { FileManagement } from '@/features/file-management';
+import { DataTransfer } from '@/features/data-transfer';
+import { UserSettingsPanel } from '@/features/user-settings';
 export function SettingsPage(): React.JSX.Element {
   return (
     <>
@@ -16,6 +20,7 @@ export function SettingsPage(): React.JSX.Element {
       </div>
       <div className="settings-grid">
         <GoogleSignIn />
+        <UserSettingsPanel />
         <PhotoProbe />
         <section className="panel" aria-labelledby="theme-title">
           <h2 id="theme-title">Внешний вид</h2>
@@ -28,6 +33,9 @@ export function SettingsPage(): React.JSX.Element {
         <WorkspaceAdmin />
         <AccessAdmin />
         <OperationJournal />
+        <BookBackups />
+        <FileManagement />
+        <DataTransfer />
         <ConcurrencyProbe />
       </div>
     </>
