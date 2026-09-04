@@ -1,7 +1,66 @@
 import { fileURLToPath, URL } from 'node:url';
+import { createHash } from 'node:crypto';
+import { readFileSync } from 'node:fs';
 import { defineConfig, loadEnv } from 'vite';
 import react from '@vitejs/plugin-react';
 import tailwindcss from '@tailwindcss/vite';
+
+const publicCacheFiles = [
+  'site.webmanifest',
+  'brand/mark.svg',
+  'favicon.ico',
+  'favicon-32.png',
+  'apple-touch-icon.png',
+  'icon-192.png',
+  'icon-512.png',
+] as const;
+
+function serviceWorkerSource(version: string, files: string[]): string {
+  return `const VERSION = ${JSON.stringify(version)};
+const CACHE_NAME = 'tastory-app-' + VERSION;
+const PRECACHE = ${JSON.stringify(files)}.map((path) => new URL(path, self.registration.scope).href);
+const FALLBACK = new URL('index.html', self.registration.scope).href;
+
+self.addEventListener('install', (event) => {
+  event.waitUntil(caches.open(CACHE_NAME).then((cache) => cache.addAll(PRECACHE)));
+});
+
+self.addEventListener('message', (event) => {
+  if (event.data?.type === 'SKIP_WAITING') self.skipWaiting();
+});
+
+self.addEventListener('activate', (event) => {
+  event.waitUntil(
+    caches.keys()
+      .then((names) => Promise.all(names.filter((name) => name.startsWith('tastory-app-') && name !== CACHE_NAME).map((name) => caches.delete(name))))
+      .then(() => self.clients.claim()),
+  );
+});
+
+self.addEventListener('fetch', (event) => {
+  const request = event.request;
+  const url = new URL(request.url);
+  if (request.method !== 'GET' || url.origin !== self.location.origin) return;
+  if (request.mode === 'navigate') {
+    event.respondWith(
+      fetch(request)
+        .then((response) => {
+          if (response.ok) caches.open(CACHE_NAME).then((cache) => cache.put(request, response.clone()));
+          return response;
+        })
+        .catch(() => caches.match(request, { ignoreVary: true }).then((cached) => cached || caches.match(FALLBACK, { ignoreVary: true }))),
+    );
+    return;
+  }
+  event.respondWith(
+    caches.match(request, { ignoreVary: true }).then((cached) => cached || fetch(request).then((response) => {
+      if (response.ok) caches.open(CACHE_NAME).then((cache) => cache.put(request, response.clone()));
+      return response;
+    })),
+  );
+});
+`;
+}
 
 export default defineConfig(({ mode }) => {
   const env = { ...loadEnv(mode, process.cwd(), ''), ...process.env };
@@ -91,6 +150,32 @@ export default defineConfig(({ mode }) => {
               injectTo: 'head',
             },
           ];
+        },
+      },
+      {
+        name: 'tastory-pwa-service-worker',
+        apply: 'build',
+        generateBundle(_options, bundle) {
+          const generated = Object.keys(bundle)
+            .filter((file) => !file.startsWith('.vite/'))
+            .sort();
+          const files = [...new Set(['./', 'index.html', ...publicCacheFiles, ...generated])];
+          const digest = createHash('sha256').update(files.join('\n'));
+          for (const file of generated) {
+            const output = bundle[file];
+            if (!output) continue;
+            digest.update(output.type === 'chunk' ? output.code : output.source);
+          }
+          for (const file of publicCacheFiles)
+            digest.update(
+              readFileSync(fileURLToPath(new URL(`./public/${file}`, import.meta.url))),
+            );
+          const version = digest.digest('hex').slice(0, 16);
+          this.emitFile({
+            type: 'asset',
+            fileName: 'sw.js',
+            source: serviceWorkerSource(version, files),
+          });
         },
       },
     ],

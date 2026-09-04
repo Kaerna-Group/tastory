@@ -156,6 +156,7 @@ function EditorContent({
   editable: allowed,
   tags,
   recovered,
+  offlineCopy,
 }: NonNullable<ReturnType<typeof useEditor>['state']>) {
   const snapshot = useSyncExternalStore(queue.subscribe, queue.getSnapshot);
   const preferences = useSyncExternalStore(subscribeUserSettings, getUserSettings).settings;
@@ -195,6 +196,12 @@ function EditorContent({
               : 'Рецепт доступен только для чтения.'}
           </p>
           {recovered && <p className="muted text-sm">Открыта локальная копия из этого браузера.</p>}
+          {offlineCopy && (
+            <p className="muted text-sm">
+              Открыта недавняя версия: сервер недоступен. Повторно откройте рецепт с сетью для
+              проверки доступа.
+            </p>
+          )}
         </div>
         <div className="recipe-row-actions">
           {editable && !draft.conflict && (

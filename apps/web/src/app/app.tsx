@@ -3,6 +3,7 @@ import { NavLink, Route, Routes } from 'react-router';
 import { NotFoundPage } from '@/pages/not-found';
 import { UserSettingsSync } from '@/features/user-settings';
 import { HelpCenter } from '@/features/help-center';
+import { PwaManager } from '@/features/pwa';
 const SettingsPage = lazy(async () => ({
   default: (await import('@/pages/settings')).SettingsPage,
 }));
@@ -67,6 +68,7 @@ export function App(): React.JSX.Element {
         Every recipe has a story.
       </footer>
       <HelpCenter />
+      <PwaManager />
     </>
   );
 }

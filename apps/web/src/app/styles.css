@@ -853,6 +853,31 @@ h2 {
   border-radius: 10px;
   background: var(--app-surface);
 }
+.pwa-status {
+  position: fixed;
+  right: 20px;
+  bottom: 76px;
+  z-index: 30;
+  width: min(420px, calc(100vw - 40px));
+  padding: 16px;
+  border: 1px solid var(--app-border);
+  border-radius: 12px;
+  color: var(--app-text);
+  background: var(--app-surface);
+  box-shadow: 0 8px 28px rgb(0 0 0 / 18%);
+}
+.pwa-status p {
+  margin: 0 0 12px;
+}
+.pwa-status-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.pwa-status-actions .text-link {
+  min-height: 44px;
+}
 .recipe-visibility {
   margin: 24px 0;
   max-width: 480px;
@@ -1288,5 +1313,10 @@ h2 {
   .recipe-toolbar .button,
   .recipe-photo-picker .button {
     width: 100%;
+  }
+  .pwa-status {
+    right: 12px;
+    bottom: 68px;
+    width: calc(100vw - 24px);
   }
 }

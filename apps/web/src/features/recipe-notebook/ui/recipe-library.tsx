@@ -15,6 +15,7 @@ import {
 import type { RecipeLocalDraft, RecipeSummary } from '../model/drafts';
 import { readLibraryQuery, selectLibraryRecipes, writeLibraryQuery } from '../model/library';
 import type { LibraryQuery } from '../model/library';
+import { cacheRecentLibrary, readRecentLibrary } from '../model/recent-recipes';
 
 function RecipeThumbnail({ recipe }: { recipe: RecipeSummary }) {
   const [source, setSource] = useState('');
@@ -104,14 +105,30 @@ export function RecipeLibrary({
       .then((result) => {
         if (!controller.signal.aborted && result.kind === 'recipes') {
           setRecipes(result.recipes);
+          try {
+            cacheRecentLibrary(localStorage, scope, result.recipes);
+          } catch {
+            // The current server result remains usable when optional offline caching is full.
+          }
           setError('');
           setNotReady(false);
         }
       })
       .catch((error) => {
         if (!controller.signal.aborted) {
-          setError('Не удалось загрузить рецепты с сервера. Локальные черновики доступны ниже.');
-          setNotReady(error?.code === 'RECIPE_NOT_READY');
+          const recent = readRecentLibrary(localStorage, scope);
+          if (recent.length > 0) {
+            setRecipes(recent);
+            setError(
+              navigator.onLine
+                ? 'Сервер недоступен — показаны недавние рецепты с этого устройства.'
+                : 'Нет сети — показаны недавние рецепты с этого устройства.',
+            );
+            setNotReady(false);
+          } else {
+            setError('Не удалось загрузить рецепты с сервера. Локальные черновики доступны ниже.');
+            setNotReady(error?.code === 'RECIPE_NOT_READY');
+          }
         }
       })
       .finally(() => {

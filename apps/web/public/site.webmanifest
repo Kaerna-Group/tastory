@@ -7,6 +7,9 @@
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
+  "display_override": ["window-controls-overlay", "standalone", "minimal-ui"],
+  "orientation": "any",
+  "categories": ["food", "lifestyle", "productivity"],
   "background_color": "#F4EFE7",
   "theme_color": "#B9576B",
   "icons": [

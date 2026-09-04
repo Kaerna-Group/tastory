@@ -5,8 +5,15 @@ import { ApiClientError } from '@/shared/api';
 import { draftKey, draftScope, newDraft, readDraft, writeDraft } from './drafts';
 import type { RecipeLocalDraft, Tag } from './drafts';
 import { RecipeSaveQueue } from './save-queue';
+import { cacheRecentRecipe, readRecentRecipe } from './recent-recipes';
 
-type EditorState = { queue: RecipeSaveQueue; editable: boolean; tags: Tag[]; recovered: boolean };
+type EditorState = {
+  queue: RecipeSaveQueue;
+  editable: boolean;
+  tags: Tag[];
+  recovered: boolean;
+  offlineCopy: boolean;
+};
 export function useEditor(
   subject: string,
   writer: boolean,
@@ -44,15 +51,29 @@ export function useEditor(
         const recovered = draft !== null;
         let editable = writer;
         let tags: Tag[] = [];
+        let offlineCopy = false;
         if (!draft && source === 'recipe') {
-          const result = await requestSessionRecipes(
-            { action: 'recipes.get', payload: { recipeId: id } },
-            crypto.randomUUID(),
-            controller.signal,
-          );
-          if (!active || result.kind !== 'recipe') return;
-          draft = newDraft(scope, id, result.aggregate);
-          editable = writer && result.permissions?.edit === true;
+          try {
+            const result = await requestSessionRecipes(
+              { action: 'recipes.get', payload: { recipeId: id } },
+              crypto.randomUUID(),
+              controller.signal,
+            );
+            if (!active || result.kind !== 'recipe') return;
+            draft = newDraft(scope, id, result.aggregate);
+            editable = writer && result.permissions?.edit === true;
+            try {
+              cacheRecentRecipe(localStorage, scope, result.aggregate);
+            } catch {
+              // A cache quota failure must not prevent opening the server recipe.
+            }
+          } catch (cause) {
+            const recent = readRecentRecipe(localStorage, scope, id);
+            if (!recent) throw cause;
+            draft = newDraft(scope, id, recent);
+            editable = false;
+            offlineCopy = true;
+          }
         }
         if (!draft) {
           if (source === 'draft')
@@ -69,7 +90,7 @@ export function useEditor(
           queue.dispose();
           return;
         }
-        setState({ queue, editable, tags, recovered });
+        setState({ queue, editable, tags, recovered, offlineCopy });
         // Network lookup is independent of local recovery. Offline edits remain possible.
         void (async () => {
           if (draft.base && !draft.pending) {
@@ -81,7 +102,14 @@ export function useEditor(
             if (!active) return;
             editable = writer && result.kind === 'recipe' && result.permissions?.edit === true;
             queue?.setEditable(editable);
-            if (result.kind === 'recipe') queue?.observeRemote(result.aggregate);
+            if (result.kind === 'recipe') {
+              queue?.observeRemote(result.aggregate);
+              try {
+                cacheRecentRecipe(localStorage, scope, result.aggregate);
+              } catch {
+                // The durable editable draft remains the source of truth.
+              }
+            }
           }
           const result = await requestSessionRecipes(
             { action: 'tags.list', payload: {} },
@@ -97,7 +125,7 @@ export function useEditor(
           .finally(() => {
             if (!active || !queue) return;
             queue.setEditable(editable);
-            setState({ queue, editable, tags, recovered });
+            setState({ queue, editable, tags, recovered, offlineCopy });
             connection();
           });
         window.addEventListener('online', connection);
