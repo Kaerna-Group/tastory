@@ -28,6 +28,9 @@ export default defineConfig({
     baseURL,
     trace: 'retain-on-failure',
     screenshot: 'only-on-failure',
+    // Provider and API responses are intercepted by Playwright in these fixture tests.
+    // Keep the PWA worker out of this isolated network layer; it has its own offline smoke test.
+    serviceWorkers: 'block',
   },
   projects: [
     { name: 'desktop-chromium', use: { ...devices['Desktop Chrome'] } },
