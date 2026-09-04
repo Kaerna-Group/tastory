@@ -1,4 +1,4 @@
-import { recipeAggregateSchema } from '@tastory/contracts';
+import { BUILTIN_STICKER_PACKS, recipeAggregateSchema } from '@tastory/contracts';
 import { BackupError, backupKeys } from '../services/book-backup';
 import type { BackupFile, BackupPlan, BackupPort } from '../services/book-backup';
 import {
@@ -14,6 +14,7 @@ import { createRecipeArchive } from './recipe-archive';
 import { createRecipeReader } from '../services/recipe-reader';
 import { inspectCurrentSchema, sha256 } from './current-schema';
 import { readWorkspaceDirectory } from './workspace-directory';
+import { readStickerState } from '../services/sticker-storage';
 import {
   assertPrivateResource,
   privateResourceFolder,
@@ -42,7 +43,7 @@ export function readBackupTables(book: GoogleAppsScript.Spreadsheet.Spreadsheet)
     });
 }
 export function validateBook(book: GoogleAppsScript.Spreadsheet.Spreadsheet, folderId: string) {
-  if (inspectCurrentSchema(book, folderId).schemaVersion !== 6)
+  if (inspectCurrentSchema(book, folderId).schemaVersion !== 7)
     throw new BackupError('BACKUP_INVALID');
   const directory = readWorkspaceDirectory(book);
   const store = createRecipeStore(book);
@@ -62,6 +63,7 @@ export function validateBook(book: GoogleAppsScript.Spreadsheet.Spreadsheet, fol
   )
     throw new BackupError('BACKUP_INVALID');
   const reader = createRecipeReader(store, sha256);
+  const stickerState = readStickerState(store);
   for (const op of operations) {
     if (!op.state.startsWith('committed@')) continue;
     historicalSnapshot(store, op, sha256);
@@ -92,6 +94,28 @@ export function validateBook(book: GoogleAppsScript.Spreadsheet.Spreadsheet, fol
         throw new BackupError('BACKUP_INVALID');
     }
   }
+  for (const pack of stickerState.packs.values()) {
+    if (
+      pack.workspaceId === null ||
+      pack.ownerUserId === null ||
+      !directory.members.some(
+        (member) => member.workspace_id === pack.workspaceId && member.user_id === pack.ownerUserId,
+      )
+    )
+      throw new BackupError('BACKUP_INVALID');
+  }
+  for (const sticker of stickerState.stickers.values())
+    if (!stickerState.packs.has(sticker.packId)) throw new BackupError('BACKUP_INVALID');
+  const builtinStickerIds = new Set(
+    BUILTIN_STICKER_PACKS.flatMap((pack) => pack.stickers.map((item) => item.id)),
+  );
+  for (const placement of stickerState.placements.values())
+    if (
+      (!stickerState.stickers.has(placement.stickerId) &&
+        !builtinStickerIds.has(placement.stickerId)) ||
+      !reader.getRecipe(placement.recipeId)
+    )
+      throw new BackupError('BACKUP_INVALID');
 }
 
 function folderNamed(parent: GoogleAppsScript.Drive.Folder, name: string, create = true) {

@@ -199,7 +199,7 @@ export const recipeDataSchema = z.discriminatedUnion('kind', [
   recipeReceiptSchema.extend({ kind: z.literal('saved') }),
   z.strictObject({
     kind: z.literal('initialized'),
-    schemaVersion: z.literal(6),
+    schemaVersion: z.literal(7),
     alreadyApplied: z.boolean(),
   }),
   z.strictObject({

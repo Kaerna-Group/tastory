@@ -20,6 +20,8 @@ export { accessResponseSchema } from './api';
 export type { AccessResponse } from './api';
 export { recipeResponseSchema } from './api';
 export type { RecipeResponse } from './api';
+export { stickerResponseSchema } from './api';
+export type { StickerResponse } from './api';
 export {
   RECIPE_BODY_LIMIT,
   recipeCommandSchema,
@@ -117,3 +119,27 @@ export {
   recipeTransferDocumentSchema,
 } from './recipe-transfer';
 export type { RecipeTransferDocument, RecipeTransferRecipe } from './recipe-transfer';
+export {
+  STICKER_LIMITS,
+  stickerVisibilitySchema,
+  stickerPackKindSchema,
+  stickerStatusSchema,
+  stickerMimeSchema,
+  stickerBuiltinAssetSchema,
+  stickerPackSchema,
+  stickerItemSchema,
+  stickerUploadSchema,
+  recipeStickerSchema,
+  stickerPackViewSchema,
+  normalizeStickerName,
+} from './sticker';
+export type {
+  StickerPack,
+  StickerItem,
+  RecipeSticker,
+  StickerPackView,
+  StickerUpload,
+} from './sticker';
+export { stickerCommandSchema, stickerMutationActions, stickerDataSchema } from './sticker-api';
+export type { StickerCommand, StickerData } from './sticker-api';
+export { BUILTIN_STICKER_PACKS, BUILTIN_STICKER_ASSET_PATHS } from './sticker-builtins';

@@ -46,7 +46,7 @@ export function readWorkspaceDirectory(spreadsheet: GoogleAppsScript.Spreadsheet
   if (
     meta.size !== metaRows.length ||
     metaRows.some((row) => !row.key) ||
-    !['1', '2', '3', '4', '5', '6'].includes(meta.get('schema_version') ?? '') ||
+    !['1', '2', '3', '4', '5', '6', '7'].includes(meta.get('schema_version') ?? '') ||
     meta.get('maintenance_mode') !== 'false'
   )
     throw new AuthError('AUTH_UNAVAILABLE');
@@ -84,7 +84,8 @@ export function authenticateSheets(
     store
       .rows('Meta')
       .some(
-        (row) => row[0] === 'schema_version' && ['2', '3', '4', '5', '6'].includes(row[1] ?? ''),
+        (row) =>
+          row[0] === 'schema_version' && ['2', '3', '4', '5', '6', '7'].includes(row[1] ?? ''),
       )
   ) {
     acceptInvitation(store, identity, config.data.workspaceId, allowJoin, {

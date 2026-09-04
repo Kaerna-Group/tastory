@@ -11,6 +11,7 @@ import { backups } from './backups';
 import { runtimeEnvironment } from './runtime-environment';
 import { admitProductionRequest } from './request-limits';
 import { userSettings } from './user-settings';
+import { stickers } from './stickers';
 
 export function createRequestContext(): RequestContext {
   const properties = PropertiesService.getScriptProperties();
@@ -38,5 +39,6 @@ export function createRequestContext(): RequestContext {
     recipes,
     backups,
     settings: userSettings,
+    stickers,
   };
 }

@@ -9,6 +9,7 @@ import {
   PHOTO_RECIPE_SCHEMA_FINGERPRINT,
   RECIPE_SCHEMA_FINGERPRINT,
   SETTINGS_RECIPE_SCHEMA_FINGERPRINT,
+  STICKER_RECIPE_SCHEMA_FINGERPRINT,
 } from '../schema/recipe-schema';
 import { createRecipeReader } from '../services/recipe-reader';
 import type { RecipeWriteContext } from '../services/recipe-context';
@@ -36,6 +37,7 @@ export function persistenceFixture(initialize = true) {
     legacyRecipeChecksum: sha256(LEGACY_RECIPE_SCHEMA_FINGERPRINT),
     photoRecipeChecksum: sha256(PHOTO_RECIPE_SCHEMA_FINGERPRINT),
     settingsRecipeChecksum: sha256(SETTINGS_RECIPE_SCHEMA_FINGERPRINT),
+    stickerRecipeChecksum: sha256(STICKER_RECIPE_SCHEMA_FINGERPRINT),
   };
   if (initialize) applyRecipeSchema(store, migrationOptions);
   const model = recipeFixture();

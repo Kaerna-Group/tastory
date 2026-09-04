@@ -8,6 +8,8 @@ import {
   RECIPE_MIGRATION_NAME,
   SETTINGS_RECIPE_MIGRATION_ID,
   SETTINGS_RECIPE_MIGRATION_NAME,
+  STICKER_RECIPE_MIGRATION_ID,
+  STICKER_RECIPE_MIGRATION_NAME,
 } from '../schema/recipe-schema';
 import { planJournalSchema } from './journal-migration';
 import type { JournalMigrationOptions } from './journal-migration';
@@ -20,7 +22,8 @@ export function planRecipeSchema(store: RecipeStore, options: JournalMigrationOp
   if (
     !/^[a-f0-9]{64}$/.test(options.recipeChecksum ?? '') ||
     !/^[a-f0-9]{64}$/.test(options.settingsRecipeChecksum ?? '') ||
-    !['2', '3', '4', '5', '6'].includes(version ?? '') ||
+    !/^[a-f0-9]{64}$/.test(options.stickerRecipeChecksum ?? '') ||
+    !['2', '3', '4', '5', '6', '7'].includes(version ?? '') ||
     !planJournalSchema(store.journal, options).alreadyApplied
   )
     throw new RecipeStorageError('RECIPE_NOT_READY');
@@ -44,7 +47,8 @@ export function planRecipeSchema(store: RecipeStore, options: JournalMigrationOp
         action.action !== 'keep' &&
         action.table !== 'RecipePhotos' &&
         action.table !== 'RecipeFavorites' &&
-        action.table !== 'UserSettings',
+        action.table !== 'UserSettings' &&
+        !['StickerPacks', 'Stickers', 'RecipeStickers', 'StickerOperations'].includes(action.table),
     )
   )
     throw new RecipeStorageError();
@@ -54,22 +58,39 @@ export function planRecipeSchema(store: RecipeStore, options: JournalMigrationOp
       (action) =>
         action.action !== 'keep' &&
         action.table !== 'RecipeFavorites' &&
-        action.table !== 'UserSettings',
+        action.table !== 'UserSettings' &&
+        !['StickerPacks', 'Stickers', 'RecipeStickers', 'StickerOperations'].includes(action.table),
     )
   )
     throw new RecipeStorageError();
   if (
     version === '5' &&
-    actions.some((action) => action.action !== 'keep' && action.table !== 'UserSettings')
+    actions.some(
+      (action) =>
+        action.action !== 'keep' &&
+        action.table !== 'UserSettings' &&
+        !['StickerPacks', 'Stickers', 'RecipeStickers', 'StickerOperations'].includes(action.table),
+    )
   )
     throw new RecipeStorageError();
-  if (version === '6' && actions.some((action) => action.action !== 'keep'))
+  const stickerTables = new Set([
+    'StickerPacks',
+    'Stickers',
+    'RecipeStickers',
+    'StickerOperations',
+  ]);
+  if (
+    version === '6' &&
+    actions.some((action) => action.action !== 'keep' && !stickerTables.has(action.table))
+  )
+    throw new RecipeStorageError();
+  if (version === '7' && actions.some((action) => action.action !== 'keep'))
     throw new RecipeStorageError();
   return {
-    alreadyApplied: version === '6',
+    alreadyApplied: version === '7',
     actions,
     fromVersion: Number(version),
-    toVersion: 6 as const,
+    toVersion: 7 as const,
   };
 }
 export function applyRecipeSchema(store: RecipeStore, options: JournalMigrationOptions) {
@@ -92,7 +113,8 @@ export function applyRecipeSchema(store: RecipeStore, options: JournalMigrationO
     !options.recipeChecksum ||
     !options.legacyRecipeChecksum ||
     !options.photoRecipeChecksum ||
-    !options.settingsRecipeChecksum
+    !options.settingsRecipeChecksum ||
+    !options.stickerRecipeChecksum
   )
     throw new RecipeStorageError();
   if (plan.fromVersion === 2 && !migrations.some((row) => row[0] === LEGACY_RECIPE_MIGRATION_ID)) {
@@ -148,12 +170,26 @@ export function applyRecipeSchema(store: RecipeStore, options: JournalMigrationO
       'applied',
     ]);
     store.flush();
+    migrations = store.journal.core.read('SchemaMigrations')?.rows;
+    if (!migrations) throw new RecipeStorageError();
+  }
+  if (!migrations.some((row) => row[0] === STICKER_RECIPE_MIGRATION_ID)) {
+    options.beforeWrite?.();
+    store.journal.core.writeRow('SchemaMigrations', migrations.length + 2, [
+      STICKER_RECIPE_MIGRATION_ID,
+      STICKER_RECIPE_MIGRATION_NAME,
+      options.stickerRecipeChecksum,
+      timestamp,
+      'system:setupRecipes',
+      'applied',
+    ]);
+    store.flush();
   }
   const versionIndex =
     store.journal.core.read('Meta')?.rows.findIndex((row) => row[0] === 'schema_version') ?? -1;
   if (versionIndex < 0) throw new RecipeStorageError();
   options.beforeWrite?.();
-  store.journal.core.writeRow('Meta', versionIndex + 2, ['schema_version', '6', timestamp]);
+  store.journal.core.writeRow('Meta', versionIndex + 2, ['schema_version', '7', timestamp]);
   store.flush();
   return planRecipeSchema(store, options);
 }

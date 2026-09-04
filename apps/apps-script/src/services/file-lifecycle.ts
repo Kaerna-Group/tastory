@@ -1,9 +1,12 @@
 import { recipePhotoSchema } from '@tastory/contracts';
+import { stickerItemSchema } from '@tastory/contracts';
 import type { RecipeData, RecipePhoto } from '@tastory/contracts';
 import { historicalSnapshot } from './recipe-history';
 import { readRecipeOperations } from './recipe-storage';
 import type { RecipeStore } from './recipe-storage';
 import { bytesDigest, fileInFolder, privateResourceFolder } from '../platform/private-resources';
+import { readStickerState } from './sticker-storage';
+import { stickerAssetName } from '../platform/sticker-assets';
 
 export class FileLifecycleError extends Error {
   constructor(
@@ -23,6 +26,7 @@ type Expected = {
   digest: string;
   digestKind: 'base64' | 'bytes';
   fileId: string | null;
+  mime: string;
 };
 type FileReport = Extract<RecipeData, { kind: 'files' }>;
 
@@ -70,6 +74,7 @@ function expectedFiles(
           digest: variant === 'image' ? photo.imageDigest : photo.thumbnailDigest,
           digestKind: 'base64',
           fileId: null,
+          mime: 'image/jpeg',
         });
     }
   }
@@ -101,8 +106,24 @@ function expectedFiles(
         digest,
         digestKind: 'bytes',
         fileId,
+        mime: 'image/jpeg',
       });
     }
+  }
+  for (const row of readStickerState(store).stickers.values()) {
+    const { versionId, ...value } = row;
+    void versionId;
+    const sticker = stickerItemSchema.parse(value);
+    if (sticker.assetKey) continue;
+    addExpected(expected, {
+      name: stickerAssetName(sticker),
+      recipeId: null,
+      bytes: sticker.bytes,
+      digest: sticker.digest,
+      digestKind: 'base64',
+      fileId: null,
+      mime: sticker.mimeType,
+    });
   }
   return expected;
 }
@@ -137,7 +158,7 @@ function scan(options: {
     const valid =
       matches.length === 1 &&
       (reference.fileId === null || matches[0]?.getId() === reference.fileId) &&
-      matches[0]?.getMimeType() === 'image/jpeg' &&
+      matches[0]?.getMimeType() === reference.mime &&
       matches[0]?.getSize() === reference.bytes &&
       (reference.digestKind === 'base64'
         ? sha256(Utilities.base64Encode(matches[0].getBlob().getBytes()))
@@ -153,7 +174,7 @@ function scan(options: {
         });
   }
   const assetPattern =
-    /^tastory-(?:recipe-[0-9a-f-]{36}-[0-9a-f-]{36}|spike-[0-9a-f-]{36})-(?:image|thumbnail)\.jpg$/;
+    /^(?:tastory-(?:recipe-[0-9a-f-]{36}-[0-9a-f-]{36}|spike-[0-9a-f-]{36})-(?:image|thumbnail)\.jpg|tastory-sticker-[0-9a-f-]{36}\.(?:png|webp))$/;
   const historyPattern = /^tastory-history-[a-f0-9]{64}\.json$/;
   for (const file of rootFiles) {
     if (expected.has(file.getName()) || historyPattern.test(file.getName())) continue;

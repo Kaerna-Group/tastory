@@ -1,8 +1,13 @@
 import { expect, test } from '@playwright/test';
 import type { Page } from '@playwright/test';
 import { randomUUID } from 'node:crypto';
-import { recipeCommandSchema, recipeSummarySchema } from '@tastory/contracts';
-import type { RecipeAggregate, RecipeData } from '@tastory/contracts';
+import {
+  BUILTIN_STICKER_PACKS,
+  recipeCommandSchema,
+  recipeSummarySchema,
+  stickerCommandSchema,
+} from '@tastory/contracts';
+import type { RecipeAggregate, RecipeData, RecipeSticker } from '@tastory/contracts';
 
 const provider = `window.google = { accounts: { id: {
   initialize(options) { this.callback = options.callback; },
@@ -17,6 +22,7 @@ async function fixture(page: Page) {
   const favoriteUsers = new Set<string>();
   const receipts = new Map<string, RecipeData>();
   const versions = new Map<number, RecipeAggregate>();
+  let stickerPlacements: RecipeSticker[] = [];
   const commands: { action: string; requestId: string }[] = [];
   let settings = {
     displayName: 'Повар',
@@ -76,6 +82,65 @@ async function fixture(page: Page) {
           updatedAt: new Date().toISOString(),
         };
         data = { kind: 'userSettings', settings, outcome: 'committed' };
+      } else if (
+        request.action.startsWith('stickers.') ||
+        request.action.startsWith('recipes.stickers.')
+      ) {
+        const command = stickerCommandSchema.parse({
+          action: request.action,
+          payload: request.payload,
+        });
+        commands.push({ action: command.action, requestId: request.requestId });
+        if (command.action === 'stickers.packs.list')
+          data = {
+            kind: 'stickerPacks',
+            packs: BUILTIN_STICKER_PACKS.map((pack) => ({ ...pack, canManage: false })),
+          };
+        else if (command.action === 'recipes.stickers.list')
+          data = {
+            kind: 'recipeStickers',
+            recipeId: command.payload.recipeId,
+            stickers: stickerPlacements,
+          };
+        else if (command.action === 'recipes.stickers.add') {
+          const source = BUILTIN_STICKER_PACKS.flatMap((pack) => pack.stickers).find(
+            (item) => item.id === command.payload.stickerId,
+          );
+          if (!source) throw new Error('Unknown builtin sticker in fixture.');
+          const now = new Date().toISOString();
+          const placement: RecipeSticker = {
+            id: randomUUID(),
+            recipeId: command.payload.recipeId,
+            stickerId: source.id,
+            packId: source.packId,
+            name: source.name,
+            emoji: source.emoji,
+            mimeType: source.mimeType,
+            assetWidth: source.width,
+            assetHeight: source.height,
+            assetBytes: source.bytes,
+            assetDigest: source.digest,
+            assetKey: source.assetKey,
+            page: command.payload.page,
+            x: command.payload.x,
+            y: command.payload.y,
+            width: command.payload.width,
+            height: command.payload.height,
+            rotation: command.payload.rotation,
+            zIndex: command.payload.zIndex,
+            status: 'active',
+            revision: 1,
+            createdAt: now,
+            updatedAt: now,
+          };
+          stickerPlacements = [...stickerPlacements, placement];
+          data = {
+            kind: 'recipeSticker',
+            recipeId: command.payload.recipeId,
+            sticker: placement,
+            outcome: 'committed',
+          };
+        } else throw new Error(`Unexpected sticker fixture action: ${command.action}`);
       } else if (request.action.startsWith('recipes.') || request.action.startsWith('tags.')) {
         const raw = route.request().postDataJSON() as Record<string, unknown>;
         const command = recipeCommandSchema.parse({
@@ -408,6 +473,25 @@ test('previews and imports a portable recipe, then exports the book', async ({ p
   await transfer.getByRole('button', { name: 'Экспортировать книгу с файлами' }).click();
   const file = await download;
   expect(file.suggestedFilename()).toMatch(/^tastory-book-.*\.tastory\.json$/);
+});
+
+test('opens builtin sticker packs and places a sticker on a saved recipe', async ({ page }) => {
+  await fixture(page);
+  await create(page);
+  await page.getByLabel('Название', { exact: true }).fill('Рецепт со стикером');
+  await expect(saved(page)).toBeVisible();
+
+  const packs = page.getByRole('region', { name: 'Стикер-паки' });
+  await expect(packs.getByRole('tab', { name: /Уютная кухня/ })).toHaveAttribute(
+    'aria-selected',
+    'true',
+  );
+  const jam = packs.locator('article').filter({ hasText: 'Клубничное варенье' });
+  await jam.getByRole('button', { name: 'На страницу' }).click();
+  await expect(packs.getByRole('status')).toContainText('Стикер добавлен на страницу');
+  await expect(
+    packs.getByRole('button', { name: 'Выбрать стикер Клубничное варенье' }),
+  ).toBeVisible();
 });
 
 test('library searches ingredients, keeps URL filters, switches view and stores personal favorites', async ({

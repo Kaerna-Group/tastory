@@ -186,7 +186,7 @@ function commit(context: RecipeWriteContext, op: RecipeOperation): RecipeReceipt
   const state = `committed@${context.now().toISOString()}`;
   // Validate the final receipt before the single publication write (including clock monotonicity).
   recipeOperationSchema.parse({ ...op, state });
-  context.store.writeState(index + 2, state);
+  context.store.writeState('RecipeOperations', index + 2, state);
   context.store.flush();
   if (recipeRows(context.store, 'RecipeOperations')[index]?.state !== state)
     throw new RecipeStorageError();
@@ -376,7 +376,7 @@ export function cancelRecipeOperation(
   if (op.state === 'started') {
     const state = `cancelled@${context.now().toISOString()}`;
     recipeOperationSchema.parse({ ...op, state });
-    context.store.writeState(index + 2, state);
+    context.store.writeState('RecipeOperations', index + 2, state);
     context.store.flush();
     if (recipeRows(context.store, 'RecipeOperations')[index]?.state !== state)
       throw new RecipeStorageError();

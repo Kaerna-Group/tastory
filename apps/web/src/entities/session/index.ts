@@ -11,6 +11,7 @@ export {
   requestSessionJournal,
   requestSessionRecipes,
   requestSessionSettings,
+  requestSessionStickers,
 } from './model/session-store';
 export type { SessionState } from './model/session-store';
 export {

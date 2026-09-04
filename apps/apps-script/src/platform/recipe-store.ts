@@ -16,7 +16,10 @@ export function createRecipeStore(
       if (rowCount === 0 && columnCount === 0)
         return { rowCount, columnCount, headers: [], rows: [] };
       const width = RECIPE_TABLES.find((definition) => definition.name === table)?.columns.length;
-      const limit = table === 'RecipeOperations' ? RECIPE_OPERATION_LIMIT : RECIPE_ROW_LIMIT;
+      const limit =
+        table === 'RecipeOperations' || table === 'StickerOperations'
+          ? RECIPE_OPERATION_LIMIT
+          : RECIPE_ROW_LIMIT;
       if (columnCount !== width || rowCount < 1 || rowCount > limit + 1)
         throw new RecipeStorageError();
       const range = sheet.getRange(1, 1, rowCount, columnCount);
@@ -32,7 +35,10 @@ export function createRecipeStore(
     writeRows(table, firstRow, rows) {
       const sheet = spreadsheet.getSheetByName(table);
       const width = RECIPE_TABLES.find((definition) => definition.name === table)?.columns.length;
-      const limit = table === 'RecipeOperations' ? RECIPE_OPERATION_LIMIT : RECIPE_ROW_LIMIT;
+      const limit =
+        table === 'RecipeOperations' || table === 'StickerOperations'
+          ? RECIPE_OPERATION_LIMIT
+          : RECIPE_ROW_LIMIT;
       if (
         !sheet ||
         !width ||
@@ -60,15 +66,23 @@ export function createRecipeStore(
         throw new RecipeStorageError();
       sheet.deleteRows(firstRow, count);
     },
-    writeState(row, state) {
-      const sheet = spreadsheet.getSheetByName('RecipeOperations');
-      const definition = RECIPE_TABLES.find((table) => table.name === 'RecipeOperations');
-      const column = definition?.columns.indexOf('state') ?? -1;
-      if (!sheet || column < 0 || row < 2 || row > sheet.getLastRow() || state.length > 100)
+    writeState(table, row, state) {
+      const actualRow = row;
+      const sheet = spreadsheet.getSheetByName(table);
+      const columns = RECIPE_TABLES.find((item) => item.name === table)?.columns as
+        readonly string[] | undefined;
+      const column = columns?.indexOf('state') ?? -1;
+      if (
+        !sheet ||
+        column < 0 ||
+        actualRow < 2 ||
+        actualRow > sheet.getLastRow() ||
+        state.length > 100
+      )
         throw new RecipeStorageError();
       // This single cell is the publication point. All payload cells are immutable.
       sheet
-        .getRange(row, column + 1, 1, 1)
+        .getRange(actualRow, column + 1, 1, 1)
         .setNumberFormat('@')
         .setValues([[JSON.stringify(state)]]);
     },

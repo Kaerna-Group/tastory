@@ -84,9 +84,17 @@ Production ограничивает `auth.signIn` до 6 запросов на c
 
 Ошибки `SETTINGS_NOT_READY`, `SETTINGS_CONFLICT`, `SETTINGS_UNAVAILABLE` и `OPERATION_MISMATCH` используют общий envelope API v1.
 
+## Стикер-паки
+
+Действия `stickers.packs.list/create/update/archive/restore`, `stickers.items.add/reorder/archive`, `stickers.assets.read` и `recipes.stickers.list/add/update/delete` требуют действующий credential. Создатель управляет своими паками, владелец — всеми паками книги; viewer выполняет только разрешённые чтения. Личный пак не обнаруживается другим участником.
+
+Загрузка элемента принимает `uploadId`, равный requestId, имя, emoji, позицию и подготовленный статичный PNG/WebP. Тело ограничено `RECIPE_BODY_LIMIT`; максимальный файл — 512 КиБ и 1024×1024. Сервер проверяет формат, размер, MIME, SHA-256 и приватность Drive.
+
+Размещение принимает recipeId, stickerId и геометрию `{ page, x, y, width, height, rotation, zIndex }`. Изменение и удаление используют ревизию самого экземпляра. Ответы имеют kind `stickerPacks`, `stickerPack`, `stickerAsset`, `recipeStickers` или `recipeSticker`. Ошибки: `STICKER_NOT_READY`, `STICKER_INVALID`, `STICKER_UNAVAILABLE`, `STICKER_CONFLICT`, `STICKER_LIMIT`; проверка доступа по-прежнему возвращает `ACCESS_DENIED`. Полная модель: [стикер-паки V-03](sticker-packs.md).
+
 ## Журнал операций
 
-Три дополнительных действия требуют credential, строго пустой payload, staging и активного владельца. Повторная проверка прав и срока токена выполняется под ScriptLock. Миграция 002 создаёт схему 2, миграция 003 — схему 3, миграция 004 добавляет фотографии рецепта и схему 4. Вход поддерживает версии 1–4. `admin.health` возвращает пары schemaVersion/tablesChecked: 1/6, 2/8, 3/14 или 4/15. Транспортное meta не меняется.
+Три дополнительных действия требуют credential, строго пустой payload, staging и активного владельца. Повторная проверка прав и срока токена выполняется под ScriptLock. Последовательность миграций 002–007 доводит хранилище до схемы 7; миграция 007 добавляет четыре таблицы стикеров. Вход поддерживает версии 1–7. `admin.health` возвращает пары schemaVersion/tablesChecked от 1/6 до 7/21. Транспортное meta не меняется.
 
 | Действие                      | Результат data                                                                                                    |
 | ----------------------------- | ----------------------------------------------------------------------------------------------------------------- |
@@ -122,7 +130,7 @@ PROBE_UNAVAILABLE обозначает сбой/занятую блокиров�
 
 ## Echo
 
-Action `echo`, payload `{"message":"hello"}`. Успех возвращает payload в data и тот же meta. Сообщение — до 1024 символов. POST ограничивает тело максимумом PHOTO_BODY_LIMIT/RECIPE_BODY_LIMIT до JSON.parse; после разбора применяет 8192 UTF-16 code units для обычных действий, RECIPE_BODY_LIMIT для recipes.create/updateContent/photos.add и PHOTO_BODY_LIMIT для spike.photo.upload. Для загрузки действуют отдельные строгие лимиты base64 и декодированных байтов.
+Action `echo`, payload `{"message":"hello"}`. Успех возвращает payload в data и тот же meta. Сообщение — до 1024 символов. POST ограничивает тело максимумом PHOTO_BODY_LIMIT/RECIPE_BODY_LIMIT до JSON.parse; после разбора применяет 8192 UTF-16 code units для обычных действий, RECIPE_BODY_LIMIT для recipes.create/updateContent/photos.add и stickers.items.add, PHOTO_BODY_LIMIT для spike.photo.upload. Для загрузки действуют отдельные строгие лимиты base64 и декодированных байтов.
 
 Echo выключен по умолчанию. В staging включается через Script Property `ENABLE_SPIKE_ECHO=true`. Используйте только несекретные тестовые строки.
 

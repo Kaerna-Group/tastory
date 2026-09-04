@@ -3,6 +3,7 @@ import { adminUsersDataSchema, adminHealthDataSchema } from './admin';
 import { journalDataSchema } from './journal';
 import { accessCommandSchema, accessDataSchema } from './access';
 import { recipeCommandSchema, recipeDataSchema } from './recipe-api';
+import { stickerCommandSchema, stickerDataSchema } from './sticker-api';
 import { backupCommandSchema, backupDataSchema } from './backup';
 import { userSettingsCommandSchema, userSettingsDataSchema } from './user-settings';
 import { photoUploadSchema, photoDataSchema } from './photo';
@@ -27,6 +28,7 @@ export const apiRequestSchema = z.discriminatedUnion('action', [
   accessCommandSchema.options[0].extend(accessFields),
   ...backupCommandSchema.options.map((command) => command.extend(accessFields)),
   ...recipeCommandSchema.options.map((command) => command.extend(accessFields)),
+  ...stickerCommandSchema.options.map((command) => command.extend(accessFields)),
   accessCommandSchema.options[1].extend(accessFields),
   accessCommandSchema.options[2].extend(accessFields),
   accessCommandSchema.options[3].extend(accessFields),
@@ -157,6 +159,11 @@ export const apiErrorSchema = z.strictObject({
       'SETTINGS_NOT_READY',
       'SETTINGS_CONFLICT',
       'SETTINGS_UNAVAILABLE',
+      'STICKER_NOT_READY',
+      'STICKER_INVALID',
+      'STICKER_UNAVAILABLE',
+      'STICKER_CONFLICT',
+      'STICKER_LIMIT',
     ]),
     message: z.string(),
   }),
@@ -295,6 +302,16 @@ export const recipeResponseSchema = z.union([
   apiErrorSchema,
 ]);
 export type RecipeResponse = z.infer<typeof recipeResponseSchema>;
+export const stickerResponseSchema = z.union([
+  z.strictObject({
+    ok: z.literal(true),
+    requestId: z.uuid(),
+    data: stickerDataSchema,
+    meta: responseMetaSchema,
+  }),
+  apiErrorSchema,
+]);
+export type StickerResponse = z.infer<typeof stickerResponseSchema>;
 export const backupResponseSchema = z.union([
   z.strictObject({
     ok: z.literal(true),

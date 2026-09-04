@@ -9,7 +9,7 @@ import { mutateRecipe } from './recipe-mutations';
 import { randomUUID } from 'node:crypto';
 
 afterEach(() => vi.unstubAllGlobals());
-describe('recipe migration 005', () => {
+describe('recipe schema migrations through 007', () => {
   it('plans all tables before writing, preserves v2 tables and is idempotent', () => {
     const f = persistenceFixture(false);
     const users = structuredClone(f.required('Users'));
@@ -20,8 +20,8 @@ describe('recipe migration 005', () => {
     expect(f.required('Users')).toEqual(users);
     expect(f.required('SchemaMigrations').slice(0, oldMigration.length)).toEqual(oldMigration);
     expect(inspectCurrentSchema(f.book, 'private-drive')).toEqual({
-      schemaVersion: 6,
-      tablesChecked: 17,
+      schemaVersion: 7,
+      tablesChecked: 21,
     });
     for (const table of RECIPE_TABLES) expect(f.required(table.name)).toEqual([[...table.columns]]);
     const writes = f.count();
@@ -110,6 +110,31 @@ describe('recipe migration 005', () => {
     const favorites = RECIPE_TABLES.find((table) => table.name === 'RecipeFavorites');
     if (!favorites) throw new Error('fixture');
     expect(f.required('RecipeFavorites')).toEqual([[...favorites.columns]]);
+  });
+  it('upgrades schema 6 by adding only sticker tables and a single migration record', () => {
+    const f = persistenceFixture();
+    const stickerTables = ['StickerPacks', 'Stickers', 'RecipeStickers', 'StickerOperations'];
+    for (const name of stickerTables) f.sheets.delete(name);
+    const migrations = f.required('SchemaMigrations');
+    const record = migrations.findIndex((row) => row[0] === '007-sticker-packs');
+    if (record < 0) throw new Error('fixture');
+    migrations.splice(record, 1);
+    const version = f.required('Meta').find((row) => row[0] === 'schema_version');
+    if (!version) throw new Error('fixture');
+    version[1] = '6';
+    expect(planRecipeSchema(f.store, f.migrationOptions)).toMatchObject({
+      fromVersion: 6,
+      toVersion: 7,
+      alreadyApplied: false,
+    });
+    applyRecipeSchema(f.store, f.migrationOptions);
+    for (const name of stickerTables) {
+      const definition = RECIPE_TABLES.find((table) => table.name === name);
+      expect(f.required(name)).toEqual([[...(definition?.columns ?? [])]]);
+    }
+    expect(
+      f.required('SchemaMigrations').filter((row) => row[0] === '007-sticker-packs'),
+    ).toHaveLength(1);
   });
   it('rejects header conflicts and foreign data without writing', () => {
     const f = persistenceFixture(false);

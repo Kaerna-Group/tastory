@@ -9,6 +9,7 @@ import type { RecipeLocalDraft, RecipeDraftValue, Tag } from '../model/drafts';
 import { RecipeFields } from './recipe-fields';
 import { RecipeHistory } from './recipe-history';
 import { RecipePhotos } from './recipe-photos';
+import { StickerPacks } from './sticker-packs';
 
 function download(draft: RecipeLocalDraft) {
   const url = URL.createObjectURL(
@@ -332,6 +333,15 @@ function EditorContent({
         editable={editable && !resolving}
         confirmDelete={preferences.confirmDestructiveActions}
       />
+      {draft.base && (
+        <StickerPacks
+          recipeId={draft.base.recipe.id}
+          recipeRevision={draft.base.recipe.revision}
+          editable={
+            editable && !resolving && status === 'saved' && !draft.pending && !draft.conflict
+          }
+        />
+      )}
       <p className="muted text-sm">
         Локальная копия хранится в этом браузере. Очистка данных сайта удалит её. Для другого
         устройства дождитесь сохранения на сервере.

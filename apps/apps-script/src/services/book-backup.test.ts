@@ -62,7 +62,7 @@ it('copies every table/file, checks hashes and restores rights, history and phot
     restoreId = randomUUID();
   const before = readBackupTables(f.book);
   const saved = createBookBackup(f.port, f.id, f.context.workspaceId);
-  expect(saved.tables).toBe(17);
+  expect(saved.tables).toBe(21);
   expect(saved.files).toBe(4);
   expect(verifyBookBackup(f.port, f.id, f.context.workspaceId)).toEqual(saved);
   const restored = restoreBookBackup(f.port, f.id, f.context.workspaceId, restoreId);
@@ -112,7 +112,7 @@ for (const mode of ['backup', 'restore'] as const)
         expect(() => f.run()).toThrow();
         f.failDrive();
         f.run();
-        expect(verifyBookBackup(f.port, f.id, f.context.workspaceId).tables).toBe(17);
+        expect(verifyBookBackup(f.port, f.id, f.context.workspaceId).tables).toBe(21);
         expect(readBackupTables(f.book)).toEqual(before);
         const writes = f.driveWrites();
         f.run();

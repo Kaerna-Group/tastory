@@ -472,7 +472,7 @@ export function checkSchemaRuntime(code) {
   assert.equal(held, false);
   const recipeCall = (action, payload = {}, requestId = randomUUID()) =>
     request('private-owner', 'owner@example.test', action, requestId, payload);
-  assert.equal(recipeCall('admin.recipes.initialize').data.schemaVersion, 6);
+  assert.equal(recipeCall('admin.recipes.initialize').data.schemaVersion, 7);
   assert.equal(recipeCall('admin.recipes.initialize').data.alreadyApplied, true);
   const tag = recipeCall('tags.create', { name: 'Супы', colorToken: 'neutral' });
   assert.equal(tag.ok, true, JSON.stringify(tag));
@@ -560,7 +560,7 @@ export function checkSchemaRuntime(code) {
     'ACCESS_DENIED',
   );
   assert.equal(typeof sandbox.recoverBookBackup, 'function');
-  assert.equal(recipeCall('admin.health').data.tablesChecked, 17);
+  assert.equal(recipeCall('admin.health').data.tablesChecked, 21);
   assert.equal(recipeCall('admin.operations.list').data.schemaVersion, 2);
   assert.equal(listAccess().revision, 8);
   assert.equal(held, false);

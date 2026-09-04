@@ -30,7 +30,7 @@ export type RecipeStore = {
     firstRow: number,
     rows: readonly (readonly string[])[],
   ) => void;
-  writeState: (row: number, state: string) => void;
+  writeState: (table: 'RecipeOperations' | 'StickerOperations', row: number, state: string) => void;
   flush: () => void;
 };
 export type RecipeSnapshot = Record<RecipeDataTable, Record<string, unknown>[]>;
@@ -167,7 +167,10 @@ export function recipeRows(store: RecipeStore, table: RecipeTableName): Record<s
     definition.columns.some((column, i) => snapshot.headers[i] !== column)
   )
     throw new RecipeStorageError();
-  const limit = table === 'RecipeOperations' ? RECIPE_OPERATION_LIMIT : RECIPE_ROW_LIMIT;
+  const limit =
+    table === 'RecipeOperations' || table === 'StickerOperations'
+      ? RECIPE_OPERATION_LIMIT
+      : RECIPE_ROW_LIMIT;
   if (snapshot.rows.length > limit) throw new RecipeStorageError('RECIPE_LIMIT');
   try {
     return snapshot.rows.map((row) => {

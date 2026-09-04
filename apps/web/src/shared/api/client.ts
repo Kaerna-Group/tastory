@@ -11,6 +11,7 @@ import {
   recipeResponseSchema,
   backupResponseSchema,
   userSettingsResponseSchema,
+  stickerResponseSchema,
 } from '@tastory/contracts';
 import type {
   ApiRequest,
@@ -33,6 +34,8 @@ import type {
   BackupData,
   UserSettingsCommand,
   UserSettingsData,
+  StickerCommand,
+  StickerData,
 } from '@tastory/contracts';
 
 export type ApiTransport = (request: ApiRequest, signal?: AbortSignal) => Promise<unknown>;
@@ -73,6 +76,12 @@ export function createApiClient(
     requestId: string,
     signal?: AbortSignal,
   ) => Promise<RecipeData>;
+  stickers: (
+    command: StickerCommand,
+    credential: string,
+    requestId: string,
+    signal?: AbortSignal,
+  ) => Promise<StickerData>;
   access: (
     command: AccessCommand,
     credential: string,
@@ -256,6 +265,48 @@ export function createApiClient(
         throw new ApiClientError(parsed.data.error.code, parsed.data.error.message, requestId);
       return parsed.data.data;
     },
+    async stickers(command, credential, requestId, signal) {
+      const raw = await transport(
+        { ...command, apiVersion: API_VERSION, requestId, credential },
+        signal,
+      );
+      const parsed = stickerResponseSchema.safeParse(raw);
+      const expectedKind = {
+        'stickers.packs.list': 'stickerPacks',
+        'stickers.packs.create': 'stickerPack',
+        'stickers.packs.update': 'stickerPack',
+        'stickers.packs.archive': 'stickerPack',
+        'stickers.packs.restore': 'stickerPack',
+        'stickers.items.add': 'stickerPack',
+        'stickers.items.reorder': 'stickerPack',
+        'stickers.items.archive': 'stickerPack',
+        'stickers.assets.read': 'stickerAsset',
+        'recipes.stickers.list': 'recipeStickers',
+        'recipes.stickers.add': 'recipeSticker',
+        'recipes.stickers.update': 'recipeSticker',
+        'recipes.stickers.delete': 'recipeSticker',
+      }[command.action];
+      if (
+        !parsed.success ||
+        parsed.data.requestId !== requestId ||
+        (parsed.data.ok &&
+          (parsed.data.data.kind !== expectedKind ||
+            (parsed.data.data.kind === 'recipeStickers' &&
+              command.action === 'recipes.stickers.list' &&
+              parsed.data.data.recipeId !== command.payload.recipeId) ||
+            (parsed.data.data.kind === 'recipeSticker' &&
+              command.action.startsWith('recipes.stickers.') &&
+              parsed.data.data.recipeId !== (command.payload as { recipeId: string }).recipeId)))
+      )
+        throw new ApiClientError(
+          'INVALID_RESPONSE',
+          'Сервер вернул несовместимый ответ.',
+          requestId,
+        );
+      if (!parsed.data.ok)
+        throw new ApiClientError(parsed.data.error.code, parsed.data.error.message, requestId);
+      return parsed.data.data;
+    },
     async access(command, credential, requestId, signal) {
       const raw = await transport(
         { ...command, apiVersion: API_VERSION, requestId, credential },
@@ -417,7 +468,8 @@ export function createHttpTransport(url: string, fetcher: typeof fetch = fetch):
           request.action.startsWith('admin.') ||
           request.action.startsWith('auth.') ||
           request.action.startsWith('recipes.') ||
-          request.action.startsWith('tags.')
+          request.action.startsWith('tags.') ||
+          request.action.startsWith('stickers.')
           ? 60_000
           : 15_000,
       );

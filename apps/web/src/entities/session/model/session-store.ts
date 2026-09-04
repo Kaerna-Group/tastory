@@ -8,6 +8,7 @@ import type {
   RecipeCommand,
   BackupCommand,
   UserSettingsCommand,
+  StickerCommand,
 } from '@tastory/contracts';
 import { accessCheck } from './access-check';
 
@@ -152,6 +153,16 @@ export async function requestSessionRecipes(
 ) {
   return protectedRequest(
     (token, combined) => apiClient.recipes(command, token, requestId, combined),
+    signal,
+  );
+}
+export async function requestSessionStickers(
+  command: StickerCommand,
+  requestId: string,
+  signal?: AbortSignal,
+) {
+  return protectedRequest(
+    (token, combined) => apiClient.stickers(command, token, requestId, combined),
     signal,
   );
 }
