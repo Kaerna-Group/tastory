@@ -19,6 +19,7 @@ export default defineConfig({
   // These three screens are staging diagnostics and are intentionally absent from production.
   testIgnore: /(access-check|concurrency|photo)\.spec\.ts/,
   fullyParallel: true,
+  workers: 4,
   forbidOnly: Boolean(process.env['CI']),
   retries: process.env['CI'] ? 1 : 0,
   reporter: [['list'], ['html', { open: 'never', outputFolder: 'playwright-report/auth' }]],
