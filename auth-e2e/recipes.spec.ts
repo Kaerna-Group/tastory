@@ -604,6 +604,9 @@ async function create(page: Page) {
   await page.getByRole('button', { name: 'Новый рецепт' }).click();
   await expect(page.getByLabel('Название', { exact: true })).toBeVisible();
 }
+async function openRecipeMode(page: Page, name: 'Просмотр' | 'Содержание' | 'Дизайн' | 'История') {
+  await page.getByRole('tab', { name, exact: true }).click();
+}
 const saved = (page: Page) =>
   page.getByRole('status').filter({ hasText: 'Сохранено на сервере и на устройстве.' });
 
@@ -713,6 +716,7 @@ test('opens builtin sticker packs and places a sticker on a saved recipe', async
   await create(page);
   await page.getByLabel('Название', { exact: true }).fill('Рецепт со стикером');
   await expect(saved(page)).toBeVisible();
+  await openRecipeMode(page, 'Дизайн');
 
   const packs = page.getByRole('region', { name: 'Стикер-паки' });
   await expect(packs.getByRole('tab', { name: /Уютная кухня/ })).toHaveAttribute(
@@ -734,6 +738,7 @@ test('uses ten recipe templates and copies a shared style into the personal libr
   await create(page);
   await page.getByLabel('Название', { exact: true }).fill('Лимонный тарт');
   await expect(saved(page)).toBeVisible();
+  await openRecipeMode(page, 'Дизайн');
 
   const library = page.getByRole('region', { name: 'Шаблоны страниц' });
   await expect(library.locator('.template-card')).toHaveCount(11);
@@ -763,6 +768,47 @@ test('uses ten recipe templates and copies a shared style into the personal libr
   await creator.getByLabel('Доступ').selectOption('workspace');
   await creator.getByRole('button', { name: 'Создать шаблон' }).click();
   await expect(library.getByRole('heading', { name: 'Мой семейный обед' })).toBeVisible();
+});
+
+test('opens a saved recipe as a book page and keeps editing in a separate mode', async ({
+  page,
+}, testInfo) => {
+  await fixture(page);
+  await create(page);
+  await page.getByLabel('Название', { exact: true }).fill('Семейный пирог');
+  await page.getByLabel('Описание').fill('Тёплый рецепт для воскресного обеда.');
+  await page.getByRole('button', { name: 'Добавить ингредиент' }).click();
+  await page.getByLabel('Ингредиент 1', { exact: true }).fill('Яблоки');
+  await page.getByRole('button', { name: 'Добавить шаг' }).click();
+  await page.getByLabel('Шаг 1', { exact: true }).fill('Нарежьте яблоки и испеките пирог.');
+  await expect(saved(page)).toBeVisible();
+  await openRecipeMode(page, 'Просмотр');
+
+  const sheet = page.getByRole('article', { name: /Страница 1: Семейный пирог/ });
+  await expect(sheet).toBeVisible();
+  await expect(sheet).toHaveAttribute('data-layout', 'hearth');
+  await expect(sheet).toContainText('Яблоки');
+  await expect(sheet).toContainText('Нарежьте яблоки');
+  await expect(page.getByLabel('Название', { exact: true })).toHaveCount(0);
+  await page.screenshot({ path: testInfo.outputPath('recipe-book-view.png'), fullPage: true });
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+
+  await page.reload();
+  await login(page);
+  await expect(page.getByRole('tab', { name: 'Просмотр', exact: true })).toHaveAttribute(
+    'aria-selected',
+    'true',
+  );
+  await expect(page.getByRole('article', { name: /Страница 1: Семейный пирог/ })).toBeVisible();
+  await page.emulateMedia({ media: 'print' });
+  await expect
+    .poll(() =>
+      page.locator('.app-header').evaluate((element) => getComputedStyle(element).display),
+    )
+    .toBe('none');
+  await page.emulateMedia({ media: 'screen' });
+  await openRecipeMode(page, 'Содержание');
+  await expect(page.getByLabel('Название', { exact: true })).toHaveValue('Семейный пирог');
 });
 
 test('library searches ingredients, keeps URL filters, switches view and stores personal favorites', async ({
@@ -798,12 +844,14 @@ test('opens a historical version for reading without replacing current editor co
   await expect(saved(page)).toBeVisible();
   await page.getByLabel('Название', { exact: true }).fill('Новая версия');
   await expect(saved(page)).toBeVisible();
+  await openRecipeMode(page, 'История');
   const history = page.getByRole('region', { name: 'История рецепта' });
   await history.getByRole('button', { name: 'Показать историю' }).click();
   await history.getByRole('button', { name: /^Версия 1 ·/ }).click();
   await expect(history.getByLabel('Название', { exact: true })).toHaveValue('Первый рецепт');
   await expect(history.getByLabel('Название', { exact: true })).toBeDisabled();
-  await expect(page.getByLabel('Название', { exact: true }).first()).toHaveValue('Новая версия');
+  await openRecipeMode(page, 'Содержание');
+  await expect(page.getByLabel('Название', { exact: true })).toHaveValue('Новая версия');
 });
 
 test('restores a historical snapshot as a new version and keeps the replaced version', async ({
@@ -815,6 +863,7 @@ test('restores a historical snapshot as a new version and keeps the replaced ver
   await expect(saved(page)).toBeVisible();
   await page.getByLabel('Название', { exact: true }).fill('Новая версия');
   await expect(saved(page)).toBeVisible();
+  await openRecipeMode(page, 'История');
   const history = page.getByRole('region', { name: 'История рецепта' });
   await history.getByRole('button', { name: 'Показать историю' }).click();
   await history.getByRole('button', { name: /^Версия 1 ·/ }).click();
@@ -855,6 +904,7 @@ test('editor saves ingredients and steps, restores after reload, and keeps crede
   await page.reload();
   await expect(page.getByLabel('Название', { exact: true })).toHaveCount(0);
   await login(page);
+  await openRecipeMode(page, 'Содержание');
   await expect(page.getByLabel('Название', { exact: true })).toHaveValue('Яблочный пирог');
   await expect(page.getByRole('textbox', { name: 'Шаг 1', exact: true })).toHaveValue(/Нарежьте/);
   await page.getByLabel('Название', { exact: true }).fill('Пирог с корицей');
@@ -922,6 +972,7 @@ test('locks the same draft in another tab and unlocks it after the original edit
   await expect(other.getByRole('alert')).toContainText('другой вкладке');
   await page.getByRole('link', { name: '← В библиотеку' }).click();
   await other.getByRole('button', { name: 'Повторить открытие' }).click();
+  await openRecipeMode(other, 'Содержание');
   await expect(other.getByLabel('Название', { exact: true })).toHaveValue('Одна вкладка');
   await other.close();
 });
@@ -940,6 +991,7 @@ test('hides another account’s drafts and makes shared recipes read-only for vi
   await login(page);
   await expect(page.getByRole('alert')).toContainText('не найден');
   await page.goto(`/#/recipes/${f.recipeId}`);
+  await openRecipeMode(page, 'Содержание');
   await expect(page.getByLabel('Название', { exact: true })).toBeDisabled();
   await expect(page.getByRole('button', { name: 'Сохранить сейчас' })).toHaveCount(0);
   expect(page.url()).not.toBe(draftUrl);

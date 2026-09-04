@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { RecipePageRenderer } from '@/entities/recipe-page';
 import type { RecipeDraftValue } from '../model/drafts';
-import { BUILTIN_RECIPE_TEMPLATES, templateCategoryForLayout } from '../model/templates';
+import { BUILTIN_RECIPE_TEMPLATES } from '../model/templates';
 import type {
   RecipeTemplate,
   RecipeTemplateCategory,
@@ -9,6 +10,7 @@ import type {
   TemplateCommand,
 } from '../model/templates';
 import { requestSessionTemplates } from '@/entities/session';
+import './recipe-templates.css';
 
 const CATEGORY_LABELS: Record<RecipeTemplateCategory, string> = {
   dish: 'Блюда',
@@ -23,79 +25,10 @@ function errorMessage(cause: unknown) {
   return cause instanceof Error ? cause.message : 'Не удалось обновить библиотеку шаблонов.';
 }
 
-function RecipePreview({
-  layout,
-  value,
-  compact = false,
-}: {
-  layout: RecipeTemplateLayout;
-  value: RecipeDraftValue;
-  compact?: boolean;
-}) {
-  const ingredients = value.ingredients
-    .filter((item) => item.name.trim())
-    .slice(0, compact ? 3 : 6);
-  const steps = value.steps.filter((item) => item.body.trim()).slice(0, compact ? 2 : 4);
-  const ingredientPlaceholders = [
-    { key: 'one', name: 'Любимые продукты' },
-    { key: 'two', name: 'Щепотка вдохновения' },
-  ];
-  const stepPlaceholders = [
-    { key: 'one', body: 'Подготовьте всё необходимое.' },
-    { key: 'two', body: 'Готовьте с удовольствием.' },
-  ];
-  return (
-    <article
-      className={`template-recipe-page${compact ? ' template-recipe-page-compact' : ''}`}
-      data-layout={layout}
-    >
-      <div className="template-page-mark" aria-hidden="true">
-        {templateCategoryForLayout(layout) === 'dish' ? '✦' : '◌'}
-      </div>
-      <header>
-        <p className="template-page-kicker">
-          {templateCategoryForLayout(layout) === 'dish' ? 'Домашний рецепт' : 'Коллекция напитков'}
-        </p>
-        <h3>
-          {value.content.title.trim() || (compact ? 'Название рецепта' : 'Ваш красивый рецепт')}
-        </h3>
-        <p>
-          {value.content.description.trim() ||
-            'Короткая история блюда, настроение и детали, которые хочется сохранить.'}
-        </p>
-      </header>
-      <div className="template-page-meta">
-        <span>{value.content.servings ? `${value.content.servings} порции` : 'Для близких'}</span>
-        <span>
-          {value.content.cookMinutes || value.content.prepMinutes
-            ? `${(value.content.cookMinutes ?? 0) + (value.content.prepMinutes ?? 0)} минут`
-            : 'В своём ритме'}
-        </span>
-      </div>
-      <div className="template-page-columns">
-        <section>
-          <h4>Ингредиенты</h4>
-          <ul>
-            {(ingredients.length ? ingredients : ingredientPlaceholders).map((item) => (
-              <li key={item.key}>{item.name}</li>
-            ))}
-          </ul>
-        </section>
-        <section>
-          <h4>Приготовление</h4>
-          <ol>
-            {(steps.length ? steps : stepPlaceholders).map((item) => (
-              <li key={item.key}>{item.body}</li>
-            ))}
-          </ol>
-        </section>
-      </div>
-    </article>
-  );
-}
-
 function TemplateCard({
   item,
+  recipeId,
+  recipeRevision,
   value,
   selected,
   busy,
@@ -107,6 +40,8 @@ function TemplateCard({
   onRestore,
 }: {
   item: RecipeTemplateView;
+  recipeId: string;
+  recipeRevision: number;
   value: RecipeDraftValue;
   selected: boolean;
   busy: boolean;
@@ -133,7 +68,17 @@ function TemplateCard({
   const [editVisibility, setEditVisibility] = useState(template.visibility);
   return (
     <article className={`template-card${selected ? ' template-card-selected' : ''}`}>
-      <RecipePreview layout={template.layout} value={value} compact />
+      <RecipePageRenderer
+        recipeId={recipeId}
+        recipeRevision={recipeRevision}
+        templateId={template.id}
+        templateRevision={template.revision}
+        templateName={template.name}
+        layout={template.layout}
+        tagNames={[]}
+        value={value}
+        compact
+      />
       <div className="template-card-copy">
         <div>
           <span className="eyebrow">{CATEGORY_LABELS[template.category]}</span>
@@ -385,7 +330,16 @@ export function RecipeTemplates({
       </header>
 
       <div className="template-stage" aria-label={`Предпросмотр: ${LAYOUT_LABELS[selectedLayout]}`}>
-        <RecipePreview layout={selectedLayout} value={value} />
+        <RecipePageRenderer
+          recipeId={recipeId}
+          recipeRevision={recipeRevision}
+          templateId={applied?.templateId ?? null}
+          templateRevision={applied?.revision ?? 1}
+          templateName={applied?.templateName ?? LAYOUT_LABELS[selectedLayout]}
+          layout={selectedLayout}
+          tagNames={[]}
+          value={value}
+        />
       </div>
 
       {notice && (
@@ -444,6 +398,8 @@ export function RecipeTemplates({
             <TemplateCard
               key={item.template.id}
               item={item}
+              recipeId={recipeId}
+              recipeRevision={recipeRevision}
               value={value}
               selected={applied?.templateId === item.template.id}
               busy={busy}

@@ -169,3 +169,18 @@ export type {
 export { templateCommandSchema, templateMutationActions, templateDataSchema } from './template-api';
 export type { TemplateCommand, TemplateData } from './template-api';
 export { BUILTIN_RECIPE_TEMPLATES } from './template-builtins';
+export {
+  RECIPE_PAGE_DOCUMENT_VERSION,
+  recipePageBindingSchema,
+  recipePageRegionSchema,
+  recipePageKindSchema,
+  recipePageElementSchema,
+  recipePageSchema,
+  recipePageDocumentSchema,
+} from './recipe-page';
+export type {
+  RecipePageBinding,
+  RecipePageElement,
+  RecipePage,
+  RecipePageDocument,
+} from './recipe-page';

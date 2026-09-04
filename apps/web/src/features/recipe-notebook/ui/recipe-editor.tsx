@@ -9,8 +9,10 @@ import type { RecipeLocalDraft, RecipeDraftValue, Tag } from '../model/drafts';
 import { RecipeFields } from './recipe-fields';
 import { RecipeHistory } from './recipe-history';
 import { RecipePhotos } from './recipe-photos';
+import { RecipeBookView } from './recipe-book-view';
 import { RecipeTemplates } from './recipe-templates';
 import { StickerPacks } from './sticker-packs';
+import './recipe-editor-modes.css';
 
 function download(draft: RecipeLocalDraft) {
   const url = URL.createObjectURL(
@@ -165,6 +167,13 @@ function EditorContent({
   const editable = allowed && snapshot.editable;
   const { draft, status, message, backupId } = snapshot;
   const [resolving, setResolving] = useState(false);
+  const [mode, setMode] = useState<'view' | 'content' | 'design' | 'history'>(() =>
+    draft.base ? 'view' : 'content',
+  );
+  const availableTags = [
+    ...tags,
+    ...(draft.base?.tags.filter((tag) => !tags.some((item) => item.id === tag.id)) ?? []),
+  ];
   useEffect(
     () => queue.setAutosaveDelay(preferences.autosaveDelay),
     [preferences.autosaveDelay, queue],
@@ -230,6 +239,46 @@ function EditorContent({
           )}
         </div>
       </div>
+      <div className="recipe-editor-mode-tabs" role="tablist" aria-label="Разделы рецепта">
+        {draft.base && (
+          <button
+            type="button"
+            role="tab"
+            aria-selected={mode === 'view'}
+            onClick={() => setMode('view')}
+          >
+            Просмотр
+          </button>
+        )}
+        <button
+          type="button"
+          role="tab"
+          aria-selected={mode === 'content'}
+          onClick={() => setMode('content')}
+        >
+          Содержание
+        </button>
+        {draft.base && (
+          <button
+            type="button"
+            role="tab"
+            aria-selected={mode === 'design'}
+            onClick={() => setMode('design')}
+          >
+            Дизайн
+          </button>
+        )}
+        {draft.base && (
+          <button
+            type="button"
+            role="tab"
+            aria-selected={mode === 'history'}
+            onClick={() => setMode('history')}
+          >
+            История
+          </button>
+        )}
+      </div>
       {backupId && (
         <p className="recipe-notice">
           Версия до выбора сохранена отдельно.{' '}
@@ -294,70 +343,80 @@ function EditorContent({
           </div>
         </section>
       )}
-      <div className="recipe-visibility">
-        <label>
-          Видимость
-          <select
-            aria-label="Видимость"
-            value={draft.visibility}
-            disabled={!editable || Boolean(draft.base || draft.pending)}
-            onChange={(e) =>
-              queue.edit(draft.value, e.target.value === 'workspace' ? 'workspace' : 'private')
-            }
-          >
-            <option value="private">Личный рецепт</option>
-            <option value="workspace">Общий — для участников тетради</option>
-          </select>
-        </label>
-        <p className="muted text-sm">
-          {draft.visibility === 'private'
-            ? 'Доступен вам и владельцу тетради.'
-            : 'Доступен всем участникам тетради.'}{' '}
-          {draft.base || draft.pending
-            ? 'Видимость выбрана при создании.'
-            : 'Выберите видимость до первого сохранения.'}
-        </p>
-      </div>
-      <RecipeFields
-        value={draft.value}
-        onChange={(value) => queue.edit(value)}
-        tags={[
-          ...tags,
-          ...(draft.base?.tags.filter((tag) => !tags.some((item) => item.id === tag.id)) ?? []),
-        ]}
-        disabled={!editable || resolving}
-        unitSystem={preferences.unitSystem}
-        keyboardShortcuts={preferences.keyboardShortcuts}
-      />
-      <RecipePhotos
-        queue={queue}
-        editable={editable && !resolving}
-        confirmDelete={preferences.confirmDestructiveActions}
-      />
-      {draft.base && (
-        <RecipeTemplates
+      {mode === 'view' && draft.base && (
+        <RecipeBookView
           recipeId={draft.base.recipe.id}
           recipeRevision={draft.base.recipe.revision}
           value={draft.value}
-          editable={
-            editable && !resolving && status === 'saved' && !draft.pending && !draft.conflict
-          }
+          tags={availableTags}
+          coverPhoto={draft.base.photos.find((photo) => photo.kind === 'cover') ?? null}
         />
       )}
-      {draft.base && (
-        <StickerPacks
-          recipeId={draft.base.recipe.id}
-          recipeRevision={draft.base.recipe.revision}
-          editable={
-            editable && !resolving && status === 'saved' && !draft.pending && !draft.conflict
-          }
-        />
+      {mode === 'content' && (
+        <>
+          <div className="recipe-visibility">
+            <label>
+              Видимость
+              <select
+                aria-label="Видимость"
+                value={draft.visibility}
+                disabled={!editable || Boolean(draft.base || draft.pending)}
+                onChange={(e) =>
+                  queue.edit(draft.value, e.target.value === 'workspace' ? 'workspace' : 'private')
+                }
+              >
+                <option value="private">Личный рецепт</option>
+                <option value="workspace">Общий — для участников тетради</option>
+              </select>
+            </label>
+            <p className="muted text-sm">
+              {draft.visibility === 'private'
+                ? 'Доступен вам и владельцу тетради.'
+                : 'Доступен всем участникам тетради.'}{' '}
+              {draft.base || draft.pending
+                ? 'Видимость выбрана при создании.'
+                : 'Выберите видимость до первого сохранения.'}
+            </p>
+          </div>
+          <RecipeFields
+            value={draft.value}
+            onChange={(value) => queue.edit(value)}
+            tags={availableTags}
+            disabled={!editable || resolving}
+            unitSystem={preferences.unitSystem}
+            keyboardShortcuts={preferences.keyboardShortcuts}
+          />
+          <RecipePhotos
+            queue={queue}
+            editable={editable && !resolving}
+            confirmDelete={preferences.confirmDestructiveActions}
+          />
+          <p className="muted text-sm">
+            Локальная копия хранится в этом браузере. Очистка данных сайта удалит её. Для другого
+            устройства дождитесь сохранения на сервере.
+          </p>
+        </>
       )}
-      <p className="muted text-sm">
-        Локальная копия хранится в этом браузере. Очистка данных сайта удалит её. Для другого
-        устройства дождитесь сохранения на сервере.
-      </p>
-      {draft.base && (
+      {mode === 'design' && draft.base && (
+        <>
+          <RecipeTemplates
+            recipeId={draft.base.recipe.id}
+            recipeRevision={draft.base.recipe.revision}
+            value={draft.value}
+            editable={
+              editable && !resolving && status === 'saved' && !draft.pending && !draft.conflict
+            }
+          />
+          <StickerPacks
+            recipeId={draft.base.recipe.id}
+            recipeRevision={draft.base.recipe.revision}
+            editable={
+              editable && !resolving && status === 'saved' && !draft.pending && !draft.conflict
+            }
+          />
+        </>
+      )}
+      {mode === 'history' && draft.base && (
         <RecipeHistory
           key={draft.base.recipe.id}
           recipeId={draft.base.recipe.id}
