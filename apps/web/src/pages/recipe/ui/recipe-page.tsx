@@ -3,12 +3,20 @@ import { Link, useParams } from 'react-router';
 import { getSession, subscribeSession } from '@/entities/session';
 import { RecipeEditor } from '@/features/recipe-notebook';
 import { GoogleSignIn } from '@/features/google-sign-in';
+import { getThemePreferences, subscribeThemePreferences, themeCssVariables } from '@/shared/theme';
+import type { CSSProperties } from 'react';
 
 export function RecipePage({ source }: { source: 'draft' | 'recipe' }) {
   const session = useSyncExternalStore(subscribeSession, getSession);
+  const theme = useSyncExternalStore(subscribeThemePreferences, getThemePreferences).page;
   const { id } = useParams();
   return (
-    <>
+    <div
+      className="recipe-page-theme"
+      data-paper={theme.paper}
+      data-mode={theme.mode}
+      style={{ ...themeCssVariables(theme), colorScheme: theme.mode } as CSSProperties}
+    >
       <div className="page-heading">
         <Link to="/" className="text-link">
           ← В библиотеку
@@ -33,6 +41,6 @@ export function RecipePage({ source }: { source: 'draft' | 'recipe' }) {
           <GoogleSignIn />
         </>
       )}
-    </>
+    </div>
   );
 }

@@ -1,12 +1,12 @@
 import { lazy, Suspense } from 'react';
 import { NavLink, Route, Routes } from 'react-router';
-import { LibraryPage } from '@/pages/library';
 import { NotFoundPage } from '@/pages/not-found';
 import { UserSettingsSync } from '@/features/user-settings';
 import { HelpCenter } from '@/features/help-center';
 const SettingsPage = lazy(async () => ({
   default: (await import('@/pages/settings')).SettingsPage,
 }));
+const LibraryPage = lazy(async () => ({ default: (await import('@/pages/library')).LibraryPage }));
 const RecipePage = lazy(async () => ({ default: (await import('@/pages/recipe')).RecipePage }));
 export function App(): React.JSX.Element {
   return (

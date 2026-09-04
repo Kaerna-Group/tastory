@@ -12,6 +12,8 @@
   --app-success: #64845e;
   --app-danger: #b64f45;
   --app-focus: #376fa3;
+  --app-font-body: 'Segoe UI', system-ui, sans-serif;
+  --app-font-display: Georgia, 'Times New Roman', serif;
 }
 
 :root[data-theme='dark'] {

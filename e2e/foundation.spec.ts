@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-test('library, settings, connection and saved theme work', async ({ page }) => {
+test('library, settings, connection and saved theme builder work', async ({ page }) => {
   const errors: string[] = [];
   page.on('pageerror', (error) => errors.push(error.message));
   await page.goto('/');
@@ -8,16 +8,32 @@ test('library, settings, connection and saved theme work', async ({ page }) => {
   await expect(page.getByRole('heading', { name: 'Настройки тетради' })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Ваш аккаунт' })).toBeVisible();
   await expect(page.getByText('Вход Google ещё настраивается.', { exact: false })).toBeVisible();
-  await expect(page.getByRole('status')).toHaveText('Соединение проверено');
+  await expect(page.locator('.connection-status')).toHaveText('Соединение проверено');
   await expect(page.getByText('Локальный режим:', { exact: false })).toBeVisible();
-  const theme = page.getByRole('button', { name: 'Темная тема' });
-  const before = await theme.getAttribute('aria-pressed');
-  await theme.click();
-  await expect(theme).toHaveAttribute('aria-pressed', before === 'true' ? 'false' : 'true');
+  const builder = page.getByRole('region', { name: 'Конструктор тем' });
+  await expect(builder.getByText('AA пройден')).toBeVisible();
+  await builder.getByLabel('Встроенная тема').selectOption('herbarium');
+  await builder.getByRole('button', { name: 'Создать копию' }).click();
+  await expect(builder.getByLabel('Название')).toHaveValue('Гербарий — копия');
+  await builder.locator('input[type="color"]').nth(2).fill('#eef0e7');
+  await expect(builder.getByRole('button', { name: 'Применить к приложению' })).toBeDisabled();
+  await expect(builder.getByRole('alert')).toContainText('контраст не ниже 4.5:1');
+  await builder.getByRole('button', { name: 'Создать копию' }).click();
+  await builder.getByRole('button', { name: 'Применить к приложению' }).click();
+  await expect(page.locator('html')).toHaveAttribute('data-app-paper', 'linen');
   await page.reload();
-  await expect(theme).toHaveAttribute('aria-pressed', before === 'true' ? 'false' : 'true');
+  await expect(page.locator('html')).toHaveAttribute('data-app-paper', 'linen');
+  await expect(builder.getByLabel('Название')).toHaveValue('Гербарий — копия');
+  await builder
+    .getByRole('button', { name: 'Страница рецепта Бумага и карточки открытого рецепта' })
+    .click();
+  await builder.getByLabel('Встроенная тема').selectOption('midnight');
+  await builder.getByRole('button', { name: 'Создать копию' }).click();
+  await builder.getByRole('button', { name: 'Применить к страницам' }).click();
   await page.getByRole('button', { name: 'Проверить снова' }).click();
-  await expect(page.getByRole('status')).toHaveText('Соединение проверено');
+  await expect(page.locator('.connection-status')).toHaveText('Соединение проверено');
+  await page.goto('/#/drafts/00000000-0000-4000-8000-000000000001');
+  await expect(page.locator('.recipe-page-theme')).toHaveAttribute('data-paper', 'grid');
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(
     true,
   );
