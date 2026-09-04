@@ -47,15 +47,15 @@ npm run test:e2e
 
 ## Что покрыто
 
-| Уровень           | Проверки                                                                                              |
-| ----------------- | ----------------------------------------------------------------------------------------------------- |
-| Unit              | Расчёт времени, неизвестное/нулевое время, некорректные значения и overflow                           |
-| Contracts         | Версия API, UUID, неизвестные поля/actions, payload limits, frontend/backend schema                   |
-| Controller        | Health, отключённый/включённый echo, повреждённый и слишком большой JSON                              |
-| HTTP client       | Схема ответа, requestId, error codes, text/plain, HTTP/JSON/network failure, отмена                   |
-| Architecture      | Допустимые и запрещённые импорты, package isolation; полный граф и циклы                              |
-| Apps Script build | doGet/doPost из bundle в изолированном runtime без Node/browser API                                   |
-| E2E               | Навигация, mock health, повторная проверка, сохранение темы, 404, клавиатурный переход, ширина mobile |
+| Уровень           | Проверки                                                                                                    |
+| ----------------- | ----------------------------------------------------------------------------------------------------------- |
+| Unit              | Расчёт времени, неизвестное/нулевое время, некорректные значения и overflow                                 |
+| Contracts         | Версия API, UUID, неизвестные поля/actions, payload limits, frontend/backend schema                         |
+| Controller        | Health, отключённый/включённый echo, повреждённый и слишком большой JSON                                    |
+| HTTP client       | Схема ответа, requestId, error codes, text/plain, HTTP/JSON/network failure, отмена                         |
+| Architecture      | Допустимые и запрещённые импорты, package isolation; полный граф и циклы                                    |
+| Apps Script build | doGet/doPost из bundle в изолированном runtime без Node/browser API                                         |
+| E2E               | Навигация, отдельный экран проверок, mock health, сохранение темы, 404, клавиатурный переход, ширина mobile |
 
 Vitest: пороги lines/functions/statements — 85%, branches — 80%. Измеряются выбранные модули packages, controller, auth, session, shared API и миграции D-01, а не весь интерфейс. UI проверяется браузерными smoke. Wiring runtime транспорта пока не покрыт отдельным unit test.
 

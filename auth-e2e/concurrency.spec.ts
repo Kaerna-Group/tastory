@@ -75,7 +75,7 @@ test('dispatches both writes together, proves conflict and deduplication, export
       await apply(route, request);
     else await reply(route, request, { photo: null, thumbnailBase64: null });
   });
-  await page.goto('/#/settings');
+  await page.goto('/#/checks');
   const panel = page.getByRole('region', { name: 'Одновременные изменения' });
   await expect(panel).toHaveCount(0);
   await page.getByRole('button', { name: 'Google (тест)' }).click();

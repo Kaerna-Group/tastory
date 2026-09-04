@@ -72,7 +72,7 @@ test('owner optimizes, uploads, reloads private thumbnail and deletes the test p
       },
     });
   });
-  await page.goto('/#/settings');
+  await page.goto('/#/checks');
   await expect(page.getByRole('region', { name: 'Пробное фото' })).toHaveCount(0);
   await page.getByRole('button', { name: 'Google (тест)' }).click();
   const panel = page.getByRole('region', { name: 'Пробное фото' });

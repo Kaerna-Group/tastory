@@ -71,7 +71,7 @@ test('access recording follows actual auth outcomes across logout and downloads 
       },
     });
   });
-  await page.goto('/#/settings');
+  await page.goto('/#/checks');
   const account = page.getByRole('region', { name: 'Ваш аккаунт' });
   await account.getByText('Проверка приглашений', { exact: true }).click();
   await account.getByRole('button', { name: 'Начать проверку', exact: true }).click();

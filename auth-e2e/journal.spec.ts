@@ -104,7 +104,7 @@ async function fixture(page: Page) {
       },
     });
   });
-  await page.goto('/#/settings');
+  await page.goto('/#/checks');
   return { entries, audit, checkIds, state };
 }
 

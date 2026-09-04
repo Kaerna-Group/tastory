@@ -12,14 +12,18 @@ const roles = { owner: 'Владелец', member: 'Участник', viewer: '
 const time = (value: string) =>
   new Date(value).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
 
-export function WorkspaceAdmin(): React.JSX.Element | null {
+export function WorkspaceAdmin({
+  mode = 'directory',
+}: {
+  mode?: 'directory' | 'health';
+}): React.JSX.Element | null {
   const session = useSyncExternalStore(subscribeSession, getSession);
   return session.status === 'signed-in' && session.user?.role === 'owner' ? (
-    <OwnerDirectory key={session.user.id} />
+    <OwnerDirectory key={`${session.user.id}-${mode}`} mode={mode} />
   ) : null;
 }
 
-function OwnerDirectory(): React.JSX.Element {
+function OwnerDirectory({ mode }: { mode: 'directory' | 'health' }): React.JSX.Element {
   const [users, setUsers] = useState<AdminUsersData | null>(null);
   const [health, setHealth] = useState<AdminHealthData | null>(null);
   const [busy, setBusy] = useState<'users' | 'health' | null>(null);
@@ -62,35 +66,47 @@ function OwnerDirectory(): React.JSX.Element {
   }
 
   return (
-    <section className="panel workspace-admin" aria-labelledby="members-title">
+    <section
+      className="panel workspace-admin"
+      aria-labelledby={mode === 'directory' ? 'members-title' : 'workspace-health-title'}
+    >
       <p className="eyebrow">Для владельца</p>
-      <h2 id="members-title">Участники тетради</h2>
-      <p className="muted">Кто может пользоваться тетрадью и какой доступ ему открыт.</p>
+      <h2 id={mode === 'directory' ? 'members-title' : 'workspace-health-title'}>
+        {mode === 'directory' ? 'Участники тетради' : 'Структура данных'}
+      </h2>
+      <p className="muted">
+        {mode === 'directory'
+          ? 'Кто может пользоваться тетрадью и какой доступ ему открыт.'
+          : 'Проверка таблиц, текущей версии схемы и состава активных участников.'}
+      </p>
       <div className="flex flex-wrap gap-3 mb-6">
-        <button
-          className="button button-secondary"
-          type="button"
-          disabled={busy !== null}
-          onClick={() => {
-            void load('users');
-          }}
-        >
-          {busy === 'users'
-            ? 'Загружаем участников…'
-            : users
-              ? 'Обновить список'
-              : 'Показать участников'}
-        </button>
-        <button
-          className="button button-secondary"
-          type="button"
-          disabled={busy !== null}
-          onClick={() => {
-            void load('health');
-          }}
-        >
-          {busy === 'health' ? 'Проверяем таблицы…' : 'Проверить таблицы'}
-        </button>
+        {mode === 'directory' ? (
+          <button
+            className="button button-secondary"
+            type="button"
+            disabled={busy !== null}
+            onClick={() => {
+              void load('users');
+            }}
+          >
+            {busy === 'users'
+              ? 'Загружаем участников…'
+              : users
+                ? 'Обновить список'
+                : 'Показать участников'}
+          </button>
+        ) : (
+          <button
+            className="button button-secondary"
+            type="button"
+            disabled={busy !== null}
+            onClick={() => {
+              void load('health');
+            }}
+          >
+            {busy === 'health' ? 'Проверяем таблицы…' : 'Проверить таблицы'}
+          </button>
+        )}
       </div>
       {busy && (
         <p className="muted" role="status">

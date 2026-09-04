@@ -8,7 +8,9 @@ import {
   disableGoogleAutoSelect,
 } from '@/shared/google-identity';
 
-export function GoogleSignIn(): React.JSX.Element {
+export function GoogleSignIn({
+  showAccessCheck = false,
+}: { showAccessCheck?: boolean } = {}): React.JSX.Element {
   const session = useSyncExternalStore(subscribeSession, getSession);
   const button = useRef<HTMLDivElement>(null);
   const [loadError, setLoadError] = useState('');
@@ -115,7 +117,7 @@ export function GoogleSignIn(): React.JSX.Element {
         После закрытия или обновления страницы потребуется войти снова. Локальные черновики
         сохраняются в этом браузере и появятся после входа в тот же аккаунт.
       </p>
-      <AccessCheck />
+      {showAccessCheck && <AccessCheck />}
     </section>
   );
 }

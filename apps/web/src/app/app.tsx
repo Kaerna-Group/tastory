@@ -7,6 +7,9 @@ import { PwaManager } from '@/features/pwa';
 const SettingsPage = lazy(async () => ({
   default: (await import('@/pages/settings')).SettingsPage,
 }));
+const ChecksPage = lazy(async () => ({
+  default: (await import('@/pages/checks')).ChecksPage,
+}));
 const LibraryPage = lazy(async () => ({ default: (await import('@/pages/library')).LibraryPage }));
 const RecipePage = lazy(async () => ({ default: (await import('@/pages/recipe')).RecipePage }));
 export function App(): React.JSX.Element {
@@ -44,6 +47,7 @@ export function App(): React.JSX.Element {
             Библиотека
           </NavLink>
           <NavLink to="/settings">Настройки</NavLink>
+          <NavLink to="/checks">Проверки</NavLink>
         </nav>
         <span className="edition">Личная кулинарная тетрадь</span>
       </header>
@@ -58,6 +62,7 @@ export function App(): React.JSX.Element {
           <Routes>
             <Route path="/" element={<LibraryPage />} />
             <Route path="/settings" element={<SettingsPage />} />
+            <Route path="/checks" element={<ChecksPage />} />
             <Route path="/drafts/:id" element={<RecipePage source="draft" />} />
             <Route path="/recipes/:id" element={<RecipePage source="recipe" />} />
             <Route path="*" element={<NotFoundPage />} />

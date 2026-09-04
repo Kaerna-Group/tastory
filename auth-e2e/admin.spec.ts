@@ -162,13 +162,15 @@ test('owner reads participants and schema health, then logout removes the direct
   await expect(panel.getByRole('listitem')).toHaveCount(2);
   await expect(panel.getByText('Анна', { exact: true })).toBeVisible();
   await expect(panel.getByText('Доступ отключён', { exact: true })).toBeVisible();
-  await panel.getByRole('button', { name: 'Проверить таблицы' }).click();
-  await expect(panel.getByRole('status')).toContainText('Структура таблиц в порядке');
-  await expect(panel.getByRole('status')).toContainText('Доступ открыт: 1 из 2');
-  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   await panel.screenshot({ path: testInfo.outputPath('workspace-admin.png') });
+  await page.goto('/#/checks');
+  const healthPanel = page.getByRole('region', { name: 'Структура данных' });
+  await healthPanel.getByRole('button', { name: 'Проверить таблицы' }).click();
+  await expect(healthPanel.getByRole('status')).toContainText('Структура таблиц в порядке');
+  await expect(healthPanel.getByRole('status')).toContainText('Доступ открыт: 1 из 2');
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   await page.getByRole('button', { name: 'Выйти', exact: true }).click();
-  await expect(panel).toHaveCount(0);
+  await expect(healthPanel).toHaveCount(0);
   await page.getByRole('button', { name: 'Google viewer' }).click();
   await expect(
     page.getByRole('region', { name: 'Ваш аккаунт' }).getByText('Читатель', { exact: true }),
@@ -183,6 +185,7 @@ test('owner audits unused files, restores them from the Tastory basket and clean
 }) => {
   await fixture(page);
   await page.getByRole('button', { name: 'Google owner' }).click();
+  await page.goto('/#/checks');
   const panel = page.getByRole('region', { name: 'Файлы книги' });
   await expect(panel).toContainText('не используются: 1');
   await panel.getByRole('button', { name: 'В корзину все неиспользуемые' }).click();
@@ -213,8 +216,10 @@ test('refresh failure clears stale members and revocation removes the owner pane
   await panel.getByRole('button', { name: 'Показать участников' }).click();
   await expect(panel.getByRole('listitem')).toHaveCount(2);
   state.deny = true;
-  await panel.getByRole('button', { name: 'Проверить таблицы' }).click();
-  await expect(panel).toHaveCount(0);
+  await page.goto('/#/checks');
+  const healthPanel = page.getByRole('region', { name: 'Структура данных' });
+  await healthPanel.getByRole('button', { name: 'Проверить таблицы' }).click();
+  await expect(healthPanel).toHaveCount(0);
   await expect(page.getByRole('region', { name: 'Ваш аккаунт' }).getByRole('status')).toHaveText(
     'Доступ закрыт.',
   );

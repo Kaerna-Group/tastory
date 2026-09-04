@@ -77,6 +77,7 @@ export function StickerPacks({
   const [selectedInstanceId, setSelectedInstanceId] = useState('');
   const [query, setQuery] = useState('');
   const [includeArchived, setIncludeArchived] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
@@ -90,6 +91,7 @@ export function StickerPacks({
     pending.current?.abort();
     const controller = new AbortController();
     pending.current = controller;
+    setLoading(true);
     setError('');
     try {
       const [catalog, placed] = await Promise.all([
@@ -116,14 +118,21 @@ export function StickerPacks({
     } catch (cause) {
       if (!controller.signal.aborted)
         setError(cause instanceof Error ? cause.message : 'Не удалось открыть стикеры.');
+    } finally {
+      if (pending.current === controller) {
+        pending.current = null;
+        setLoading(false);
+      }
     }
   }, [includeArchived, query, recipeId]);
 
   useEffect(() => {
     const timer = window.setTimeout(() => void load(), 200);
-    return () => window.clearTimeout(timer);
+    return () => {
+      window.clearTimeout(timer);
+      pending.current?.abort();
+    };
   }, [load]);
-  useEffect(() => () => pending.current?.abort(), []);
 
   const selectedPack = packs.find((item) => item.pack.id === selectedPackId) ?? null;
   const selectedPlacement =
@@ -336,8 +345,13 @@ export function StickerPacks({
           <p className="eyebrow">Оформление страницы</p>
           <h2 id="sticker-packs-title">Стикер-паки</h2>
           <p className="muted">
-            Встроенные и ваши PNG/WebP. Размещения сохраняются отдельно от пака.
+            Выбирайте готовые иллюстрации или собирайте собственные наборы из PNG и WebP.
           </p>
+          <div className="sticker-feature-badges" aria-label="Возможности стикер-паков">
+            <span>2 базовых пака</span>
+            <span>Личные и общие</span>
+            <span>Свои изображения</span>
+          </div>
         </div>
         <button
           className="button button-secondary"
@@ -348,8 +362,16 @@ export function StickerPacks({
           Обновить
         </button>
       </div>
-      {message && <p role="status">{message}</p>}
-      {error && <p role="alert">{error}</p>}
+      {message && (
+        <p className="sticker-notice sticker-notice-success" role="status">
+          {message}
+        </p>
+      )}
+      {error && (
+        <p className="sticker-notice sticker-notice-error" role="alert">
+          {error}
+        </p>
+      )}
 
       <div className="sticker-layout">
         <div className="sticker-catalog">
@@ -429,13 +451,22 @@ export function StickerPacks({
                 className={view.pack.id === selectedPackId ? 'active' : ''}
                 onClick={() => setSelectedPackId(view.pack.id)}
               >
-                <span aria-hidden="true">{view.pack.emoji}</span> {view.pack.name}
-                {view.pack.status === 'archived' ? ' · архив' : ''}
+                <span className="sticker-pack-tab-icon" aria-hidden="true">
+                  {view.pack.emoji}
+                </span>
+                <span>{view.pack.name}</span>
+                <small>{view.stickers.length}</small>
+                {view.pack.status === 'archived' && <em>архив</em>}
               </button>
             ))}
           </div>
 
-          {selectedPack ? (
+          {loading ? (
+            <div className="sticker-empty" role="status">
+              <span aria-hidden="true">✦</span>
+              <p>Открываем стикер-паки…</p>
+            </div>
+          ) : selectedPack ? (
             <div className="sticker-pack-panel">
               <div className="sticker-pack-meta">
                 <div>
@@ -622,10 +653,23 @@ export function StickerPacks({
                     )}
                   </article>
                 ))}
+                {selectedPack.stickers.length === 0 && (
+                  <div className="sticker-empty sticker-grid-empty">
+                    <span aria-hidden="true">✦</span>
+                    <strong>В этом паке пока пусто</strong>
+                    <p className="muted text-sm">
+                      Добавьте PNG или WebP, чтобы собрать собственный набор.
+                    </p>
+                  </div>
+                )}
               </div>
             </div>
           ) : (
-            <p className="muted">По этому запросу паков нет.</p>
+            <div className="sticker-empty">
+              <span aria-hidden="true">⌕</span>
+              <strong>Паки не найдены</strong>
+              <p className="muted text-sm">Измените запрос или включите архивные паки.</p>
+            </div>
           )}
         </div>
 
@@ -633,6 +677,11 @@ export function StickerPacks({
           <h3>Страница рецепта</h3>
           <div className="sticker-page-preview" aria-label="Предпросмотр размещённых стикеров">
             <span className="sticker-page-label">01</span>
+            {placements.length === 0 && (
+              <p className="sticker-page-empty">
+                Выберите стикер и нажмите <strong>«На страницу»</strong>
+              </p>
+            )}
             {placements.map((placement) => (
               <button
                 key={placement.id}
@@ -670,6 +719,7 @@ export function StickerPacks({
               <div className="sticker-control-grid">
                 <button
                   type="button"
+                  aria-label="Переместить влево"
                   disabled={busy}
                   onClick={() =>
                     void act(
@@ -686,6 +736,7 @@ export function StickerPacks({
                 </button>
                 <button
                   type="button"
+                  aria-label="Переместить вверх"
                   disabled={busy}
                   onClick={() =>
                     void act(
@@ -702,6 +753,7 @@ export function StickerPacks({
                 </button>
                 <button
                   type="button"
+                  aria-label="Переместить вниз"
                   disabled={busy}
                   onClick={() =>
                     void act(
@@ -718,6 +770,7 @@ export function StickerPacks({
                 </button>
                 <button
                   type="button"
+                  aria-label="Переместить вправо"
                   disabled={busy}
                   onClick={() =>
                     void act(
@@ -734,6 +787,7 @@ export function StickerPacks({
                 </button>
                 <button
                   type="button"
+                  aria-label="Уменьшить"
                   disabled={busy}
                   onClick={() =>
                     void act(
@@ -751,6 +805,7 @@ export function StickerPacks({
                 </button>
                 <button
                   type="button"
+                  aria-label="Увеличить"
                   disabled={busy}
                   onClick={() =>
                     void act(
@@ -768,6 +823,7 @@ export function StickerPacks({
                 </button>
                 <button
                   type="button"
+                  aria-label="Повернуть против часовой стрелки"
                   disabled={busy}
                   onClick={() =>
                     void act(
@@ -787,6 +843,7 @@ export function StickerPacks({
                 </button>
                 <button
                   type="button"
+                  aria-label="Повернуть по часовой стрелке"
                   disabled={busy}
                   onClick={() =>
                     void act(
@@ -806,6 +863,7 @@ export function StickerPacks({
                 </button>
                 <button
                   type="button"
+                  aria-label="Переместить на слой ниже"
                   disabled={busy}
                   onClick={() =>
                     void act(
@@ -822,6 +880,7 @@ export function StickerPacks({
                 </button>
                 <button
                   type="button"
+                  aria-label="Переместить на слой выше"
                   disabled={busy}
                   onClick={() =>
                     void act(

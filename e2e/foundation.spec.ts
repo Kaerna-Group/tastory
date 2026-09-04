@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-test('library, settings, connection and saved theme builder work', async ({ page }) => {
+test('library, settings, checks and saved theme builder work', async ({ page }) => {
   const errors: string[] = [];
   page.on('pageerror', (error) => errors.push(error.message));
   await page.goto('/');
@@ -8,8 +8,6 @@ test('library, settings, connection and saved theme builder work', async ({ page
   await expect(page.getByRole('heading', { name: 'Настройки тетради' })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Ваш аккаунт' })).toBeVisible();
   await expect(page.getByText('Вход Google ещё настраивается.', { exact: false })).toBeVisible();
-  await expect(page.locator('.connection-status')).toHaveText('Соединение проверено');
-  await expect(page.getByText('Локальный режим:', { exact: false })).toBeVisible();
   const builder = page.getByRole('region', { name: 'Конструктор тем' });
   await expect(builder.getByText('AA пройден')).toBeVisible();
   await builder.getByLabel('Встроенная тема').selectOption('herbarium');
@@ -30,6 +28,9 @@ test('library, settings, connection and saved theme builder work', async ({ page
   await builder.getByLabel('Встроенная тема').selectOption('midnight');
   await builder.getByRole('button', { name: 'Создать копию' }).click();
   await builder.getByRole('button', { name: 'Применить к страницам' }).click();
+  await page.getByRole('navigation').getByRole('link', { name: 'Проверки' }).click();
+  await expect(page.getByRole('heading', { name: 'Проверки тетради' })).toBeVisible();
+  await expect(page.getByText('Локальный режим:', { exact: false })).toBeVisible();
   await page.getByRole('button', { name: 'Проверить снова' }).click();
   await expect(page.locator('.connection-status')).toHaveText('Соединение проверено');
   await page.goto('/#/drafts/00000000-0000-4000-8000-000000000001');

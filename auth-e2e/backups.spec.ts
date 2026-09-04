@@ -75,7 +75,7 @@ async function fixture(page: Page, role: 'owner' | 'viewer' = 'owner') {
       },
     });
   });
-  await page.goto('/#/settings');
+  await page.goto('/#/checks');
   await page.getByRole('button', { name: 'Google (тест)' }).click();
   return { saved, requests };
 }
