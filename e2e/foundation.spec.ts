@@ -10,22 +10,29 @@ test('library, settings, checks and saved theme builder work', async ({ page }) 
   await expect(page.getByText('Вход Google ещё настраивается.', { exact: false })).toBeVisible();
   const builder = page.getByRole('region', { name: 'Конструктор тем' });
   await expect(builder.getByText('AA пройден')).toBeVisible();
-  await builder.getByLabel('Встроенная тема').selectOption('herbarium');
+  await builder.getByRole('button', { name: 'Выбрать тему Гербарий' }).click();
   await builder.getByRole('button', { name: 'Создать копию' }).click();
   await expect(builder.getByLabel('Название')).toHaveValue('Гербарий — копия');
   await builder.locator('input[type="color"]').nth(2).fill('#eef0e7');
   await expect(builder.getByRole('button', { name: 'Применить к приложению' })).toBeDisabled();
   await expect(builder.getByRole('alert')).toContainText('контраст не ниже 4.5:1');
+  await builder.getByRole('button', { name: 'Выбрать тему Гербарий' }).click();
   await builder.getByRole('button', { name: 'Создать копию' }).click();
   await builder.getByRole('button', { name: 'Применить к приложению' }).click();
   await expect(page.locator('html')).toHaveAttribute('data-app-paper', 'linen');
   await page.reload();
   await expect(page.locator('html')).toHaveAttribute('data-app-paper', 'linen');
   await expect(builder.getByLabel('Название')).toHaveValue('Гербарий — копия');
+  await builder.getByRole('button', { name: 'Открыть библиотеку тем' }).click();
+  const themeLibrary = page.getByRole('dialog', { name: 'Библиотека тем' });
+  await expect(themeLibrary.getByRole('heading', { name: 'Дополнительные темы' })).toBeVisible();
+  await expect(themeLibrary.getByRole('heading', { name: 'Мои темы' })).toBeVisible();
+  await expect(themeLibrary.getByText('Гербарий — копия', { exact: true })).toBeVisible();
+  await themeLibrary.getByRole('button', { name: 'Закрыть библиотеку тем' }).click();
   await builder
     .getByRole('button', { name: 'Страница рецепта Бумага и карточки открытого рецепта' })
     .click();
-  await builder.getByLabel('Встроенная тема').selectOption('midnight');
+  await builder.getByRole('button', { name: 'Выбрать тему Полуночные чернила' }).click();
   await builder.getByRole('button', { name: 'Создать копию' }).click();
   await builder.getByRole('button', { name: 'Применить к страницам' }).click();
   await page.getByRole('navigation').getByRole('link', { name: 'Проверки' }).click();

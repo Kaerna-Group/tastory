@@ -923,6 +923,205 @@ h2 {
   align-items: start;
   margin-bottom: 28px;
 }
+.theme-quick-section {
+  display: grid;
+  gap: 20px;
+  margin-bottom: 32px;
+  padding: 22px;
+  border: 1px solid var(--app-border);
+  border-radius: 16px;
+  background: color-mix(in srgb, var(--app-surface-raised) 82%, var(--app-background));
+}
+.theme-section-heading,
+.theme-library-header,
+.theme-library-section-heading {
+  display: flex;
+  justify-content: space-between;
+  gap: 20px;
+  align-items: flex-start;
+}
+.theme-section-heading h3,
+.theme-library-header h3,
+.theme-library-section-heading h4 {
+  margin: 0;
+}
+.theme-section-heading .button {
+  display: grid;
+  justify-items: start;
+  gap: 2px;
+  min-width: 230px;
+  text-align: left;
+}
+.theme-library-count {
+  color: var(--app-text-muted);
+  font-size: 11px;
+  font-weight: 400;
+}
+.theme-quick-groups {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 22px;
+}
+.theme-quick-group {
+  min-width: 0;
+}
+.theme-quick-group > h4 {
+  margin: 0 0 10px;
+  color: var(--app-text-muted);
+  font-size: 13px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.theme-card-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(230px, 1fr));
+  gap: 14px;
+}
+.theme-card-grid-quick {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+.theme-card {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid var(--app-border);
+  border-radius: 13px;
+  color: var(--app-text);
+  background: var(--app-background);
+  box-shadow: 0 8px 24px color-mix(in srgb, #000000 10%, transparent);
+  font-family: var(--app-font-body);
+  transition:
+    border-color 160ms ease,
+    box-shadow 160ms ease,
+    transform 160ms ease;
+}
+.theme-card:hover {
+  border-color: var(--app-primary);
+  transform: translateY(-2px);
+}
+.theme-card-selected {
+  border-color: var(--app-primary);
+  box-shadow:
+    0 0 0 2px var(--app-primary),
+    0 10px 28px color-mix(in srgb, #000000 14%, transparent);
+}
+.theme-card-sample {
+  position: relative;
+  min-height: 88px;
+  overflow: hidden;
+  border-bottom: 1px solid var(--app-border);
+  background-color: var(--app-background);
+  background-image: linear-gradient(
+    145deg,
+    color-mix(in srgb, var(--app-accent) 11%, transparent),
+    transparent 60%
+  );
+}
+.theme-card-sheet {
+  position: absolute;
+  inset: 15px 18px 12px;
+  border: 1px solid var(--app-border);
+  border-radius: 8px;
+  background: var(--app-surface);
+}
+.theme-card-line,
+.theme-card-button {
+  position: absolute;
+  z-index: 1;
+  left: 31px;
+  border-radius: 999px;
+}
+.theme-card-line {
+  bottom: 29px;
+  width: 36%;
+  height: 4px;
+  background: var(--app-text-muted);
+}
+.theme-card-line-wide {
+  bottom: 43px;
+  width: 54%;
+  height: 7px;
+  background: var(--app-text);
+}
+.theme-card-button {
+  right: 31px;
+  bottom: 25px;
+  left: auto;
+  width: 28px;
+  height: 17px;
+  background: var(--app-primary);
+}
+.theme-card-copy {
+  display: grid;
+  gap: 8px;
+  flex: 1;
+  padding: 14px;
+}
+.theme-card-copy h4,
+.theme-card-copy p {
+  margin: 0;
+}
+.theme-card-copy h4 {
+  font-family: var(--app-font-display);
+  font-size: 18px;
+}
+.theme-card-copy p {
+  color: var(--app-text-muted);
+  font-size: 12px;
+  line-height: 1.45;
+}
+.theme-card-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+.theme-card-meta span {
+  padding: 3px 6px;
+  border: 1px solid var(--app-border);
+  border-radius: 999px;
+  color: var(--app-text-muted);
+  background: var(--app-surface);
+  font-size: 10px;
+}
+.theme-card-swatches {
+  display: flex;
+  gap: 5px;
+}
+.theme-card-swatches span {
+  width: 18px;
+  height: 18px;
+  border: 1px solid var(--app-border);
+  border-radius: 50%;
+}
+.theme-card-actions {
+  display: grid;
+  gap: 7px;
+  padding: 0 14px 14px;
+}
+.theme-card-actions .button {
+  width: 100%;
+  min-height: 38px;
+  padding: 7px 9px;
+  overflow: hidden;
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.theme-card-remove {
+  padding: 3px;
+  border: 0;
+  color: var(--app-text-muted);
+  background: transparent;
+  font: inherit;
+  font-size: 12px;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.theme-card-remove:hover {
+  color: var(--app-danger);
+}
 .theme-targets,
 .theme-colors {
   min-width: 0;
@@ -973,6 +1172,29 @@ h2 {
   display: grid;
   gap: 20px;
   min-width: 0;
+}
+.theme-current-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 14px;
+  align-items: center;
+  padding: 14px;
+  border: 1px solid var(--app-border);
+  border-radius: 12px;
+  background: var(--app-surface-raised);
+}
+.theme-current-row > div {
+  display: grid;
+  gap: 2px;
+}
+.theme-current-row > div > span:last-child,
+.theme-current-label {
+  color: var(--app-text-muted);
+  font-size: 11px;
+}
+.theme-current-label {
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
 }
 .theme-preset-row {
   display: grid;
@@ -1128,6 +1350,151 @@ h2 {
 .contrast-fail {
   color: var(--app-danger);
 }
+.theme-builder-actions {
+  flex-wrap: wrap;
+}
+.theme-builder-actions [role='status'],
+.theme-builder-actions [role='alert'] {
+  flex-basis: 100%;
+  margin: 0;
+}
+.theme-library-open {
+  overflow: hidden;
+}
+.theme-library-backdrop {
+  position: fixed;
+  z-index: 1000;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: color-mix(in srgb, #120f0d 72%, transparent);
+  backdrop-filter: blur(6px);
+}
+.theme-library-dialog {
+  position: relative;
+  display: grid;
+  grid-template-rows: auto auto minmax(0, 1fr);
+  width: min(1080px, 100%);
+  max-height: min(820px, calc(100vh - 48px));
+  overflow: hidden;
+  border: 1px solid var(--app-border);
+  border-radius: 20px;
+  color: var(--app-text);
+  background: var(--app-background);
+  box-shadow: 0 28px 90px #00000066;
+}
+.theme-library-header {
+  padding: 24px 26px 18px;
+  border-bottom: 1px solid var(--app-border);
+}
+.theme-library-header .muted {
+  max-width: 680px;
+  margin-bottom: 0;
+}
+.theme-library-close {
+  width: 42px;
+  height: 42px;
+  flex: 0 0 auto;
+  border: 1px solid var(--app-border);
+  border-radius: 50%;
+  color: var(--app-text);
+  background: var(--app-surface-raised);
+  font: inherit;
+  font-size: 26px;
+  line-height: 1;
+}
+.theme-library-tools {
+  display: grid;
+  grid-template-columns: minmax(220px, 1fr) auto;
+  gap: 18px;
+  align-items: end;
+  padding: 16px 26px;
+  border-bottom: 1px solid var(--app-border);
+  background: var(--app-surface);
+}
+.theme-library-tools > label {
+  display: grid;
+  gap: 6px;
+  color: var(--app-text-muted);
+  font-size: 12px;
+  font-weight: 600;
+}
+.theme-library-tools input {
+  min-height: 42px;
+  padding: 9px 12px;
+  border: 1px solid var(--app-border);
+  border-radius: 9px;
+  color: var(--app-text);
+  background: var(--app-surface-raised);
+  font: inherit;
+}
+.theme-library-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+.theme-library-filters legend {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+}
+.theme-library-filters button {
+  min-height: 38px;
+  padding: 7px 11px;
+  border: 1px solid var(--app-border);
+  border-radius: 999px;
+  color: var(--app-text);
+  background: var(--app-surface-raised);
+  font: inherit;
+  font-size: 12px;
+}
+.theme-library-filters button[aria-pressed='true'] {
+  border-color: var(--app-primary);
+  color: var(--app-primary-text);
+  background: var(--app-primary);
+}
+.theme-library-scroll {
+  display: grid;
+  gap: 28px;
+  min-height: 260px;
+  padding: 24px 26px 30px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+.theme-library-scroll > section {
+  display: grid;
+  gap: 12px;
+}
+.theme-library-section-heading {
+  align-items: center;
+}
+.theme-library-section-heading span {
+  min-width: 28px;
+  padding: 3px 8px;
+  border-radius: 999px;
+  color: var(--app-primary-text);
+  background: var(--app-primary);
+  font-size: 11px;
+  text-align: center;
+}
+.theme-library-empty {
+  display: grid;
+  place-content: center;
+  gap: 6px;
+  min-height: 240px;
+  color: var(--app-text-muted);
+  text-align: center;
+}
+.theme-library-empty p {
+  margin: 0;
+}
 .recipe-page-theme {
   margin-top: 28px;
   padding: 0 28px 32px;
@@ -1145,6 +1512,19 @@ h2 {
   .theme-colors {
     grid-template-columns: 1fr;
   }
+  .theme-quick-groups,
+  .theme-library-tools {
+    grid-template-columns: 1fr;
+  }
+  .theme-card-grid-quick {
+    grid-template-columns: repeat(3, minmax(170px, 1fr));
+    overflow-x: auto;
+    padding: 3px 3px 10px;
+    scroll-snap-type: x proximity;
+  }
+  .theme-card-grid-quick .theme-card {
+    scroll-snap-align: start;
+  }
   .theme-colors legend {
     grid-column: auto;
   }
@@ -1157,12 +1537,65 @@ h2 {
   .theme-preset-row .button {
     width: 100%;
   }
+  .theme-quick-section {
+    margin-inline: -12px;
+    padding: 18px 12px;
+    border-radius: 12px;
+  }
+  .theme-section-heading,
+  .theme-library-header {
+    align-items: stretch;
+    flex-direction: column;
+  }
+  .theme-section-heading .button {
+    width: 100%;
+  }
+  .theme-card-grid,
+  .theme-card-grid-quick {
+    grid-template-columns: minmax(230px, 1fr);
+    overflow: visible;
+  }
+  .theme-current-row {
+    align-items: stretch;
+    flex-direction: column;
+  }
+  .theme-library-backdrop {
+    align-items: end;
+    padding: 0;
+  }
+  .theme-library-dialog {
+    width: 100%;
+    max-height: 94vh;
+    border-width: 1px 0 0;
+    border-radius: 18px 18px 0 0;
+  }
+  .theme-library-header,
+  .theme-library-tools,
+  .theme-library-scroll {
+    padding-inline: 18px;
+  }
+  .theme-library-close {
+    position: absolute;
+    top: 14px;
+    right: 14px;
+  }
+  .theme-library-header > div {
+    padding-right: 42px;
+  }
   .theme-colors label {
     grid-template-columns: minmax(80px, 1fr) 44px auto;
   }
   .recipe-page-theme {
     margin-inline: -12px;
     padding-inline: 12px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .theme-card {
+    transition: none;
+  }
+  .theme-card:hover {
+    transform: none;
   }
 }
 @media (max-width: 380px) {

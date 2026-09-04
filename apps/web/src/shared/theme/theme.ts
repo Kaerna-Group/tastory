@@ -87,7 +87,7 @@ export function defaultThemePreferences(mode: ThemeMode = 'light'): ThemePrefere
 function isObject(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
-function parseProfile(value: unknown): ThemeProfile | null {
+export function parseThemeProfile(value: unknown): ThemeProfile | null {
   if (!isObject(value) || !isObject(value['palette'])) return null;
   const palette = value['palette'];
   const keys = [
@@ -124,8 +124,8 @@ function parseProfile(value: unknown): ThemeProfile | null {
 }
 export function parseThemePreferences(value: unknown): ThemePreferences | null {
   if (!isObject(value)) return null;
-  const app = parseProfile(value['app']);
-  const page = parseProfile(value['page']);
+  const app = parseThemeProfile(value['app']);
+  const page = parseThemeProfile(value['page']);
   return app && page ? { app, page } : null;
 }
 
