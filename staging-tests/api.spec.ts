@@ -14,7 +14,7 @@ test('published app reads health after Google redirect', async ({ page, browser 
   const responsePending = page.waitForResponse(
     (response) => new URL(response.url()).hostname === 'script.googleusercontent.com',
   );
-  await page.goto('./#/settings');
+  await page.goto('./#/checks');
   const request = await requestPending;
   const payload = apiRequestSchema.parse(request.postDataJSON());
   expect(payload.action).toBe('health');
