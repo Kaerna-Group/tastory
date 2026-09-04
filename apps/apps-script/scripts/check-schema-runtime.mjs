@@ -472,7 +472,7 @@ export function checkSchemaRuntime(code) {
   assert.equal(held, false);
   const recipeCall = (action, payload = {}, requestId = randomUUID()) =>
     request('private-owner', 'owner@example.test', action, requestId, payload);
-  assert.equal(recipeCall('admin.recipes.initialize').data.schemaVersion, 7);
+  assert.equal(recipeCall('admin.recipes.initialize').data.schemaVersion, 8);
   assert.equal(recipeCall('admin.recipes.initialize').data.alreadyApplied, true);
   const tag = recipeCall('tags.create', { name: 'Супы', colorToken: 'neutral' });
   assert.equal(tag.ok, true, JSON.stringify(tag));
@@ -546,6 +546,24 @@ export function checkSchemaRuntime(code) {
   assert.equal(recipeCall('recipes.archive', { recipeId, expectedRevision: 2 }).data.revision, 3);
   assert.equal(recipeCall('recipes.restore', { recipeId, expectedRevision: 3 }).data.revision, 4);
   assert.equal(recipeCall('recipes.get', { recipeId }).data.aggregate.recipe.status, 'draft');
+  const templateLibrary = recipeCall('templates.list', {
+    query: '',
+    category: 'all',
+    scope: 'all',
+    includeArchived: false,
+  });
+  assert.equal(templateLibrary.ok, true, JSON.stringify(templateLibrary));
+  assert.equal(templateLibrary.data.templates.length, 10);
+  const appliedTemplate = recipeCall('recipes.template.apply', {
+    recipeId,
+    expectedRecipeRevision: 4,
+    templateId: templateLibrary.data.templates[5].template.id,
+  });
+  assert.equal(appliedTemplate.data.template.layout, 'coffeehouse');
+  assert.equal(
+    recipeCall('recipes.template.get', { recipeId }).data.template.templateName,
+    'Домашняя кофейня',
+  );
   assert.deepEqual(
     recipeCall('recipes.history', { recipeId }).data.versions.map((entry) => entry.revision),
     [4, 3, 2, 1],
@@ -560,7 +578,7 @@ export function checkSchemaRuntime(code) {
     'ACCESS_DENIED',
   );
   assert.equal(typeof sandbox.recoverBookBackup, 'function');
-  assert.equal(recipeCall('admin.health').data.tablesChecked, 21);
+  assert.equal(recipeCall('admin.health').data.tablesChecked, 24);
   assert.equal(recipeCall('admin.operations.list').data.schemaVersion, 2);
   assert.equal(listAccess().revision, 8);
   assert.equal(held, false);

@@ -43,7 +43,7 @@ export function readBackupTables(book: GoogleAppsScript.Spreadsheet.Spreadsheet)
     });
 }
 export function validateBook(book: GoogleAppsScript.Spreadsheet.Spreadsheet, folderId: string) {
-  if (inspectCurrentSchema(book, folderId).schemaVersion !== 7)
+  if (inspectCurrentSchema(book, folderId).schemaVersion !== 8)
     throw new BackupError('BACKUP_INVALID');
   const directory = readWorkspaceDirectory(book);
   const store = createRecipeStore(book);

@@ -17,6 +17,8 @@ import {
   userSettingsResponseSchema,
   stickerCommandSchema,
   stickerResponseSchema,
+  templateCommandSchema,
+  templateResponseSchema,
 } from '@tastory/contracts';
 import type {
   ApiErrorResponse,
@@ -52,6 +54,9 @@ import type {
   StickerCommand,
   StickerData,
   StickerResponse,
+  TemplateCommand,
+  TemplateData,
+  TemplateResponse,
 } from '@tastory/contracts';
 import { AuthError } from '../auth/google-token';
 import { PhotoError } from '../services/photo-error';
@@ -65,6 +70,7 @@ import { BackupError } from '../services/book-backup';
 import { FileLifecycleError } from '../services/file-lifecycle';
 import { UserSettingsError } from '../services/user-settings';
 import { StickerStorageError } from '../services/sticker-storage';
+import { TemplateStorageError } from '../services/template-storage';
 
 export type RequestContext = Readonly<{
   now: () => Date;
@@ -87,6 +93,7 @@ export type RequestContext = Readonly<{
     session: AuthData,
   ) => UserSettingsData;
   stickers?: (command: StickerCommand, requestId: string, session: AuthData) => StickerData;
+  templates?: (command: TemplateCommand, requestId: string, session: AuthData) => TemplateData;
 }>;
 
 function invalidRequest(context: RequestContext): ApiErrorResponse {
@@ -112,7 +119,8 @@ export function handleRequest(
   | RecipeResponse
   | BackupResponse
   | UserSettingsResponse
-  | StickerResponse {
+  | StickerResponse
+  | TemplateResponse {
   const parsed = apiRequestSchema.safeParse(input);
   if (!parsed.success) return invalidRequest(context);
   const request = parsed.data;
@@ -171,6 +179,22 @@ export function handleRequest(
           requestId: request.requestId,
           data: context.stickers(
             stickerCommandSchema.parse({ action: request.action, payload: request.payload }),
+            request.requestId,
+            session,
+          ),
+          meta,
+        });
+      }
+      if (
+        request.action.startsWith('templates.') ||
+        request.action.startsWith('recipes.template.')
+      ) {
+        if (!context.templates) throw new TemplateStorageError('TEMPLATE_NOT_READY');
+        return templateResponseSchema.parse({
+          ok: true,
+          requestId: request.requestId,
+          data: context.templates(
+            templateCommandSchema.parse({ action: request.action, payload: request.payload }),
             request.requestId,
             session,
           ),
@@ -311,18 +335,23 @@ export function handleRequest(
         error instanceof FileLifecycleError ||
         error instanceof BackupError ||
         error instanceof UserSettingsError ||
-        error instanceof StickerStorageError
+        error instanceof StickerStorageError ||
+        error instanceof TemplateStorageError
           ? error.code
-          : request.action.startsWith('stickers.') || request.action.startsWith('recipes.stickers.')
-            ? 'STICKER_UNAVAILABLE'
-            : request.action.startsWith('recipes.') ||
-                request.action.startsWith('tags.') ||
-                request.action === 'admin.recipes.initialize' ||
-                request.action.startsWith('admin.files.')
-              ? 'RECIPE_UNAVAILABLE'
-              : request.action.startsWith('user.settings.')
-                ? 'SETTINGS_UNAVAILABLE'
-                : 'AUTH_UNAVAILABLE';
+          : request.action.startsWith('templates.') ||
+              request.action.startsWith('recipes.template.')
+            ? 'TEMPLATE_UNAVAILABLE'
+            : request.action.startsWith('stickers.') ||
+                request.action.startsWith('recipes.stickers.')
+              ? 'STICKER_UNAVAILABLE'
+              : request.action.startsWith('recipes.') ||
+                  request.action.startsWith('tags.') ||
+                  request.action === 'admin.recipes.initialize' ||
+                  request.action.startsWith('admin.files.')
+                ? 'RECIPE_UNAVAILABLE'
+                : request.action.startsWith('user.settings.')
+                  ? 'SETTINGS_UNAVAILABLE'
+                  : 'AUTH_UNAVAILABLE';
       const messages = {
         AUTH_NOT_CONFIGURED: 'Вход Google ещё настраивается.',
         UNAUTHENTICATED: 'Войдите в Google повторно.',
@@ -375,6 +404,11 @@ export function handleRequest(
         STICKER_UNAVAILABLE: 'Изменение стикеров не подтверждено. Повторите тот же запрос.',
         STICKER_CONFLICT: 'Пак или размещение уже изменились. Обновите список.',
         STICKER_LIMIT: 'Достигнут лимит паков или стикеров.',
+        TEMPLATE_NOT_READY: 'Владелец должен подготовить библиотеку шаблонов.',
+        TEMPLATE_INVALID: 'Шаблон повреждён, архивирован или больше недоступен.',
+        TEMPLATE_UNAVAILABLE: 'Изменение шаблона не подтверждено. Повторите тот же запрос.',
+        TEMPLATE_CONFLICT: 'Шаблон или оформление рецепта уже изменились. Обновите библиотеку.',
+        TEMPLATE_LIMIT: 'Достигнут лимит личных шаблонов.',
       };
       return { ok: false, requestId: request.requestId, error: { code, message: messages[code] } };
     }
@@ -404,7 +438,8 @@ export function handlePostBody(
   | RecipeResponse
   | BackupResponse
   | UserSettingsResponse
-  | StickerResponse {
+  | StickerResponse
+  | TemplateResponse {
   if (body.length > Math.max(PHOTO_BODY_LIMIT, RECIPE_BODY_LIMIT)) return invalidRequest(context);
   let input: unknown;
   try {

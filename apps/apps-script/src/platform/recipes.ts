@@ -76,7 +76,7 @@ export function recipes(input: RecipeCommand, requestId: string, session: AuthDa
       const plan = planRecipeSchema(store, options);
       applyRecipeSchema(store, options);
       assertLive();
-      return { kind: 'initialized', schemaVersion: 7, alreadyApplied: plan.alreadyApplied };
+      return { kind: 'initialized', schemaVersion: 8, alreadyApplied: plan.alreadyApplied };
     }
     if (!planRecipeSchema(store, options).alreadyApplied)
       throw new RecipeStorageError('RECIPE_NOT_READY');

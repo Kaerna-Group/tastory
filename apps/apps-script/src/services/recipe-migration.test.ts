@@ -9,7 +9,7 @@ import { mutateRecipe } from './recipe-mutations';
 import { randomUUID } from 'node:crypto';
 
 afterEach(() => vi.unstubAllGlobals());
-describe('recipe schema migrations through 007', () => {
+describe('recipe schema migrations through 008', () => {
   it('plans all tables before writing, preserves v2 tables and is idempotent', () => {
     const f = persistenceFixture(false);
     const users = structuredClone(f.required('Users'));
@@ -20,8 +20,8 @@ describe('recipe schema migrations through 007', () => {
     expect(f.required('Users')).toEqual(users);
     expect(f.required('SchemaMigrations').slice(0, oldMigration.length)).toEqual(oldMigration);
     expect(inspectCurrentSchema(f.book, 'private-drive')).toEqual({
-      schemaVersion: 7,
-      tablesChecked: 21,
+      schemaVersion: 8,
+      tablesChecked: 24,
     });
     for (const table of RECIPE_TABLES) expect(f.required(table.name)).toEqual([[...table.columns]]);
     const writes = f.count();
@@ -111,29 +111,69 @@ describe('recipe schema migrations through 007', () => {
     if (!favorites) throw new Error('fixture');
     expect(f.required('RecipeFavorites')).toEqual([[...favorites.columns]]);
   });
-  it('upgrades schema 6 by adding only sticker tables and a single migration record', () => {
+  it('upgrades schema 6 by adding sticker and template tables', () => {
     const f = persistenceFixture();
     const stickerTables = ['StickerPacks', 'Stickers', 'RecipeStickers', 'StickerOperations'];
-    for (const name of stickerTables) f.sheets.delete(name);
+    const templateTables = ['Templates', 'RecipeTemplates', 'TemplateOperations'];
+    for (const name of [...stickerTables, ...templateTables]) f.sheets.delete(name);
     const migrations = f.required('SchemaMigrations');
-    const record = migrations.findIndex((row) => row[0] === '007-sticker-packs');
-    if (record < 0) throw new Error('fixture');
-    migrations.splice(record, 1);
+    for (const migrationId of ['007-sticker-packs', '008-recipe-templates']) {
+      const record = migrations.findIndex((row) => row[0] === migrationId);
+      if (record < 0) throw new Error('fixture');
+      migrations.splice(record, 1);
+    }
     const version = f.required('Meta').find((row) => row[0] === 'schema_version');
     if (!version) throw new Error('fixture');
     version[1] = '6';
     expect(planRecipeSchema(f.store, f.migrationOptions)).toMatchObject({
       fromVersion: 6,
-      toVersion: 7,
+      toVersion: 8,
       alreadyApplied: false,
     });
     applyRecipeSchema(f.store, f.migrationOptions);
-    for (const name of stickerTables) {
+    for (const name of [...stickerTables, ...templateTables]) {
       const definition = RECIPE_TABLES.find((table) => table.name === name);
       expect(f.required(name)).toEqual([[...(definition?.columns ?? [])]]);
     }
     expect(
       f.required('SchemaMigrations').filter((row) => row[0] === '007-sticker-packs'),
+    ).toHaveLength(1);
+    expect(
+      f.required('SchemaMigrations').filter((row) => row[0] === '008-recipe-templates'),
+    ).toHaveLength(1);
+  });
+  it('upgrades schema 7 by adding only the template library tables', () => {
+    const f = persistenceFixture();
+    const templateTables = ['Templates', 'RecipeTemplates', 'TemplateOperations'];
+    const before = new Map(
+      [...f.sheets]
+        .filter(([name]) => !templateTables.includes(name))
+        .map(([name, rows]) => [name, structuredClone(rows)]),
+    );
+    for (const name of templateTables) f.sheets.delete(name);
+    const migrations = f.required('SchemaMigrations');
+    const record = migrations.findIndex((row) => row[0] === '008-recipe-templates');
+    if (record < 0) throw new Error('fixture');
+    migrations.splice(record, 1);
+    const version = f.required('Meta').find((row) => row[0] === 'schema_version');
+    if (!version) throw new Error('fixture');
+    version[1] = '7';
+    expect(planRecipeSchema(f.store, f.migrationOptions)).toMatchObject({
+      fromVersion: 7,
+      toVersion: 8,
+      alreadyApplied: false,
+    });
+    applyRecipeSchema(f.store, f.migrationOptions);
+    for (const [name, rows] of before) {
+      if (name === 'Meta' || name === 'SchemaMigrations') continue;
+      expect(f.sheets.get(name)).toEqual(rows);
+    }
+    for (const name of templateTables) {
+      const definition = RECIPE_TABLES.find((table) => table.name === name);
+      expect(f.required(name)).toEqual([[...(definition?.columns ?? [])]]);
+    }
+    expect(
+      f.required('SchemaMigrations').filter((row) => row[0] === '008-recipe-templates'),
     ).toHaveLength(1);
   });
   it('rejects header conflicts and foreign data without writing', () => {

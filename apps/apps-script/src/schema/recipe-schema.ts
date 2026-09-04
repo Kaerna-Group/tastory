@@ -1,4 +1,6 @@
-export const RECIPE_SCHEMA_VERSION = 7;
+export const RECIPE_SCHEMA_VERSION = 8;
+export const TEMPLATE_RECIPE_MIGRATION_ID = '008-recipe-templates';
+export const TEMPLATE_RECIPE_MIGRATION_NAME = 'Recipe template library and applied snapshots';
 export const STICKER_RECIPE_MIGRATION_ID = '007-sticker-packs';
 export const STICKER_RECIPE_MIGRATION_NAME = 'Sticker packs and durable recipe placements';
 export const SETTINGS_RECIPE_MIGRATION_ID = '006-user-settings';
@@ -244,6 +246,55 @@ export const RECIPE_TABLES = [
       'state',
     ],
   },
+  {
+    name: 'Templates',
+    columns: [
+      'version_id',
+      'id',
+      'workspace_id',
+      'owner_user_id',
+      'kind',
+      'name',
+      'description',
+      'category',
+      'layout',
+      'visibility',
+      'status',
+      'source_template_id',
+      'revision',
+      'created_at',
+      'updated_at',
+    ],
+  },
+  {
+    name: 'RecipeTemplates',
+    columns: [
+      'version_id',
+      'id',
+      'recipe_id',
+      'template_id',
+      'template_name',
+      'category',
+      'layout',
+      'source_owner_user_id',
+      'revision',
+      'created_at',
+      'updated_at',
+    ],
+  },
+  {
+    name: 'TemplateOperations',
+    columns: [
+      'request_id',
+      'workspace_id',
+      'user_id',
+      'action',
+      'entity_id',
+      'payload_hash',
+      'started_at',
+      'state',
+    ],
+  },
 ] as const;
 export type RecipeTableName = (typeof RECIPE_TABLES)[number]['name'];
 export type RecipeDataTable = Exclude<
@@ -255,20 +306,29 @@ export type RecipeDataTable = Exclude<
   | 'Stickers'
   | 'RecipeStickers'
   | 'StickerOperations'
+  | 'Templates'
+  | 'RecipeTemplates'
+  | 'TemplateOperations'
 >;
 const STICKER_TABLES = new Set(['StickerPacks', 'Stickers', 'RecipeStickers', 'StickerOperations']);
+const TEMPLATE_TABLES = new Set(['Templates', 'RecipeTemplates', 'TemplateOperations']);
 export const RECIPE_SCHEMA_FINGERPRINT = JSON.stringify({
   id: RECIPE_MIGRATION_ID,
   name: RECIPE_MIGRATION_NAME,
   version: 5,
-  tables: RECIPE_TABLES.filter(({ name }) => name !== 'UserSettings' && !STICKER_TABLES.has(name)),
+  tables: RECIPE_TABLES.filter(
+    ({ name }) =>
+      name !== 'UserSettings' && !STICKER_TABLES.has(name) && !TEMPLATE_TABLES.has(name),
+  ),
   algorithm: 'immutable-scalar-snapshots-single-cell-publication-v1',
 });
 export const SETTINGS_RECIPE_SCHEMA_FINGERPRINT = JSON.stringify({
   id: SETTINGS_RECIPE_MIGRATION_ID,
   name: SETTINGS_RECIPE_MIGRATION_NAME,
-  version: RECIPE_SCHEMA_VERSION,
-  tables: RECIPE_TABLES.filter(({ name }) => !STICKER_TABLES.has(name)),
+  version: 7,
+  tables: RECIPE_TABLES.filter(
+    ({ name }) => !STICKER_TABLES.has(name) && !TEMPLATE_TABLES.has(name),
+  ),
   algorithm: 'append-only-user-settings-v1',
 });
 export const LEGACY_RECIPE_SCHEMA_FINGERPRINT = JSON.stringify({
@@ -280,7 +340,8 @@ export const LEGACY_RECIPE_SCHEMA_FINGERPRINT = JSON.stringify({
       name !== 'RecipePhotos' &&
       name !== 'RecipeFavorites' &&
       name !== 'UserSettings' &&
-      !STICKER_TABLES.has(name),
+      !STICKER_TABLES.has(name) &&
+      !TEMPLATE_TABLES.has(name),
   ),
   algorithm: 'immutable-scalar-snapshots-single-cell-publication-v1',
 });
@@ -290,14 +351,24 @@ export const PHOTO_RECIPE_SCHEMA_FINGERPRINT = JSON.stringify({
   version: 4,
   tables: RECIPE_TABLES.filter(
     ({ name }) =>
-      name !== 'RecipeFavorites' && name !== 'UserSettings' && !STICKER_TABLES.has(name),
+      name !== 'RecipeFavorites' &&
+      name !== 'UserSettings' &&
+      !STICKER_TABLES.has(name) &&
+      !TEMPLATE_TABLES.has(name),
   ),
   algorithm: 'immutable-scalar-snapshots-single-cell-publication-v1',
 });
 export const STICKER_RECIPE_SCHEMA_FINGERPRINT = JSON.stringify({
   id: STICKER_RECIPE_MIGRATION_ID,
   name: STICKER_RECIPE_MIGRATION_NAME,
+  version: 7,
+  tables: RECIPE_TABLES.filter(({ name }) => !TEMPLATE_TABLES.has(name)),
+  algorithm: 'append-only-sticker-snapshots-single-cell-publication-v1',
+});
+export const TEMPLATE_RECIPE_SCHEMA_FINGERPRINT = JSON.stringify({
+  id: TEMPLATE_RECIPE_MIGRATION_ID,
+  name: TEMPLATE_RECIPE_MIGRATION_NAME,
   version: RECIPE_SCHEMA_VERSION,
   tables: RECIPE_TABLES,
-  algorithm: 'append-only-sticker-snapshots-single-cell-publication-v1',
+  algorithm: 'append-only-template-snapshots-single-cell-publication-v1',
 });

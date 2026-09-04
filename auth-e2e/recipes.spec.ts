@@ -2,12 +2,20 @@ import { expect, test } from '@playwright/test';
 import type { Page } from '@playwright/test';
 import { randomUUID } from 'node:crypto';
 import {
+  BUILTIN_RECIPE_TEMPLATES,
   BUILTIN_STICKER_PACKS,
   recipeCommandSchema,
   recipeSummarySchema,
   stickerCommandSchema,
+  templateCommandSchema,
 } from '@tastory/contracts';
-import type { RecipeAggregate, RecipeData, RecipeSticker } from '@tastory/contracts';
+import type {
+  RecipeAggregate,
+  RecipeData,
+  RecipeSticker,
+  RecipeTemplate,
+  RecipeTemplateRecord,
+} from '@tastory/contracts';
 
 const provider = `window.google = { accounts: { id: {
   initialize(options) { this.callback = options.callback; },
@@ -24,6 +32,7 @@ async function fixture(page: Page) {
   const receipts = new Map<string, RecipeData>();
   const versions = new Map<number, RecipeAggregate>();
   let stickerPlacements: RecipeSticker[] = [];
+  let appliedTemplate: RecipeTemplate | null = null;
   const commands: { action: string; requestId: string }[] = [];
   let settings = {
     displayName: 'Повар',
@@ -40,6 +49,27 @@ async function fixture(page: Page) {
   const recipeId = randomUUID(),
     workspaceId = randomUUID(),
     ownerUserId = randomUUID();
+  const communitySource = BUILTIN_RECIPE_TEMPLATES.find(
+    (template) => template.layout === 'fresh-bar',
+  );
+  if (!communitySource) throw new Error('Missing builtin template fixture.');
+  const communityTemplate: RecipeTemplateRecord = {
+    id: randomUUID(),
+    workspaceId,
+    ownerUserId: randomUUID(),
+    kind: 'custom',
+    name: 'Летний аперитив',
+    description: 'Свежая страница от участника тетради',
+    category: 'drink',
+    layout: 'fresh-bar',
+    visibility: 'workspace',
+    status: 'active',
+    sourceTemplateId: communitySource.id,
+    revision: 1,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  };
+  let customTemplates: RecipeTemplateRecord[] = [communityTemplate];
   await page
     .context()
     .route('https://accounts.google.com/gsi/client', (route) =>
@@ -143,6 +173,175 @@ async function fixture(page: Page) {
           };
         } else throw new Error(`Unexpected sticker fixture action: ${command.action}`);
       } else if (
+        request.action.startsWith('templates.') ||
+        request.action.startsWith('recipes.template.')
+      ) {
+        const command = templateCommandSchema.parse({
+          action: request.action,
+          payload: request.payload,
+        });
+        commands.push({ action: command.action, requestId: request.requestId });
+        const allTemplates = [...BUILTIN_RECIPE_TEMPLATES, ...customTemplates];
+        if (command.action === 'templates.list') {
+          const needle = command.payload.query.trim().toLocaleLowerCase('ru');
+          data = {
+            kind: 'templateLibrary',
+            templates: allTemplates
+              .filter((template) => command.payload.includeArchived || template.status === 'active')
+              .filter(
+                (template) =>
+                  command.payload.category === 'all' ||
+                  template.category === command.payload.category,
+              )
+              .filter((template) => {
+                if (command.payload.scope === 'mine') return template.ownerUserId === ownerUserId;
+                if (command.payload.scope === 'community')
+                  return template.kind === 'custom' && template.ownerUserId !== ownerUserId;
+                return true;
+              })
+              .filter(
+                (template) =>
+                  !needle ||
+                  `${template.name} ${template.description}`
+                    .toLocaleLowerCase('ru')
+                    .includes(needle),
+              )
+              .map((template) => ({
+                template,
+                authorName: template.kind === 'builtin' ? 'Tastory' : 'Повар Анна',
+                canManage:
+                  !readonly && template.kind === 'custom' && template.ownerUserId === ownerUserId,
+                canCopy:
+                  !readonly &&
+                  (template.kind === 'builtin' || template.ownerUserId !== ownerUserId),
+              })),
+          };
+        } else if (command.action === 'recipes.template.get') {
+          data = {
+            kind: 'recipeTemplate',
+            recipeId: command.payload.recipeId,
+            template: appliedTemplate,
+            outcome: 'read',
+          };
+        } else if (command.action === 'recipes.template.apply') {
+          const source = allTemplates.find(
+            (template) => template.id === command.payload.templateId,
+          );
+          if (!source) throw new Error('Unknown template in fixture.');
+          const now = new Date().toISOString();
+          appliedTemplate = {
+            id: command.payload.recipeId,
+            recipeId: command.payload.recipeId,
+            templateId: source.id,
+            templateName: source.name,
+            category: source.category,
+            layout: source.layout,
+            sourceOwnerUserId: source.ownerUserId,
+            revision: (appliedTemplate?.revision ?? 0) + 1,
+            createdAt: appliedTemplate?.createdAt ?? now,
+            updatedAt: now,
+          };
+          data = {
+            kind: 'recipeTemplate',
+            recipeId: command.payload.recipeId,
+            template: appliedTemplate,
+            outcome: 'committed',
+          };
+        } else if (command.action === 'templates.create' || command.action === 'templates.clone') {
+          const source =
+            command.action === 'templates.clone'
+              ? allTemplates.find((template) => template.id === command.payload.templateId)
+              : null;
+          const now = new Date().toISOString();
+          const layout =
+            source?.layout ??
+            (command.action === 'templates.create' ? command.payload.layout : 'hearth');
+          const created: RecipeTemplateRecord = {
+            id: request.requestId,
+            workspaceId,
+            ownerUserId,
+            kind: 'custom',
+            name:
+              command.action === 'templates.clone'
+                ? (command.payload.name ?? `${source?.name ?? 'Шаблон'} — моя`)
+                : command.payload.name,
+            description:
+              command.action === 'templates.clone'
+                ? (source?.description ?? '')
+                : command.payload.description,
+            category:
+              layout === 'fresh-bar' ||
+              layout === 'coffeehouse' ||
+              layout === 'tea-ceremony' ||
+              layout === 'cocktail-night' ||
+              layout === 'wine-cellar'
+                ? 'drink'
+                : 'dish',
+            layout,
+            visibility: command.payload.visibility,
+            status: 'active',
+            sourceTemplateId: source?.id ?? null,
+            revision: 1,
+            createdAt: now,
+            updatedAt: now,
+          };
+          customTemplates = [...customTemplates, created];
+          data = {
+            kind: 'template',
+            template: created,
+            authorName: 'Повар',
+            canManage: true,
+            canCopy: false,
+            outcome: 'committed',
+          };
+        } else if (
+          command.action === 'templates.archive' ||
+          command.action === 'templates.restore' ||
+          command.action === 'templates.update'
+        ) {
+          const current = customTemplates.find(
+            (template) => template.id === command.payload.templateId,
+          );
+          if (!current) throw new Error('Unknown custom template in fixture.');
+          const next: RecipeTemplateRecord =
+            command.action === 'templates.update'
+              ? {
+                  ...current,
+                  name: command.payload.name,
+                  description: command.payload.description,
+                  layout: command.payload.layout,
+                  category: [
+                    'coffeehouse',
+                    'tea-ceremony',
+                    'cocktail-night',
+                    'fresh-bar',
+                    'wine-cellar',
+                  ].includes(command.payload.layout)
+                    ? 'drink'
+                    : 'dish',
+                  visibility: command.payload.visibility,
+                  revision: current.revision + 1,
+                  updatedAt: new Date().toISOString(),
+                }
+              : {
+                  ...current,
+                  status: command.action === 'templates.archive' ? 'archived' : 'active',
+                  revision: current.revision + 1,
+                  updatedAt: new Date().toISOString(),
+                };
+          customTemplates = customTemplates.map((template) =>
+            template.id === current.id ? next : template,
+          );
+          data = {
+            kind: 'template',
+            template: next,
+            authorName: 'Повар',
+            canManage: true,
+            canCopy: false,
+            outcome: 'committed',
+          };
+        } else throw new Error('Unexpected template fixture action.');
+      } else if (
         request.action.startsWith('recipes.') ||
         request.action.startsWith('tags.') ||
         request.action.startsWith('admin.recipes.')
@@ -164,7 +363,7 @@ async function fixture(page: Page) {
           return;
         } else if (command.action === 'admin.recipes.initialize') {
           recipeReady = true;
-          data = { kind: 'initialized', schemaVersion: 7, alreadyApplied: false };
+          data = { kind: 'initialized', schemaVersion: 8, alreadyApplied: false };
         } else if (command.action === 'recipes.list')
           data = {
             kind: 'recipes',
@@ -526,6 +725,44 @@ test('opens builtin sticker packs and places a sticker on a saved recipe', async
   await expect(
     packs.getByRole('button', { name: 'Выбрать стикер Клубничное варенье' }),
   ).toBeVisible();
+});
+
+test('uses ten recipe templates and copies a shared style into the personal library', async ({
+  page,
+}) => {
+  await fixture(page);
+  await create(page);
+  await page.getByLabel('Название', { exact: true }).fill('Лимонный тарт');
+  await expect(saved(page)).toBeVisible();
+
+  const library = page.getByRole('region', { name: 'Шаблоны страниц' });
+  await expect(library.locator('.template-card')).toHaveCount(11);
+  await library.getByRole('button', { name: 'Напитки' }).click();
+  await expect(library.locator('.template-card')).toHaveCount(6);
+
+  const coffeehouse = library.locator('.template-card').filter({ hasText: 'Домашняя кофейня' });
+  await coffeehouse.getByRole('button', { name: 'Применить' }).click();
+  await expect(library.getByRole('status')).toContainText('Домашняя кофейня');
+  await expect(library.locator('.template-stage .template-recipe-page')).toHaveAttribute(
+    'data-layout',
+    'coffeehouse',
+  );
+
+  await library.getByRole('button', { name: 'От участников' }).click();
+  const shared = library.locator('.template-card').filter({ hasText: 'Летний аперитив' });
+  await shared.getByRole('button', { name: 'Сохранить себе' }).click();
+  await expect(library.getByRole('status')).toContainText('сохранён в вашей библиотеке');
+  await library.getByRole('button', { name: 'Мои' }).click();
+  await expect(library.getByRole('heading', { name: 'Летний аперитив — моя' })).toBeVisible();
+
+  await library.getByText('Дополнительно: создать свой шаблон').click();
+  const creator = library.locator('.template-create');
+  await creator.getByLabel('Название шаблона').fill('Мой семейный обед');
+  await creator.getByLabel('Основа').selectOption('notebook');
+  await creator.getByLabel('Описание').fill('Страница для семейных рецептов');
+  await creator.getByLabel('Доступ').selectOption('workspace');
+  await creator.getByRole('button', { name: 'Создать шаблон' }).click();
+  await expect(library.getByRole('heading', { name: 'Мой семейный обед' })).toBeVisible();
 });
 
 test('library searches ingredients, keeps URL filters, switches view and stores personal favorites', async ({

@@ -10,6 +10,7 @@ import {
   RECIPE_SCHEMA_FINGERPRINT,
   SETTINGS_RECIPE_SCHEMA_FINGERPRINT,
   STICKER_RECIPE_SCHEMA_FINGERPRINT,
+  TEMPLATE_RECIPE_SCHEMA_FINGERPRINT,
 } from '../schema/recipe-schema';
 import { planRecipeSchema } from '../services/recipe-migration';
 import { createRecipeStore } from './recipe-store';
@@ -28,6 +29,7 @@ export function journalMigrationOptions(driveRootId: string) {
     photoRecipeChecksum: sha256(PHOTO_RECIPE_SCHEMA_FINGERPRINT),
     settingsRecipeChecksum: sha256(SETTINGS_RECIPE_SCHEMA_FINGERPRINT),
     stickerRecipeChecksum: sha256(STICKER_RECIPE_SCHEMA_FINGERPRINT),
+    templateRecipeChecksum: sha256(TEMPLATE_RECIPE_SCHEMA_FINGERPRINT),
     driveRootId,
     now: () => new Date(),
   };
@@ -63,7 +65,12 @@ export function inspectCurrentSchema(
     planRecipeSchema(createRecipeStore(spreadsheet), options).fromVersion === 6
   )
     return { schemaVersion: 6 as const, tablesChecked: 17 as const };
-  if (version === '7' && planRecipeSchema(createRecipeStore(spreadsheet), options).alreadyApplied)
+  if (
+    version === '7' &&
+    planRecipeSchema(createRecipeStore(spreadsheet), options).fromVersion === 7
+  )
     return { schemaVersion: 7 as const, tablesChecked: 21 as const };
+  if (version === '8' && planRecipeSchema(createRecipeStore(spreadsheet), options).alreadyApplied)
+    return { schemaVersion: 8 as const, tablesChecked: 24 as const };
   throw new JournalError();
 }

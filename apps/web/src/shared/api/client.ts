@@ -12,6 +12,7 @@ import {
   backupResponseSchema,
   userSettingsResponseSchema,
   stickerResponseSchema,
+  templateResponseSchema,
 } from '@tastory/contracts';
 import type {
   ApiRequest,
@@ -36,6 +37,8 @@ import type {
   UserSettingsData,
   StickerCommand,
   StickerData,
+  TemplateCommand,
+  TemplateData,
 } from '@tastory/contracts';
 
 export type ApiTransport = (request: ApiRequest, signal?: AbortSignal) => Promise<unknown>;
@@ -82,6 +85,12 @@ export function createApiClient(
     requestId: string,
     signal?: AbortSignal,
   ) => Promise<StickerData>;
+  templates: (
+    command: TemplateCommand,
+    credential: string,
+    requestId: string,
+    signal?: AbortSignal,
+  ) => Promise<TemplateData>;
   access: (
     command: AccessCommand,
     credential: string,
@@ -307,6 +316,43 @@ export function createApiClient(
         throw new ApiClientError(parsed.data.error.code, parsed.data.error.message, requestId);
       return parsed.data.data;
     },
+    async templates(command, credential, requestId, signal) {
+      const raw = await transport(
+        { ...command, apiVersion: API_VERSION, requestId, credential },
+        signal,
+      );
+      const parsed = templateResponseSchema.safeParse(raw);
+      const expectedKind = {
+        'templates.list': 'templateLibrary',
+        'templates.create': 'template',
+        'templates.update': 'template',
+        'templates.archive': 'template',
+        'templates.restore': 'template',
+        'templates.clone': 'template',
+        'recipes.template.get': 'recipeTemplate',
+        'recipes.template.apply': 'recipeTemplate',
+      }[command.action];
+      if (
+        !parsed.success ||
+        parsed.data.requestId !== requestId ||
+        (parsed.data.ok &&
+          (parsed.data.data.kind !== expectedKind ||
+            (parsed.data.data.kind === 'recipeTemplate' &&
+              command.action.startsWith('recipes.template.') &&
+              (parsed.data.data.recipeId !== (command.payload as { recipeId: string }).recipeId ||
+                (command.action === 'recipes.template.get'
+                  ? parsed.data.data.outcome !== 'read'
+                  : parsed.data.data.outcome === 'read')))))
+      )
+        throw new ApiClientError(
+          'INVALID_RESPONSE',
+          'Сервер вернул несовместимый ответ.',
+          requestId,
+        );
+      if (!parsed.data.ok)
+        throw new ApiClientError(parsed.data.error.code, parsed.data.error.message, requestId);
+      return parsed.data.data;
+    },
     async access(command, credential, requestId, signal) {
       const raw = await transport(
         { ...command, apiVersion: API_VERSION, requestId, credential },
@@ -469,7 +515,8 @@ export function createHttpTransport(url: string, fetcher: typeof fetch = fetch):
           request.action.startsWith('auth.') ||
           request.action.startsWith('recipes.') ||
           request.action.startsWith('tags.') ||
-          request.action.startsWith('stickers.')
+          request.action.startsWith('stickers.') ||
+          request.action.startsWith('templates.')
           ? 60_000
           : 15_000,
       );

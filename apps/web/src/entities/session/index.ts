@@ -12,6 +12,7 @@ export {
   requestSessionRecipes,
   requestSessionSettings,
   requestSessionStickers,
+  requestSessionTemplates,
 } from './model/session-store';
 export type { SessionState } from './model/session-store';
 export {

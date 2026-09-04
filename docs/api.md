@@ -15,7 +15,7 @@
 
 Поддержаны health, echo, auth.signIn, auth.me, admin.users.list, admin.health, три действия admin.operations, пять действий управления доступом, три действия spike.photo и два spike.concurrency. В коде R-02 добавлены [защищённые действия рецептов, тегов, подготовки схемы и восстановления записей](recipe-storage.md#api); их публикация ещё предстоит. Неизвестные поля, действия и версия отклоняются. Поле `credential` требуется для всех защищённых действий; health/echo его не принимают. `expectedRevision` используется в изменении/архиве/восстановлении рецепта, управлении доступом и пробе записей.
 
-POST отправляет JSON с Content-Type `text/plain;charset=utf-8`, без cookies/Authorization. Это избегает собственного preflight, но реальная работа CORS/redirect должна быть доказана на опубликованном origin. Таймаут — 15 секунд, для auth, spike, admin, recipes и tags — 60 секунд; поддержана отмена ожидания. Серверная запись может завершиться после отмены клиентом.
+POST отправляет JSON с Content-Type `text/plain;charset=utf-8`, без cookies/Authorization. Это избегает собственного preflight, но реальная работа CORS/redirect должна быть доказана на опубликованном origin. Таймаут — 15 секунд, для auth, spike, admin, recipes, tags и templates — 60 секунд; поддержана отмена ожидания. Серверная запись может завершиться после отмены клиентом.
 
 ## Health
 
@@ -92,9 +92,15 @@ Production ограничивает `auth.signIn` до 6 запросов на c
 
 Размещение принимает recipeId, stickerId и геометрию `{ page, x, y, width, height, rotation, zIndex }`. Изменение и удаление используют ревизию самого экземпляра. Ответы имеют kind `stickerPacks`, `stickerPack`, `stickerAsset`, `recipeStickers` или `recipeSticker`. Ошибки: `STICKER_NOT_READY`, `STICKER_INVALID`, `STICKER_UNAVAILABLE`, `STICKER_CONFLICT`, `STICKER_LIMIT`; проверка доступа по-прежнему возвращает `ACCESS_DENIED`. Полная модель: [стикер-паки V-03](sticker-packs.md).
 
+## Шаблоны рецепта
+
+`templates.list` принимает поиск, категорию `all | dish | drink`, область `all | mine | community` и признак показа собственного архива. `templates.create`, `templates.update`, `templates.archive` и `templates.restore` управляют личной библиотекой. `templates.clone` копирует доступный встроенный или чужой общий шаблон в независимую запись пользователя.
+
+`recipes.template.get` читает применённый снимок после проверки права на рецепт. `recipes.template.apply` принимает `recipeId`, `templateId` и `expectedRecipeRevision`; сервер заново проверяет право изменения и доступность источника. Ответы имеют kind `templateLibrary`, `template` или `recipeTemplate`. Ошибки: `TEMPLATE_NOT_READY`, `TEMPLATE_INVALID`, `TEMPLATE_UNAVAILABLE`, `TEMPLATE_CONFLICT`, `TEMPLATE_LIMIT`; отказ по роли возвращает `ACCESS_DENIED`. [Модель и права V-02](recipe-templates.md).
+
 ## Журнал операций
 
-Три дополнительных действия требуют credential, строго пустой payload, staging и активного владельца. Повторная проверка прав и срока токена выполняется под ScriptLock. Последовательность миграций 002–007 доводит хранилище до схемы 7; миграция 007 добавляет четыре таблицы стикеров. Вход поддерживает версии 1–7. `admin.health` возвращает пары schemaVersion/tablesChecked от 1/6 до 7/21. Транспортное meta не меняется.
+Три дополнительных действия требуют credential, строго пустой payload, staging и активного владельца. Повторная проверка прав и срока токена выполняется под ScriptLock. Последовательность миграций 002–008 доводит хранилище до схемы 8; миграция 007 добавляет четыре таблицы стикеров, а 008 — три таблицы шаблонов. Вход поддерживает версии 1–8. `admin.health` возвращает пары schemaVersion/tablesChecked от 1/6 до 8/24. Транспортное meta не меняется.
 
 | Действие                      | Результат data                                                                                                    |
 | ----------------------------- | ----------------------------------------------------------------------------------------------------------------- |

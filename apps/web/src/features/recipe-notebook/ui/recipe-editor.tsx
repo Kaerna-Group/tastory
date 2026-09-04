@@ -9,6 +9,7 @@ import type { RecipeLocalDraft, RecipeDraftValue, Tag } from '../model/drafts';
 import { RecipeFields } from './recipe-fields';
 import { RecipeHistory } from './recipe-history';
 import { RecipePhotos } from './recipe-photos';
+import { RecipeTemplates } from './recipe-templates';
 import { StickerPacks } from './sticker-packs';
 
 function download(draft: RecipeLocalDraft) {
@@ -333,6 +334,16 @@ function EditorContent({
         editable={editable && !resolving}
         confirmDelete={preferences.confirmDestructiveActions}
       />
+      {draft.base && (
+        <RecipeTemplates
+          recipeId={draft.base.recipe.id}
+          recipeRevision={draft.base.recipe.revision}
+          value={draft.value}
+          editable={
+            editable && !resolving && status === 'saved' && !draft.pending && !draft.conflict
+          }
+        />
+      )}
       {draft.base && (
         <StickerPacks
           recipeId={draft.base.recipe.id}

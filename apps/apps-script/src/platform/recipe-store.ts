@@ -17,7 +17,9 @@ export function createRecipeStore(
         return { rowCount, columnCount, headers: [], rows: [] };
       const width = RECIPE_TABLES.find((definition) => definition.name === table)?.columns.length;
       const limit =
-        table === 'RecipeOperations' || table === 'StickerOperations'
+        table === 'RecipeOperations' ||
+        table === 'StickerOperations' ||
+        table === 'TemplateOperations'
           ? RECIPE_OPERATION_LIMIT
           : RECIPE_ROW_LIMIT;
       if (columnCount !== width || rowCount < 1 || rowCount > limit + 1)
@@ -36,7 +38,9 @@ export function createRecipeStore(
       const sheet = spreadsheet.getSheetByName(table);
       const width = RECIPE_TABLES.find((definition) => definition.name === table)?.columns.length;
       const limit =
-        table === 'RecipeOperations' || table === 'StickerOperations'
+        table === 'RecipeOperations' ||
+        table === 'StickerOperations' ||
+        table === 'TemplateOperations'
           ? RECIPE_OPERATION_LIMIT
           : RECIPE_ROW_LIMIT;
       if (

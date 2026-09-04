@@ -22,6 +22,8 @@ export { recipeResponseSchema } from './api';
 export type { RecipeResponse } from './api';
 export { stickerResponseSchema } from './api';
 export type { StickerResponse } from './api';
+export { templateResponseSchema } from './api';
+export type { TemplateResponse } from './api';
 export {
   RECIPE_BODY_LIMIT,
   recipeCommandSchema,
@@ -143,3 +145,27 @@ export type {
 export { stickerCommandSchema, stickerMutationActions, stickerDataSchema } from './sticker-api';
 export type { StickerCommand, StickerData } from './sticker-api';
 export { BUILTIN_STICKER_PACKS, BUILTIN_STICKER_ASSET_PATHS } from './sticker-builtins';
+export {
+  TEMPLATE_LIMITS,
+  templateCategorySchema,
+  templateVisibilitySchema,
+  templateKindSchema,
+  templateStatusSchema,
+  templateLayoutSchema,
+  dishTemplateLayouts,
+  drinkTemplateLayouts,
+  templateCategoryForLayout,
+  recipeTemplateSchema,
+  templateSchema,
+  templateViewSchema,
+} from './template';
+export type {
+  RecipeTemplate,
+  RecipeTemplateCategory,
+  RecipeTemplateLayout,
+  RecipeTemplateRecord,
+  RecipeTemplateView,
+} from './template';
+export { templateCommandSchema, templateMutationActions, templateDataSchema } from './template-api';
+export type { TemplateCommand, TemplateData } from './template-api';
+export { BUILTIN_RECIPE_TEMPLATES } from './template-builtins';
