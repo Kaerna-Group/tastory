@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, useSyncExternalStore } from 'react';
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router';
 import { requestSessionRecipes } from '@/entities/session';
 import { env } from '@/shared/config';
@@ -68,6 +68,7 @@ export function RecipeLibrary({
   const [attempt, setAttempt] = useState(0);
   const [notReady, setNotReady] = useState(false);
   const [initializing, setInitializing] = useState(false);
+  const autoInitializeAttempted = useRef(false);
   const [removeId, setRemoveId] = useState<string | null>(null);
   const [favoriteBusy, setFavoriteBusy] = useState<string | null>(null);
   const selectedRecipes = useMemo(() => selectLibraryRecipes(recipes, query), [recipes, query]);
@@ -116,6 +117,31 @@ export function RecipeLibrary({
       })
       .catch((error) => {
         if (!controller.signal.aborted) {
+          if (error?.code === 'RECIPE_NOT_READY' && owner && !autoInitializeAttempted.current) {
+            autoInitializeAttempted.current = true;
+            setInitializing(true);
+            void requestSessionRecipes(
+              { action: 'admin.recipes.initialize', payload: {} },
+              crypto.randomUUID(),
+              controller.signal,
+            )
+              .then(() => {
+                if (!controller.signal.aborted) {
+                  setInitializing(false);
+                  setAttempt((value) => value + 1);
+                }
+              })
+              .catch(() => {
+                if (!controller.signal.aborted) {
+                  setInitializing(false);
+                  setNotReady(true);
+                  setError(
+                    'Не удалось автоматически подготовить хранение. Повторите подготовку вручную.',
+                  );
+                }
+              });
+            return;
+          }
           const recent = readRecentLibrary(localStorage, scope);
           if (recent.length > 0) {
             setRecipes(recent);
@@ -138,7 +164,7 @@ export function RecipeLibrary({
       controller.abort();
       window.removeEventListener('storage', refreshLocal);
     };
-  }, [scope, attempt]);
+  }, [scope, attempt, owner]);
   const create = () => {
     try {
       const draft = newDraft(scope, crypto.randomUUID(), null, preferences.defaultVisibility);

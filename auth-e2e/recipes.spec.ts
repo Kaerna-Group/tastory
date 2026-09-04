@@ -18,6 +18,7 @@ async function fixture(page: Page) {
   let remote: RecipeAggregate | null = null;
   let blocked = false;
   let readonly = false;
+  let recipeReady = true;
   let subject = 'chef-sub';
   const favoriteUsers = new Set<string>();
   const receipts = new Map<string, RecipeData>();
@@ -141,14 +142,30 @@ async function fixture(page: Page) {
             outcome: 'committed',
           };
         } else throw new Error(`Unexpected sticker fixture action: ${command.action}`);
-      } else if (request.action.startsWith('recipes.') || request.action.startsWith('tags.')) {
+      } else if (
+        request.action.startsWith('recipes.') ||
+        request.action.startsWith('tags.') ||
+        request.action.startsWith('admin.recipes.')
+      ) {
         const raw = route.request().postDataJSON() as Record<string, unknown>;
         const command = recipeCommandSchema.parse({
           action: raw['action'],
           payload: raw['payload'],
         });
         commands.push({ action: command.action, requestId: request.requestId });
-        if (command.action === 'recipes.list')
+        if (command.action === 'recipes.list' && !recipeReady) {
+          await route.fulfill({
+            json: {
+              ok: false,
+              requestId: request.requestId,
+              error: { code: 'RECIPE_NOT_READY', message: 'Требуется миграция.' },
+            },
+          });
+          return;
+        } else if (command.action === 'admin.recipes.initialize') {
+          recipeReady = true;
+          data = { kind: 'initialized', schemaVersion: 7, alreadyApplied: false };
+        } else if (command.action === 'recipes.list')
           data = {
             kind: 'recipes',
             recipes: remote
@@ -374,6 +391,9 @@ async function fixture(page: Page) {
           },
         };
     },
+    requireRecipeInitialization: () => {
+      recipeReady = false;
+    },
   };
 }
 async function login(page: Page) {
@@ -387,6 +407,20 @@ async function create(page: Page) {
 }
 const saved = (page: Page) =>
   page.getByRole('status').filter({ hasText: 'Сохранено на сервере и на устройстве.' });
+
+test('owner automatically applies the current recipe schema once', async ({ page }) => {
+  const f = await fixture(page);
+  f.requireRecipeInitialization();
+  await page.goto('/');
+  await login(page);
+  await expect(page.getByRole('heading', { name: 'Рецепты в тетради' })).toBeVisible();
+  await expect(page.getByRole('alert')).toHaveCount(0);
+  await expect
+    .poll(
+      () => f.commands.filter((command) => command.action === 'admin.recipes.initialize').length,
+    )
+    .toBe(1);
+});
 
 test('synchronizes profile and editor preferences, shortcuts, help and mobile layout', async ({
   page,
