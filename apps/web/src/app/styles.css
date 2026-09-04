@@ -1515,9 +1515,16 @@ h2 {
   font-size: 44px;
 }
 .library-recipe-copy {
+  position: relative;
+  min-width: 0;
   padding: 20px;
 }
 .library-favorite-button {
+  position: relative;
+  z-index: 2;
+  display: grid;
+  flex: 0 0 44px;
+  place-items: center;
   min-width: 44px;
   min-height: 44px;
   border: 0;
@@ -1786,8 +1793,9 @@ h2 {
     width: 100%;
   }
   .help-button {
-    right: 12px;
+    right: auto;
     bottom: 12px;
+    left: 12px;
   }
   .dialog-backdrop {
     place-items: end center;
