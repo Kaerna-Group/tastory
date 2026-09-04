@@ -6,6 +6,7 @@ import {
   THEME_PRESET_DETAILS,
   THEME_PRESETS,
   applyThemePreferences,
+  contrastRatio,
   copyThemePreset,
   getThemePreferences,
   readCustomThemeLibrary,
@@ -40,6 +41,25 @@ const paperNames: Record<PaperStyle, string> = {
   dots: 'Точечная сетка',
   grid: 'Клетка',
 };
+const fontChoices: ReadonlyArray<{ id: FontPair; label: string; description: string }> = [
+  { id: 'literary', label: 'Классика', description: 'Как в любимой кулинарной книге' },
+  { id: 'modern', label: 'Современно', description: 'Просто и аккуратно' },
+  { id: 'humanist', label: 'По-домашнему', description: 'Мягко и немного рукописно' },
+];
+const paperChoices: ReadonlyArray<{ id: PaperStyle; label: string }> = [
+  { id: 'plain', label: 'Чистая' },
+  { id: 'linen', label: 'Лён' },
+  { id: 'dots', label: 'Точки' },
+  { id: 'grid', label: 'Клетка' },
+];
+const detailColors: ReadonlyArray<{ value: string; label: string }> = [
+  { value: '#a74459', label: 'Ягодный' },
+  { value: '#426442', label: 'Травяной' },
+  { value: '#765084', label: 'Лавандовый' },
+  { value: '#376776', label: 'Морской' },
+  { value: '#b45f35', label: 'Терракотовый' },
+  { value: '#8a6500', label: 'Медовый' },
+];
 const colorFields: ReadonlyArray<{ key: keyof ThemePalette; label: string }> = [
   { key: 'background', label: 'Фон' },
   { key: 'surface', label: 'Лист' },
@@ -166,11 +186,15 @@ export function ThemeBuilder(): React.JSX.Element {
     () => customThemes.find((theme) => sameProfile(theme.profile, preferences.app))?.id ?? null,
   );
   const [libraryOpen, setLibraryOpen] = useState(false);
+  const [moreOpen, setMoreOpen] = useState(false);
+  const [advancedOpen, setAdvancedOpen] = useState(false);
   const [libraryFilter, setLibraryFilter] = useState<LibraryFilter>('all');
   const [libraryQuery, setLibraryQuery] = useState('');
   const [message, setMessage] = useState('');
   const libraryTriggerRef = useRef<HTMLButtonElement>(null);
   const libraryDialogRef = useRef<HTMLElement>(null);
+  const moreTriggerRef = useRef<HTMLButtonElement>(null);
+  const moreMenuRef = useRef<HTMLDivElement>(null);
   const contrast = useMemo(() => themeContrast(draft), [draft]);
   const previewStyle = useMemo(
     () =>
@@ -215,6 +239,25 @@ export function ThemeBuilder(): React.JSX.Element {
     };
   }, [libraryOpen]);
 
+  useEffect(() => {
+    if (!moreOpen) return undefined;
+    const closeMenu = (event: PointerEvent) => {
+      if (!moreMenuRef.current?.contains(event.target as Node)) setMoreOpen(false);
+    };
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setMoreOpen(false);
+        moreTriggerRef.current?.focus();
+      }
+    };
+    document.addEventListener('pointerdown', closeMenu);
+    document.addEventListener('keydown', closeOnEscape);
+    return () => {
+      document.removeEventListener('pointerdown', closeMenu);
+      document.removeEventListener('keydown', closeOnEscape);
+    };
+  }, [moreOpen]);
+
   const change = <K extends keyof ThemeProfile>(key: K, value: ThemeProfile[K]) => {
     setSelectedPreset(null);
     setDraft((current) => ({ ...current, [key]: value }));
@@ -226,12 +269,26 @@ export function ThemeBuilder(): React.JSX.Element {
       palette: { ...current.palette, [key]: value.toLowerCase() },
     }));
   };
+  const changeDetailColor = (value: string) => {
+    const normalized = value.toLowerCase();
+    const primaryText =
+      contrastRatio('#ffffff', normalized) >= contrastRatio('#24191a', normalized)
+        ? '#ffffff'
+        : '#24191a';
+    setSelectedPreset(null);
+    setDraft((current) => ({
+      ...current,
+      palette: { ...current.palette, primary: normalized, primaryText },
+    }));
+  };
   const selectPreset = (id: ThemePresetId) => {
     const next = copyThemePreset(id);
     setDraft(next);
     setSelectedPreset(id);
     setSelectedCustom(null);
     setLibraryOpen(false);
+    setMoreOpen(false);
+    setAdvancedOpen(false);
     setMessage(`Тема «${next.name}» загружена в предпросмотр.`);
   };
   const selectCustomTheme = (theme: CustomTheme) => {
@@ -239,6 +296,8 @@ export function ThemeBuilder(): React.JSX.Element {
     setSelectedPreset(null);
     setSelectedCustom(theme.id);
     setLibraryOpen(false);
+    setMoreOpen(false);
+    setAdvancedOpen(false);
     setMessage(`Своя тема «${theme.profile.name}» загружена в предпросмотр.`);
   };
   const copyCurrent = () => {
@@ -309,6 +368,8 @@ export function ThemeBuilder(): React.JSX.Element {
     setDraft(profile);
     setSelectedPreset(findPreset(profile));
     setSelectedCustom(customThemes.find((item) => sameProfile(item.profile, profile))?.id ?? null);
+    setMoreOpen(false);
+    setAdvancedOpen(false);
     setMessage('');
   };
 
@@ -406,70 +467,223 @@ export function ThemeBuilder(): React.JSX.Element {
                 {selectedPreset ? 'Встроенная тема' : selectedCustom ? 'Моя тема' : 'Новая тема'}
               </span>
             </div>
-            <button type="button" className="button button-secondary" onClick={copyCurrent}>
-              Создать копию
-            </button>
+            <div ref={moreMenuRef} className="theme-more">
+              <button
+                ref={moreTriggerRef}
+                type="button"
+                className="theme-more-button"
+                aria-label="Дополнительные действия с темой"
+                aria-expanded={moreOpen}
+                aria-haspopup="menu"
+                onClick={() => setMoreOpen((open) => !open)}
+              >
+                ⋮
+              </button>
+              {moreOpen && (
+                <div className="theme-more-menu" role="menu">
+                  <button
+                    type="button"
+                    role="menuitem"
+                    onClick={() => {
+                      copyCurrent();
+                      setMoreOpen(false);
+                    }}
+                  >
+                    <strong>Создать копию</strong>
+                    <span>Сохранить исходную тему без изменений</span>
+                  </button>
+                  <button
+                    type="button"
+                    role="menuitem"
+                    disabled={!contrast.passesAA || !draft.name.trim()}
+                    onClick={() => {
+                      saveMine();
+                      setMoreOpen(false);
+                    }}
+                  >
+                    <strong>{selectedCustom ? 'Обновить мою тему' : 'Сохранить в мои темы'}</strong>
+                    <span>Добавить оформление в личную библиотеку</span>
+                  </button>
+                  <button
+                    type="button"
+                    role="menuitem"
+                    onClick={() => {
+                      setAdvancedOpen((open) => !open);
+                      setMoreOpen(false);
+                    }}
+                  >
+                    <strong>{advancedOpen ? 'Скрыть точные настройки' : 'Точные настройки'}</strong>
+                    <span>Все цвета, режим и проверка контраста</span>
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
-          <div className="theme-meta-grid">
-            <label>
-              Название
+
+          <section className="theme-simple-controls" aria-labelledby="simple-theme-title">
+            <div className="theme-simple-heading">
+              <div>
+                <p className="eyebrow">Легко изменить</p>
+                <h3 id="simple-theme-title">Подстройте оформление под себя</h3>
+              </div>
+              <p className="muted">Изменения сразу появляются в примере справа.</p>
+            </div>
+            <label className="theme-friendly-name">
+              Название оформления
               <input
                 value={draft.name}
                 maxLength={40}
                 onChange={(event) => change('name', event.target.value)}
               />
             </label>
-            <label>
-              Режим элементов
-              <select
-                value={draft.mode}
-                onChange={(event) => change('mode', event.target.value as ThemeProfile['mode'])}
-              >
-                <option value="light">Светлый</option>
-                <option value="dark">Тёмный</option>
-              </select>
-            </label>
-            <label>
-              Шрифты
-              <select
-                value={draft.fontPair}
-                onChange={(event) => change('fontPair', event.target.value as FontPair)}
-              >
-                {Object.entries(fontNames).map(([id, name]) => (
-                  <option key={id} value={id}>
-                    {name}
-                  </option>
+
+            <fieldset className="theme-friendly-colors">
+              <legend>Цвет деталей</legend>
+              <div className="theme-color-choices">
+                {detailColors.map((color) => (
+                  <button
+                    key={color.value}
+                    type="button"
+                    aria-label={`Цвет деталей: ${color.label}`}
+                    aria-pressed={draft.palette.primary === color.value}
+                    onClick={() => changeDetailColor(color.value)}
+                  >
+                    <span style={{ backgroundColor: color.value }} />
+                    {color.label}
+                  </button>
                 ))}
-              </select>
-            </label>
-            <label>
-              Бумага
-              <select
-                value={draft.paper}
-                onChange={(event) => change('paper', event.target.value as PaperStyle)}
-              >
-                {Object.entries(paperNames).map(([id, name]) => (
-                  <option key={id} value={id}>
-                    {name}
-                  </option>
+                <label className="theme-custom-color">
+                  <input
+                    type="color"
+                    aria-label="Свой цвет деталей"
+                    value={draft.palette.primary}
+                    onChange={(event) => changeDetailColor(event.target.value)}
+                  />
+                  <span>Свой</span>
+                </label>
+              </div>
+            </fieldset>
+
+            <fieldset className="theme-choice-group">
+              <legend>Стиль текста</legend>
+              <div className="theme-choice-buttons theme-font-choices">
+                {fontChoices.map((choice) => (
+                  <button
+                    key={choice.id}
+                    type="button"
+                    aria-pressed={draft.fontPair === choice.id}
+                    onClick={() => change('fontPair', choice.id)}
+                  >
+                    <strong>{choice.label}</strong>
+                    <span>{choice.description}</span>
+                  </button>
                 ))}
-              </select>
-            </label>
-          </div>
-          <fieldset className="theme-colors">
-            <legend>Палитра</legend>
-            {colorFields.map((field) => (
-              <label key={field.key}>
-                <span>{field.label}</span>
-                <input
-                  type="color"
-                  value={draft.palette[field.key]}
-                  onChange={(event) => changeColor(field.key, event.target.value)}
-                />
-                <code>{draft.palette[field.key].toUpperCase()}</code>
-              </label>
-            ))}
-          </fieldset>
+              </div>
+            </fieldset>
+
+            <fieldset className="theme-choice-group">
+              <legend>Фактура страницы</legend>
+              <div className="theme-choice-buttons theme-paper-choices">
+                {paperChoices.map((choice) => (
+                  <button
+                    key={choice.id}
+                    type="button"
+                    aria-pressed={draft.paper === choice.id}
+                    onClick={() => change('paper', choice.id)}
+                  >
+                    {choice.label}
+                  </button>
+                ))}
+              </div>
+            </fieldset>
+          </section>
+
+          {advancedOpen && (
+            <section className="theme-advanced" aria-labelledby="advanced-theme-title">
+              <div className="theme-advanced-heading">
+                <div>
+                  <p className="eyebrow">Дополнительные функции</p>
+                  <h3 id="advanced-theme-title">Точные настройки</h3>
+                </div>
+                <button
+                  type="button"
+                  className="theme-advanced-close"
+                  onClick={() => setAdvancedOpen(false)}
+                >
+                  Скрыть
+                </button>
+              </div>
+              <div className="theme-meta-grid theme-advanced-meta">
+                <label>
+                  Режим элементов
+                  <select
+                    value={draft.mode}
+                    onChange={(event) => change('mode', event.target.value as ThemeProfile['mode'])}
+                  >
+                    <option value="light">Светлый</option>
+                    <option value="dark">Тёмный</option>
+                  </select>
+                </label>
+                <label>
+                  Точная пара шрифтов
+                  <select
+                    value={draft.fontPair}
+                    onChange={(event) => change('fontPair', event.target.value as FontPair)}
+                  >
+                    {Object.entries(fontNames).map(([id, name]) => (
+                      <option key={id} value={id}>
+                        {name}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label>
+                  Точная фактура
+                  <select
+                    value={draft.paper}
+                    onChange={(event) => change('paper', event.target.value as PaperStyle)}
+                  >
+                    {Object.entries(paperNames).map(([id, name]) => (
+                      <option key={id} value={id}>
+                        {name}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              </div>
+              <fieldset className="theme-colors">
+                <legend>Все цвета</legend>
+                {colorFields.map((field) => (
+                  <label key={field.key}>
+                    <span>{field.label}</span>
+                    <input
+                      type="color"
+                      value={draft.palette[field.key]}
+                      onChange={(event) => changeColor(field.key, event.target.value)}
+                    />
+                    <code>{draft.palette[field.key].toUpperCase()}</code>
+                  </label>
+                ))}
+              </fieldset>
+              <section className="contrast-report" aria-labelledby="contrast-title">
+                <div>
+                  <h3 id="contrast-title">Читаемость текста</h3>
+                  <strong className={contrast.passesAA ? 'contrast-pass' : 'contrast-fail'}>
+                    {contrast.passesAA ? 'Всё хорошо' : 'Нужно исправить'}
+                  </strong>
+                </div>
+                <ul>
+                  {contrast.checks.map((check) => (
+                    <li key={check.id}>
+                      <span>{check.label}</span>
+                      <strong>{check.ratio.toFixed(2)}:1</strong>
+                      <span>{check.ratio >= 4.5 ? 'Читается' : 'Слишком бледно'}</span>
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            </section>
+          )}
         </div>
 
         <div className="theme-preview-column">
@@ -489,23 +703,6 @@ export function ThemeBuilder(): React.JSX.Element {
             </div>
             <button type="button">Сохранить рецепт</button>
           </article>
-          <section className="contrast-report" aria-labelledby="contrast-title">
-            <div>
-              <h3 id="contrast-title">Контраст WCAG</h3>
-              <strong className={contrast.passesAA ? 'contrast-pass' : 'contrast-fail'}>
-                {contrast.passesAA ? 'AA пройден' : 'Нужно исправить'}
-              </strong>
-            </div>
-            <ul>
-              {contrast.checks.map((check) => (
-                <li key={check.id}>
-                  <span>{check.label}</span>
-                  <strong>{check.ratio.toFixed(2)}:1</strong>
-                  <span>{check.ratio >= 4.5 ? 'Проходит' : 'Ниже 4.5'}</span>
-                </li>
-              ))}
-            </ul>
-          </section>
         </div>
       </div>
       <div className="settings-actions theme-builder-actions">
@@ -515,19 +712,14 @@ export function ThemeBuilder(): React.JSX.Element {
           disabled={!contrast.passesAA || !draft.name.trim()}
           onClick={apply}
         >
-          {target === 'app' ? 'Применить к приложению' : 'Применить к страницам'}
-        </button>
-        <button
-          type="button"
-          className="button button-secondary"
-          disabled={!contrast.passesAA || !draft.name.trim()}
-          onClick={saveMine}
-        >
-          {selectedCustom ? 'Обновить мою тему' : 'Сохранить в мои темы'}
+          {target === 'app' ? 'Применить оформление' : 'Оформить страницы рецептов'}
         </button>
         {!contrast.passesAA && (
           <p role="alert" className="error-text">
-            Подберите цвета так, чтобы все три сочетания имели контраст не ниже 4.5:1.
+            Некоторые цвета плохо читаются.{' '}
+            <button type="button" onClick={() => setAdvancedOpen(true)}>
+              Исправить в точных настройках
+            </button>
           </p>
         )}
         {message && <p role="status">{message}</p>}
