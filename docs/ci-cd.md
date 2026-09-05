@@ -34,8 +34,9 @@ Origin: `git@github.com-personal:Kaerna-Group/tastory.git`. SSH-алиас `gith
 
 Для проверки этапа 0 опубликован [**staging** на GitHub Pages](https://kaerna-group.github.io/tastory/) со статическим dist. HashRouter поддерживает переходы без server rewrites. Для project Pages используется `VITE_BASE_PATH=/tastory/`; workflow получает base path из configure-pages.
 
-Workflow **Publish staging** запускается вручную из main, выполняет быстрый quality gate, собирает и
-публикует web, затем без браузера проверяет HTML, входной JavaScript и публичный backend health.
+Workflow **Publish staging** запускается вручную из main либо явным обновлением
+`.github/deploy-staging`, выполняет быстрый quality gate, собирает и публикует web, затем без браузера
+проверяет HTML, входной JavaScript и публичный backend health. Обычные push его не запускают.
 Playwright и PDF в этом workflow не запускаются. [Настройка и повторный запуск](staging-hosting.md).
 
 **Verify Safari staging** — исключительная ручная приёмка уже опубликованного сайта в настоящем

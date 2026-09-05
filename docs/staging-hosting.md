@@ -8,7 +8,9 @@
 
 ## Публикация
 
-Workflow **Publish staging** (`.github/workflows/staging-pages.yml`) запускается вручную, только из `main`. Он:
+Workflow **Publish staging** (`.github/workflows/staging-pages.yml`) запускается из `main` вручную
+либо явным изменением файла `.github/deploy-staging`. Второй способ нужен для выпуска по SSH без
+GitHub API token; обычные изменения кода workflow не запускают. Он:
 
 1. Выполняет установку и быстрый `npm run check`: статические проверки, unit/coverage и сборки.
 2. Собирает staging с настоящим Google API и base path из GitHub Pages.
@@ -23,7 +25,10 @@ Playwright, PDF, визуальная матрица и многократные
 
 Публичный адрес Google API хранится в repository variable `STAGING_API_URL`; Google credentials для workflow не нужны. `.env.staging.local` используется только на рабочем компьютере. Изменение переменной требует новой публикации, поскольку Vite встраивает её в JavaScript при сборке.
 
-Для повторной публикации: GitHub → Actions → Publish staging → Run workflow → main. Простой push обновляет исходники и запускает CI, но сам по себе не публикует сайт. Apps Script этим workflow не изменяется.
+Для повторной публикации: GitHub → Actions → Publish staging → Run workflow → main. Альтернатива —
+записать в `.github/deploy-staging` SHA проверенного исходного коммита и отправить это изменение в
+main. Простой push без изменения marker-файла обновляет исходники и запускает только быстрый CI, но
+сам по себе не публикует сайт. Apps Script этим workflow не изменяется.
 
 ## Проверки браузеров
 

@@ -1,6 +1,11 @@
 name: Publish staging
 on:
   workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - .github/deploy-staging
 permissions:
   contents: read
 concurrency:
