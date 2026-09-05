@@ -8,6 +8,8 @@ import {
 import type { JournalTableName } from '../schema/journal-schema';
 import { JournalError } from './journal-error';
 import {
+  DESIGN_RECIPE_MIGRATION_ID,
+  DESIGN_RECIPE_MIGRATION_NAME,
   LEGACY_RECIPE_MIGRATION_ID,
   LEGACY_RECIPE_MIGRATION_NAME,
   PHOTO_RECIPE_MIGRATION_ID,
@@ -37,6 +39,7 @@ export type JournalMigrationOptions = MigrationOptions & {
   settingsRecipeChecksum?: string;
   stickerRecipeChecksum?: string;
   templateRecipeChecksum?: string;
+  designRecipeChecksum?: string;
   beforeWrite?: () => void;
 };
 
@@ -45,7 +48,7 @@ export function planJournalSchema(store: JournalStore, options: JournalMigration
   const meta = store.core.read('Meta');
   const log = store.core.read('SchemaMigrations');
   const version = meta?.rows.find((row) => row[0] === 'schema_version')?.[1];
-  if (!meta || !log || !['1', '2', '3', '4', '5', '6', '7', '8'].includes(version ?? ''))
+  if (!meta || !log || !['1', '2', '3', '4', '5', '6', '7', '8', '9'].includes(version ?? ''))
     throw new JournalError();
   const legacyRecipeRecords = log.rows.filter((row) => row[0] === LEGACY_RECIPE_MIGRATION_ID);
   const legacyRecipeRecord = legacyRecipeRecords[0];
@@ -59,6 +62,8 @@ export function planJournalSchema(store: JournalStore, options: JournalMigration
   const stickerRecipeRecord = stickerRecipeRecords[0];
   const templateRecipeRecords = log.rows.filter((row) => row[0] === TEMPLATE_RECIPE_MIGRATION_ID);
   const templateRecipeRecord = templateRecipeRecords[0];
+  const designRecipeRecords = log.rows.filter((row) => row[0] === DESIGN_RECIPE_MIGRATION_ID);
+  const designRecipeRecord = designRecipeRecords[0];
   if (
     legacyRecipeRecords.length > 1 ||
     photoRecipeRecords.length > 1 ||
@@ -66,6 +71,7 @@ export function planJournalSchema(store: JournalStore, options: JournalMigration
     settingsRecipeRecords.length > 1 ||
     stickerRecipeRecords.length > 1 ||
     templateRecipeRecords.length > 1 ||
+    designRecipeRecords.length > 1 ||
     (version === '3' && !legacyRecipeRecord) ||
     (version === '4' && (!legacyRecipeRecord || !photoRecipeRecord)) ||
     (version === '5' && (!legacyRecipeRecord || !photoRecipeRecord || !recipeRecord)) ||
@@ -84,6 +90,14 @@ export function planJournalSchema(store: JournalStore, options: JournalMigration
         !settingsRecipeRecord ||
         !stickerRecipeRecord ||
         !templateRecipeRecord)) ||
+    (version === '9' &&
+      (!legacyRecipeRecord ||
+        !photoRecipeRecord ||
+        !recipeRecord ||
+        !settingsRecipeRecord ||
+        !stickerRecipeRecord ||
+        !templateRecipeRecord ||
+        !designRecipeRecord)) ||
     (legacyRecipeRecord &&
       (version === '1' ||
         legacyRecipeRecord.length !== 6 ||
@@ -140,7 +154,16 @@ export function planJournalSchema(store: JournalStore, options: JournalMigration
         !/^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d(?:\.\d{3})?Z$/.test(templateRecipeRecord[3] ?? '') ||
         !Number.isFinite(Date.parse(templateRecipeRecord[3] ?? '')) ||
         templateRecipeRecord[4] !== 'system:setupRecipes' ||
-        templateRecipeRecord[5] !== 'applied'))
+        templateRecipeRecord[5] !== 'applied')) ||
+    (designRecipeRecord &&
+      (designRecipeRecord.length !== 6 ||
+        designRecipeRecord[1] !== DESIGN_RECIPE_MIGRATION_NAME ||
+        !/^[a-f0-9]{64}$/.test(options.designRecipeChecksum ?? '') ||
+        designRecipeRecord[2] !== options.designRecipeChecksum ||
+        !/^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d(?:\.\d{3})?Z$/.test(designRecipeRecord[3] ?? '') ||
+        !Number.isFinite(Date.parse(designRecipeRecord[3] ?? '')) ||
+        designRecipeRecord[4] !== 'system:setupRecipes' ||
+        designRecipeRecord[5] !== 'applied'))
   )
     throw new JournalError();
   if (meta.rows.find((row) => row[0] === 'maintenance_mode')?.[1] !== 'false')
@@ -180,7 +203,8 @@ export function planJournalSchema(store: JournalStore, options: JournalMigration
             row[0] !== LEGACY_RECIPE_MIGRATION_ID &&
             row[0] !== SETTINGS_RECIPE_MIGRATION_ID &&
             row[0] !== STICKER_RECIPE_MIGRATION_ID &&
-            row[0] !== TEMPLATE_RECIPE_MIGRATION_ID,
+            row[0] !== TEMPLATE_RECIPE_MIGRATION_ID &&
+            row[0] !== DESIGN_RECIPE_MIGRATION_ID,
         );
         return { ...log, rows: known, rowCount: known.length + 1 };
       }

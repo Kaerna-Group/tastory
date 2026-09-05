@@ -1,4 +1,6 @@
-export const RECIPE_SCHEMA_VERSION = 8;
+export const RECIPE_SCHEMA_VERSION = 9;
+export const DESIGN_RECIPE_MIGRATION_ID = '009-recipe-designs';
+export const DESIGN_RECIPE_MIGRATION_NAME = 'Durable versioned recipe designs';
 export const TEMPLATE_RECIPE_MIGRATION_ID = '008-recipe-templates';
 export const TEMPLATE_RECIPE_MIGRATION_NAME = 'Recipe template library and applied snapshots';
 export const STICKER_RECIPE_MIGRATION_ID = '007-sticker-packs';
@@ -295,6 +297,21 @@ export const RECIPE_TABLES = [
       'state',
     ],
   },
+  {
+    name: 'RecipeDesigns',
+    columns: [
+      'version_id',
+      'id',
+      'recipe_id',
+      'revision',
+      'recipe_template_revision',
+      'source_template_id',
+      'source_template_revision',
+      'document',
+      'created_at',
+      'updated_at',
+    ],
+  },
 ] as const;
 export type RecipeTableName = (typeof RECIPE_TABLES)[number]['name'];
 export type RecipeDataTable = Exclude<
@@ -309,16 +326,21 @@ export type RecipeDataTable = Exclude<
   | 'Templates'
   | 'RecipeTemplates'
   | 'TemplateOperations'
+  | 'RecipeDesigns'
 >;
 const STICKER_TABLES = new Set(['StickerPacks', 'Stickers', 'RecipeStickers', 'StickerOperations']);
 const TEMPLATE_TABLES = new Set(['Templates', 'RecipeTemplates', 'TemplateOperations']);
+const DESIGN_TABLES = new Set(['RecipeDesigns']);
 export const RECIPE_SCHEMA_FINGERPRINT = JSON.stringify({
   id: RECIPE_MIGRATION_ID,
   name: RECIPE_MIGRATION_NAME,
   version: 5,
   tables: RECIPE_TABLES.filter(
     ({ name }) =>
-      name !== 'UserSettings' && !STICKER_TABLES.has(name) && !TEMPLATE_TABLES.has(name),
+      name !== 'UserSettings' &&
+      !STICKER_TABLES.has(name) &&
+      !TEMPLATE_TABLES.has(name) &&
+      !DESIGN_TABLES.has(name),
   ),
   algorithm: 'immutable-scalar-snapshots-single-cell-publication-v1',
 });
@@ -327,7 +349,8 @@ export const SETTINGS_RECIPE_SCHEMA_FINGERPRINT = JSON.stringify({
   name: SETTINGS_RECIPE_MIGRATION_NAME,
   version: 7,
   tables: RECIPE_TABLES.filter(
-    ({ name }) => !STICKER_TABLES.has(name) && !TEMPLATE_TABLES.has(name),
+    ({ name }) =>
+      !STICKER_TABLES.has(name) && !TEMPLATE_TABLES.has(name) && !DESIGN_TABLES.has(name),
   ),
   algorithm: 'append-only-user-settings-v1',
 });
@@ -341,7 +364,8 @@ export const LEGACY_RECIPE_SCHEMA_FINGERPRINT = JSON.stringify({
       name !== 'RecipeFavorites' &&
       name !== 'UserSettings' &&
       !STICKER_TABLES.has(name) &&
-      !TEMPLATE_TABLES.has(name),
+      !TEMPLATE_TABLES.has(name) &&
+      !DESIGN_TABLES.has(name),
   ),
   algorithm: 'immutable-scalar-snapshots-single-cell-publication-v1',
 });
@@ -354,7 +378,8 @@ export const PHOTO_RECIPE_SCHEMA_FINGERPRINT = JSON.stringify({
       name !== 'RecipeFavorites' &&
       name !== 'UserSettings' &&
       !STICKER_TABLES.has(name) &&
-      !TEMPLATE_TABLES.has(name),
+      !TEMPLATE_TABLES.has(name) &&
+      !DESIGN_TABLES.has(name),
   ),
   algorithm: 'immutable-scalar-snapshots-single-cell-publication-v1',
 });
@@ -362,13 +387,22 @@ export const STICKER_RECIPE_SCHEMA_FINGERPRINT = JSON.stringify({
   id: STICKER_RECIPE_MIGRATION_ID,
   name: STICKER_RECIPE_MIGRATION_NAME,
   version: 7,
-  tables: RECIPE_TABLES.filter(({ name }) => !TEMPLATE_TABLES.has(name)),
+  tables: RECIPE_TABLES.filter(
+    ({ name }) => !TEMPLATE_TABLES.has(name) && !DESIGN_TABLES.has(name),
+  ),
   algorithm: 'append-only-sticker-snapshots-single-cell-publication-v1',
 });
 export const TEMPLATE_RECIPE_SCHEMA_FINGERPRINT = JSON.stringify({
   id: TEMPLATE_RECIPE_MIGRATION_ID,
   name: TEMPLATE_RECIPE_MIGRATION_NAME,
+  version: 8,
+  tables: RECIPE_TABLES.filter(({ name }) => !DESIGN_TABLES.has(name)),
+  algorithm: 'append-only-template-snapshots-single-cell-publication-v1',
+});
+export const DESIGN_RECIPE_SCHEMA_FINGERPRINT = JSON.stringify({
+  id: DESIGN_RECIPE_MIGRATION_ID,
+  name: DESIGN_RECIPE_MIGRATION_NAME,
   version: RECIPE_SCHEMA_VERSION,
   tables: RECIPE_TABLES,
-  algorithm: 'append-only-template-snapshots-single-cell-publication-v1',
+  algorithm: 'append-only-recipe-design-snapshots-template-operation-publication-v1',
 });

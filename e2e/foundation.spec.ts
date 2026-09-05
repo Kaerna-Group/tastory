@@ -8,8 +8,10 @@ test('library, settings, checks and saved theme builder work', async ({ page }) 
   await expect(page.getByRole('heading', { name: 'Настройки тетради' })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Ваш аккаунт' })).toBeVisible();
   await expect(page.getByText('Вход Google ещё настраивается.', { exact: false })).toBeVisible();
-  const builder = page.getByRole('region', { name: 'Конструктор тем' });
+  const builder = page.getByRole('region', { name: 'Внешний вид' });
+  await expect(builder.getByRole('button', { name: 'Подробные настройки' })).toBeVisible();
   await expect(builder.getByRole('heading', { name: 'Читаемость текста' })).toHaveCount(0);
+  await builder.getByRole('button', { name: 'Подробные настройки' }).click();
   await builder.getByRole('button', { name: 'Выбрать тему Гербарий' }).click();
   await builder.getByRole('button', { name: 'Цвет деталей: Лавандовый' }).click();
   await builder.getByRole('button', { name: /^Современно/ }).click();
@@ -29,6 +31,7 @@ test('library, settings, checks and saved theme builder work', async ({ page }) 
   await expect(page.locator('html')).toHaveAttribute('data-app-paper', 'linen');
   await page.reload();
   await expect(page.locator('html')).toHaveAttribute('data-app-paper', 'linen');
+  await builder.getByRole('button', { name: 'Подробные настройки' }).click();
   await expect(builder.getByLabel('Название оформления')).toHaveValue('Гербарий — копия');
   await builder.getByRole('button', { name: 'Открыть библиотеку тем' }).click();
   const themeLibrary = page.getByRole('dialog', { name: 'Библиотека тем' });
@@ -37,7 +40,7 @@ test('library, settings, checks and saved theme builder work', async ({ page }) 
   await expect(themeLibrary.getByText('Гербарий — копия', { exact: true })).toBeVisible();
   await themeLibrary.getByRole('button', { name: 'Закрыть библиотеку тем' }).click();
   await builder
-    .getByRole('button', { name: 'Страница рецепта Бумага и карточки открытого рецепта' })
+    .getByRole('button', { name: 'Новые страницы Основа при следующем выборе макета' })
     .click();
   await builder.getByRole('button', { name: 'Выбрать тему Полуночные чернила' }).click();
   await builder.getByRole('button', { name: 'Дополнительные действия с темой' }).click();
@@ -48,8 +51,10 @@ test('library, settings, checks and saved theme builder work', async ({ page }) 
   await expect(page.getByText('Локальный режим:', { exact: false })).toBeVisible();
   await page.getByRole('button', { name: 'Проверить снова' }).click();
   await expect(page.locator('.connection-status')).toHaveText('Соединение проверено');
+  await expect(page.getByText('Хранение рецептов пока не подключено')).toHaveCount(0);
   await page.goto('/#/drafts/00000000-0000-4000-8000-000000000001');
-  await expect(page.locator('.recipe-page-theme')).toHaveAttribute('data-paper', 'grid');
+  await expect(page.locator('.recipe-page-shell')).not.toHaveAttribute('data-paper');
+  await expect(page.locator('html')).toHaveAttribute('data-app-paper', 'linen');
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(
     true,
   );
@@ -68,7 +73,10 @@ test('main content is reachable by keyboard', async ({ page }) => {
   await page.keyboard.press('Enter');
   await expect(page.getByRole('main')).toBeFocused();
 });
-test('install prompt is available and the app shell works offline', async ({ page, context }) => {
+test('the PWA invitation is dismissible and the app shell works offline', async ({
+  page,
+  context,
+}) => {
   await page.goto('/');
   await page.evaluate(() => {
     const prompt = new Event('beforeinstallprompt', { cancelable: true }) as Event & {
@@ -79,8 +87,12 @@ test('install prompt is available and the app shell works offline', async ({ pag
     prompt.userChoice = Promise.resolve({ outcome: 'accepted', platform: 'web' });
     window.dispatchEvent(prompt);
   });
-  await page.getByRole('button', { name: 'Установить приложение' }).click();
-  await expect(page.getByRole('button', { name: 'Установить приложение' })).toHaveCount(0);
+  const invitation = page.getByRole('complementary', { name: 'Установка Tastory' });
+  await expect(invitation).toBeVisible();
+  await invitation.getByRole('button', { name: 'Закрыть приглашение установить Tastory' }).click();
+  await expect(invitation).toHaveCount(0);
+  await page.reload();
+  await expect(invitation).toHaveCount(0);
 
   await page.evaluate(async () => {
     await navigator.serviceWorker.ready;
@@ -102,10 +114,22 @@ test('install prompt is available and the app shell works offline', async ({ pag
   expect(cacheInspection.cachedBytes).toBeGreaterThan(0);
   await context.setOffline(true);
   try {
-    await expect(page.getByText('Нет сети. Доступны локальные черновики')).toBeVisible();
     await page.reload();
     await expect(page.getByRole('heading', { name: 'Ваша кулинарная тетрадь' })).toBeVisible();
   } finally {
     await context.setOffline(false);
   }
+});
+
+test('help traps focus and restores it to the trigger', async ({ page }) => {
+  await page.goto('/');
+  const trigger = page.getByRole('button', { name: 'Справка' });
+  await trigger.click();
+  const dialog = page.getByRole('dialog', { name: 'Как работать с Tastory' });
+  await expect(dialog.getByRole('button', { name: 'Закрыть справку' })).toBeFocused();
+  await page.keyboard.press('Tab');
+  await expect(dialog.getByRole('button', { name: 'Закрыть справку' })).toBeFocused();
+  await page.keyboard.press('Escape');
+  await expect(dialog).toHaveCount(0);
+  await expect(trigger).toBeFocused();
 });

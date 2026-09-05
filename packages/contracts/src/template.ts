@@ -2,6 +2,7 @@ import { z } from 'zod';
 
 export const TEMPLATE_LIMITS = {
   perUser: 30,
+  listPage: 100,
   name: 80,
   description: 240,
   search: 100,
@@ -25,6 +26,10 @@ export const templateLayoutSchema = z.enum([
   'herbarium',
   'celebration',
   'notebook',
+  'pastel-notebook',
+  'berry-diary',
+  'lined-notebook',
+  'clean-card',
   'coffeehouse',
   'tea-ceremony',
   'cocktail-night',
@@ -32,12 +37,60 @@ export const templateLayoutSchema = z.enum([
   'wine-cellar',
 ]);
 
+const themeColorSchema = z.string().regex(/^#[0-9a-f]{6}$/i);
+export const recipeThemeSchema = z.strictObject({
+  name: z.string().trim().min(1).max(40),
+  mode: z.enum(['light', 'dark']),
+  palette: z.strictObject({
+    background: themeColorSchema,
+    surface: themeColorSchema,
+    text: themeColorSchema,
+    muted: themeColorSchema,
+    border: themeColorSchema,
+    primary: themeColorSchema,
+    primaryText: themeColorSchema,
+    accent: themeColorSchema,
+  }),
+  fontPair: z.enum(['literary', 'modern', 'humanist']),
+  paper: z.enum(['plain', 'linen', 'dots', 'grid']),
+});
+
+export const DEFAULT_RECIPE_THEME = recipeThemeSchema.parse({
+  name: 'Тёплая бумага',
+  mode: 'light',
+  palette: {
+    background: '#f4efe7',
+    surface: '#fffdf8',
+    text: '#302a25',
+    muted: '#695f57',
+    border: '#d8ccbd',
+    primary: '#a74459',
+    primaryText: '#ffffff',
+    accent: '#8a5b00',
+  },
+  fontPair: 'literary',
+  paper: 'plain',
+});
+
+export const recipeTemplateSnapshotSchema = z
+  .strictObject({
+    templateName: z.string().trim().min(1).max(TEMPLATE_LIMITS.name),
+    category: templateCategorySchema,
+    layout: templateLayoutSchema,
+    theme: recipeThemeSchema,
+  })
+  .refine((value) => value.category === templateCategoryForLayout(value.layout));
+
 export const dishTemplateLayouts = [
   'hearth',
   'bistro',
   'herbarium',
   'celebration',
   'notebook',
+  'pastel-notebook',
+  'berry-diary',
+  'lined-notebook',
+  'clean-card',
 ] as const;
 export const drinkTemplateLayouts = [
   'coffeehouse',
@@ -53,18 +106,21 @@ export function templateCategoryForLayout(
   return (dishTemplateLayouts as readonly string[]).includes(layout) ? 'dish' : 'drink';
 }
 
-export const recipeTemplateSchema = z.strictObject({
-  id,
-  recipeId: id,
-  templateId: id,
-  templateName: z.string().trim().min(1).max(TEMPLATE_LIMITS.name),
-  category: templateCategorySchema,
-  layout: templateLayoutSchema,
-  sourceOwnerUserId: id.nullable(),
-  revision,
-  createdAt: timestamp,
-  updatedAt: timestamp,
-});
+export const recipeTemplateSchema = z
+  .strictObject({
+    id,
+    recipeId: id,
+    templateId: id.nullable(),
+    templateName: z.string().trim().min(1).max(TEMPLATE_LIMITS.name),
+    category: templateCategorySchema,
+    layout: templateLayoutSchema,
+    theme: recipeThemeSchema,
+    sourceOwnerUserId: id.nullable(),
+    revision,
+    createdAt: timestamp,
+    updatedAt: timestamp,
+  })
+  .refine((value) => value.category === templateCategoryForLayout(value.layout));
 
 export const templateSchema = z
   .strictObject({
@@ -115,11 +171,26 @@ export const templateCloneSchema = z.strictObject({
 export const recipeTemplateApplySchema = z.strictObject({
   recipeId: id,
   expectedRecipeRevision: revision,
+  // Optional only for the rolling upgrade from template API v1. The server accepts an omitted
+  // presentation revision solely when the recipe has never had an applied template.
+  expectedRecipeTemplateRevision: revision.nullable().optional(),
   templateId: id,
+  theme: recipeThemeSchema,
+  // Added by template API v3. Both fields are omitted by legacy clients; v3 clients send both.
+  expectedRecipeDesignRevision: revision.nullable().optional(),
+});
+export const recipeTemplateRestoreSchema = z.strictObject({
+  recipeId: id,
+  expectedRecipeRevision: revision,
+  expectedRecipeTemplateRevision: revision.nullable().optional(),
+  snapshot: recipeTemplateSnapshotSchema,
+  expectedRecipeDesignRevision: revision.nullable().optional(),
 });
 
 export type RecipeTemplate = z.infer<typeof recipeTemplateSchema>;
 export type RecipeTemplateCategory = z.infer<typeof templateCategorySchema>;
 export type RecipeTemplateLayout = z.infer<typeof templateLayoutSchema>;
+export type RecipeTheme = z.infer<typeof recipeThemeSchema>;
+export type RecipeTemplateSnapshot = z.infer<typeof recipeTemplateSnapshotSchema>;
 export type RecipeTemplateRecord = z.infer<typeof templateSchema>;
 export type RecipeTemplateView = z.infer<typeof templateViewSchema>;

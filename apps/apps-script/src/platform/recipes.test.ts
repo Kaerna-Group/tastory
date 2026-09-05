@@ -164,13 +164,13 @@ describe('recipe platform and HTTP', () => {
     f.context.session.user.id = 'owner-sub';
     expect(
       recipes({ action: 'admin.recipes.initialize', payload: {} }, randomUUID(), f.context.session),
-    ).toEqual({ kind: 'initialized', schemaVersion: 8, alreadyApplied: false });
+    ).toEqual({ kind: 'initialized', schemaVersion: 9, alreadyApplied: false });
     expect(
       recipes({ action: 'admin.recipes.initialize', payload: {} }, randomUUID(), f.context.session),
     ).toMatchObject({ alreadyApplied: true });
     expect(readAdminDirectory('admin.health', f.context.session)).toMatchObject({
-      schemaVersion: 8,
-      tablesChecked: 24,
+      schemaVersion: 9,
+      tablesChecked: 25,
     });
     expect(
       operationJournal('admin.operations.list', randomUUID(), f.context.session),

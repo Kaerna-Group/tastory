@@ -27,7 +27,9 @@
 
 Unit tests подписывают токены настоящим RSA-ключом, созданным только в памяти теста. Apps Script build дополнительно проверяет собранный IIFE в VM без WebCrypto, TextEncoder, Buffer и browser/Node globals: подпись, кеш ключей, атомарное потребление, повтор и отзыв. Типы Node доступны только в отдельной test-конфигурации сервера.
 
-`check:all`, GitHub CI и Publish staging включают auth E2E. При ручном входе настоящим аккаунтом trace/HAR не записываем, токен и персональные данные в отчёт не включаем. [Прогон владельца](google-auth-staging.md#4-проверить-вход).
+`check:all` включает auth E2E и предназначен для полного локального gate. GitHub CI и Publish
+staging не запускают browser E2E. При ручном входе настоящим аккаунтом trace/HAR не записываем,
+токен и персональные данные в отчёт не включаем. [Прогон владельца](google-auth-staging.md#4-проверить-вход).
 
 ## Основной цикл
 
@@ -43,7 +45,10 @@ npx playwright install chromium
 npm run test:e2e
 ```
 
-`npm run check:all` объединяет проверки. Playwright сам собирает mock web и запускает preview на 127.0.0.1:4187; порт должен быть свободен. Его можно переопределить переменной PLAYWRIGHT_PORT. Уже работающий сервер намеренно не переиспользуется.
+`npm run check:all` объединяет быстрые проверки, основной E2E, auth E2E и многократную проверку
+истории. Это полный локальный gate, а не команда обычного CI. Playwright сам собирает mock web и
+запускает preview на 127.0.0.1:4187; порт должен быть свободен. Его можно переопределить переменной
+PLAYWRIGHT_PORT. Уже работающий сервер намеренно не переиспользуется.
 
 ## Что покрыто
 
@@ -75,6 +80,12 @@ D-02c добавляет проверки административных чт�
 
 Ни один локальный тест не доказывает реальные CORS, Google JWT, Drive permissions, Sheets locks или квоты. Для них нужен [spike](spike-checklist.md). Тесты схем Sheets, CRUD, RBAC и экспорта добавляются с реализацией соответствующего этапа.
 
-Для реального HTTPS origin есть отдельный `npm run test:staging`: Chrome, Edge, Firefox и WebKit проверяют health и echo. Он запускается после публикации в Publish staging; параметры и трактовка пропущенного echo описаны в [руководстве](staging-hosting.md). Успех WebKit не отмечается как проверка реального Safari.
+Для реального HTTPS origin есть отдельный локальный `npm run test:staging`: Chrome, Edge, Firefox и
+WebKit проверяют health и echo. Команда запускается вручную после публикации и не входит в Publish
+staging; параметры и трактовка пропущенного echo описаны в [руководстве](staging-hosting.md). Успех
+WebKit не отмечается как проверка реального Safari.
 
-Для настоящего Safari есть отдельный Verify Safari staging на macOS с нативным SafariDriver. Он проверяет интерфейс, health и обязательный echo без дополнительных npm-зависимостей. Первый полный результат: 8 Playwright checks и 3 Safari checks успешно; доказательства — в [отчёте](staging-verification.md#проверка-опубликованного-https-origin).
+Для настоящего Safari есть исключительная ручная приёмка Verify Safari staging на macOS с нативным
+SafariDriver. Она не запускается автоматически и используется только по отдельному решению перед
+выпуском. Первый полный результат: 8 Playwright checks и 3 Safari checks успешно; доказательства — в
+[отчёте](staging-verification.md#проверка-опубликованного-https-origin).

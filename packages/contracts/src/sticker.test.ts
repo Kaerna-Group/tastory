@@ -8,6 +8,30 @@ import {
 } from './index';
 
 describe('sticker contracts', () => {
+  it('accepts the lossless legacy page adapter and rejects contradictory or foreign page IDs', () => {
+    const payload = {
+      recipeId: '10000000-0000-4000-8000-000000000001',
+      stickerId: '10000000-0000-4000-8000-000000000002',
+      expectedRecipeRevision: 1,
+      page: 1,
+      x: 8,
+      y: 12,
+      width: 18,
+      height: 20,
+      rotation: 15,
+      zIndex: 3,
+    };
+    const parse = (extra: object) =>
+      stickerCommandSchema.safeParse({
+        action: 'recipes.stickers.add',
+        payload: { ...payload, ...extra },
+      });
+    expect(parse({}).success).toBe(true);
+    expect(parse({ pageId: 'page-1' }).success).toBe(true);
+    expect(parse({ pageId: 'page-2' }).success).toBe(false);
+    expect(parse({ pageId: 'other-recipe/page-1' }).success).toBe(false);
+    expect(parse({ x: Infinity }).success).toBe(false);
+  });
   it('ships valid, ordered builtin PNG packs', () => {
     expect(BUILTIN_STICKER_PACKS).toHaveLength(2);
     for (const view of BUILTIN_STICKER_PACKS) {

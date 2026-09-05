@@ -8,6 +8,7 @@ const baseURL = 'http://127.0.0.1:' + port;
 
 export default defineConfig({
   testDir: './e2e',
+  globalSetup: './e2e/global-setup.ts',
   fullyParallel: true,
   forbidOnly: Boolean(process.env['CI']),
   retries: process.env['CI'] ? 1 : 0,
@@ -17,12 +18,4 @@ export default defineConfig({
     { name: 'desktop-chromium', use: { ...devices['Desktop Chrome'] } },
     { name: 'mobile-chromium', use: { ...devices['Pixel 7'] } },
   ],
-  webServer: {
-    command:
-      'npm run build:web && npm run preview -- --host 127.0.0.1 --port ' + port + ' --strictPort',
-    url: baseURL,
-    reuseExistingServer: false,
-    timeout: 120_000,
-    env: { VITE_API_MODE: 'mock', VITE_APP_ENV: 'local', VITE_BASE_PATH: '/' },
-  },
 });

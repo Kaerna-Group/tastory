@@ -1,8 +1,23 @@
 export { RecipePageRenderer } from './ui/recipe-page-renderer';
-export { buildRecipePageDocument, splitPageText } from './model/page-document';
 export type {
+  RecipePageLayoutStatus,
+  RecipePageRendererProps,
+  RecipePageSticker,
+} from './ui/recipe-page-renderer';
+export {
+  buildRecipePageDesign,
+  buildRecipePageDocument,
+  estimatedRecipePageMeasurer,
+} from './model/page-document';
+export type {
+  RecipePageContent,
+  RecipePageDesign,
   RecipePageFragment,
+  RecipePageMeasurer,
   RecipePageRenderOptions,
   RecipePageRenderModel,
-  RecipeRenderedPage,
+  RecipePageTextFragment,
+  RecipePagePhoto,
+  RecipePageBinding,
+  RecipePageDocument,
 } from './model/page-document';

@@ -9,7 +9,7 @@ import { mutateRecipe } from './recipe-mutations';
 import { randomUUID } from 'node:crypto';
 
 afterEach(() => vi.unstubAllGlobals());
-describe('recipe schema migrations through 008', () => {
+describe('recipe schema migrations through 009', () => {
   it('plans all tables before writing, preserves v2 tables and is idempotent', () => {
     const f = persistenceFixture(false);
     const users = structuredClone(f.required('Users'));
@@ -20,8 +20,8 @@ describe('recipe schema migrations through 008', () => {
     expect(f.required('Users')).toEqual(users);
     expect(f.required('SchemaMigrations').slice(0, oldMigration.length)).toEqual(oldMigration);
     expect(inspectCurrentSchema(f.book, 'private-drive')).toEqual({
-      schemaVersion: 8,
-      tablesChecked: 24,
+      schemaVersion: 9,
+      tablesChecked: 25,
     });
     for (const table of RECIPE_TABLES) expect(f.required(table.name)).toEqual([[...table.columns]]);
     const writes = f.count();
@@ -127,7 +127,7 @@ describe('recipe schema migrations through 008', () => {
     version[1] = '6';
     expect(planRecipeSchema(f.store, f.migrationOptions)).toMatchObject({
       fromVersion: 6,
-      toVersion: 8,
+      toVersion: 9,
       alreadyApplied: false,
     });
     applyRecipeSchema(f.store, f.migrationOptions);
@@ -160,7 +160,7 @@ describe('recipe schema migrations through 008', () => {
     version[1] = '7';
     expect(planRecipeSchema(f.store, f.migrationOptions)).toMatchObject({
       fromVersion: 7,
-      toVersion: 8,
+      toVersion: 9,
       alreadyApplied: false,
     });
     applyRecipeSchema(f.store, f.migrationOptions);
@@ -174,6 +174,37 @@ describe('recipe schema migrations through 008', () => {
     }
     expect(
       f.required('SchemaMigrations').filter((row) => row[0] === '008-recipe-templates'),
+    ).toHaveLength(1);
+  });
+  it('upgrades schema 8 by adding only the durable design table', () => {
+    const f = persistenceFixture();
+    const before = new Map(
+      [...f.sheets]
+        .filter(([name]) => name !== 'RecipeDesigns')
+        .map(([name, rows]) => [name, structuredClone(rows)]),
+    );
+    f.sheets.delete('RecipeDesigns');
+    const migrations = f.required('SchemaMigrations');
+    const record = migrations.findIndex((row) => row[0] === '009-recipe-designs');
+    if (record < 0) throw new Error('fixture');
+    migrations.splice(record, 1);
+    const version = f.required('Meta').find((row) => row[0] === 'schema_version');
+    if (!version) throw new Error('fixture');
+    version[1] = '8';
+    expect(planRecipeSchema(f.store, f.migrationOptions)).toMatchObject({
+      fromVersion: 8,
+      toVersion: 9,
+      alreadyApplied: false,
+    });
+    applyRecipeSchema(f.store, f.migrationOptions);
+    for (const [name, rows] of before) {
+      if (name === 'Meta' || name === 'SchemaMigrations') continue;
+      expect(f.sheets.get(name)).toEqual(rows);
+    }
+    const definition = RECIPE_TABLES.find((table) => table.name === 'RecipeDesigns');
+    expect(f.required('RecipeDesigns')).toEqual([[...(definition?.columns ?? [])]]);
+    expect(
+      f.required('SchemaMigrations').filter((row) => row[0] === '009-recipe-designs'),
     ).toHaveLength(1);
   });
   it('rejects header conflicts and foreign data without writing', () => {

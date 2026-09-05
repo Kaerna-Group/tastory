@@ -1,4 +1,8 @@
-import { BUILTIN_STICKER_PACKS, recipeAggregateSchema } from '@tastory/contracts';
+import {
+  BUILTIN_RECIPE_TEMPLATES,
+  BUILTIN_STICKER_PACKS,
+  recipeAggregateSchema,
+} from '@tastory/contracts';
 import { BackupError, backupKeys } from '../services/book-backup';
 import type { BackupFile, BackupPlan, BackupPort } from '../services/book-backup';
 import {
@@ -15,6 +19,7 @@ import { createRecipeReader } from '../services/recipe-reader';
 import { inspectCurrentSchema, sha256 } from './current-schema';
 import { readWorkspaceDirectory } from './workspace-directory';
 import { readStickerState } from '../services/sticker-storage';
+import { readTemplateState } from '../services/template-storage';
 import {
   assertPrivateResource,
   privateResourceFolder,
@@ -43,7 +48,7 @@ export function readBackupTables(book: GoogleAppsScript.Spreadsheet.Spreadsheet)
     });
 }
 export function validateBook(book: GoogleAppsScript.Spreadsheet.Spreadsheet, folderId: string) {
-  if (inspectCurrentSchema(book, folderId).schemaVersion !== 8)
+  if (inspectCurrentSchema(book, folderId).schemaVersion !== 9)
     throw new BackupError('BACKUP_INVALID');
   const directory = readWorkspaceDirectory(book);
   const store = createRecipeStore(book);
@@ -64,6 +69,7 @@ export function validateBook(book: GoogleAppsScript.Spreadsheet.Spreadsheet, fol
     throw new BackupError('BACKUP_INVALID');
   const reader = createRecipeReader(store, sha256);
   const stickerState = readStickerState(store);
+  const templateState = readTemplateState(store);
   for (const op of operations) {
     if (!op.state.startsWith('committed@')) continue;
     historicalSnapshot(store, op, sha256);
@@ -116,6 +122,28 @@ export function validateBook(book: GoogleAppsScript.Spreadsheet.Spreadsheet, fol
       !reader.getRecipe(placement.recipeId)
     )
       throw new BackupError('BACKUP_INVALID');
+  if (templateState.operations.some((operation) => operation.state === 'started'))
+    throw new BackupError('BACKUP_PENDING');
+  const templateIds = new Set([
+    ...BUILTIN_RECIPE_TEMPLATES.map((template) => template.id),
+    ...templateState.templates.keys(),
+  ]);
+  for (const applied of templateState.applied.values())
+    if (
+      !reader.getRecipe(applied.recipeId) ||
+      (applied.templateId !== null && !templateIds.has(applied.templateId))
+    )
+      throw new BackupError('BACKUP_INVALID');
+  for (const design of templateState.designs.values()) {
+    const applied = templateState.applied.get(design.recipeId);
+    if (
+      !reader.getRecipe(design.recipeId) ||
+      design.recipeTemplateRevision !== (applied?.revision ?? null) ||
+      design.sourceTemplateId !== (applied?.templateId ?? null) ||
+      (design.sourceTemplateId !== null && !templateIds.has(design.sourceTemplateId))
+    )
+      throw new BackupError('BACKUP_INVALID');
+  }
 }
 
 function folderNamed(parent: GoogleAppsScript.Drive.Folder, name: string, create = true) {

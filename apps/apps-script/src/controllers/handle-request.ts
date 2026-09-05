@@ -187,7 +187,8 @@ export function handleRequest(
       }
       if (
         request.action.startsWith('templates.') ||
-        request.action.startsWith('recipes.template.')
+        request.action.startsWith('recipes.template.') ||
+        request.action.startsWith('recipes.design.')
       ) {
         if (!context.templates) throw new TemplateStorageError('TEMPLATE_NOT_READY');
         return templateResponseSchema.parse({

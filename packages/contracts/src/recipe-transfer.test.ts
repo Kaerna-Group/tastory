@@ -44,8 +44,18 @@ it('accepts the versioned portable recipe and book envelopes', () => {
       kind: 'recipe',
       exportedAt: new Date().toISOString(),
       recipes: [item],
-    }).recipes[0]?.sourceId,
-  ).toBe(item.sourceId);
+    }),
+  ).toMatchObject({
+    version: 3,
+    recipes: [
+      {
+        sourceId: item.sourceId,
+        presentation: null,
+        design: { layout: 'hearth', theme: { name: 'Тёплая бумага' }, elements: [] },
+        stickers: [],
+      },
+    ],
+  });
 });
 
 it('rejects duplicate recipes and photos that point at an unknown step', () => {

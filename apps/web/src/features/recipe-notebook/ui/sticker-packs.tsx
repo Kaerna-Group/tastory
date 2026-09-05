@@ -1,11 +1,10 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import type { CSSProperties } from 'react';
-import { requestSessionStickers } from '@/entities/session';
+import { requestSessionStickers, acquireStickerImage } from '@/entities/session';
 import { prepareSticker } from '@/shared/api';
-import { BUILTIN_STICKER_ASSET_PATHS, STICKER_LIMITS } from '../model/stickers';
+import { STICKER_LIMITS } from '../model/stickers';
 import type { RecipeSticker, StickerItem, StickerPackView } from '../model/stickers';
 
-const assetCache = new Map<string, string>();
 const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value));
 
 function StickerImage({
@@ -21,28 +20,43 @@ function StickerImage({
   className?: string;
   style?: CSSProperties;
 }) {
-  const builtIn = item.assetKey
-    ? `${import.meta.env.BASE_URL}${BUILTIN_STICKER_ASSET_PATHS[item.assetKey]}`
-    : null;
-  const [source, setSource] = useState(() => builtIn ?? assetCache.get(item.digest) ?? '');
+  const [source, setSource] = useState('');
+  const [failed, setFailed] = useState(false);
+  const [attempt, setAttempt] = useState(0);
   useEffect(() => {
-    if (builtIn || source) return;
-    const controller = new AbortController();
-    const payload = recipeId && instanceId ? { recipeId, instanceId } : { stickerId: item.id };
-    void requestSessionStickers(
-      { action: 'stickers.assets.read', payload },
-      crypto.randomUUID(),
-      controller.signal,
-    )
-      .then((result) => {
-        if (result.kind !== 'stickerAsset') return;
-        const value = `data:${result.mimeType};base64,${result.base64}`;
-        assetCache.set(item.digest, value);
-        setSource(value);
+    let cancelled = false;
+    const lease = acquireStickerImage(
+      { id: item.id, assetKey: item.assetKey, digest: item.digest },
+      recipeId && instanceId ? { recipeId, id: instanceId } : undefined,
+    );
+    void lease.promise
+      .then((value) => {
+        if (!cancelled) {
+          setSource(value);
+          setFailed(false);
+        }
       })
-      .catch(() => undefined);
-    return () => controller.abort();
-  }, [builtIn, instanceId, item.digest, item.id, recipeId, source]);
+      .catch(() => {
+        if (!cancelled) setFailed(true);
+      });
+    return () => {
+      cancelled = true;
+      lease.release();
+    };
+  }, [instanceId, item.assetKey, item.digest, item.id, recipeId, attempt]);
+  if (failed)
+    return (
+      <button
+        type="button"
+        onClick={() => {
+          setFailed(false);
+          setSource('');
+          setAttempt((value) => value + 1);
+        }}
+      >
+        Повторить: {item.name}
+      </button>
+    );
   return source ? (
     <img className={className} style={style} src={source} alt={item.name} draggable={false} />
   ) : (
@@ -63,18 +77,23 @@ function safeName(file: File) {
 }
 
 export function StickerPacks({
+  documentPages,
   recipeId,
   recipeRevision,
   editable,
+  onPlacementsChange,
 }: {
+  documentPages: readonly string[];
   recipeId: string;
   recipeRevision: number;
   editable: boolean;
+  onPlacementsChange: () => void;
 }) {
   const [packs, setPacks] = useState<StickerPackView[]>([]);
   const [placements, setPlacements] = useState<RecipeSticker[]>([]);
   const [selectedPackId, setSelectedPackId] = useState('');
   const [selectedInstanceId, setSelectedInstanceId] = useState('');
+  const [targetPageId, setTargetPageId] = useState('page-1');
   const [query, setQuery] = useState('');
   const [includeArchived, setIncludeArchived] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -263,6 +282,8 @@ export function StickerPacks({
   }
 
   async function insert(item: StickerItem) {
+    if (!documentPages.includes(targetPageId))
+      throw new Error('Выберите существующую страницу рецепта.');
     const requestId = crypto.randomUUID();
     const offset = placements.length % 6;
     const result = await requestSessionStickers(
@@ -272,7 +293,8 @@ export function StickerPacks({
           recipeId,
           expectedRecipeRevision: recipeRevision,
           stickerId: item.id,
-          page: 1,
+          page: Number(targetPageId.slice(5)),
+          pageId: targetPageId,
           x: 8 + offset * 12,
           y: 8 + offset * 10,
           width: 18,
@@ -284,8 +306,9 @@ export function StickerPacks({
       requestId,
     );
     if (result.kind !== 'recipeSticker') throw new Error('Стикер не вставлен.');
-    setPlacements((current) => [...current, result.sticker]);
+    setPlacements([...placements, result.sticker]);
     setSelectedInstanceId(result.sticker.id);
+    onPlacementsChange();
   }
 
   async function changePlacement(next: RecipeSticker | 'delete') {
@@ -307,6 +330,7 @@ export function StickerPacks({
               instanceId: selectedPlacement.id,
               expectedRevision: selectedPlacement.revision,
               page: next.page,
+              pageId: `page-${next.page}`,
               x: next.x,
               y: next.y,
               width: next.width,
@@ -318,25 +342,13 @@ export function StickerPacks({
       crypto.randomUUID(),
     );
     if (result.kind !== 'recipeSticker') throw new Error('Размещение не изменено.');
-    setPlacements((current) =>
+    setPlacements(
       result.sticker.status === 'deleted'
-        ? current.filter((item) => item.id !== result.sticker.id)
-        : current.map((item) => (item.id === result.sticker.id ? result.sticker : item)),
+        ? placements.filter((item) => item.id !== result.sticker.id)
+        : placements.map((item) => (item.id === result.sticker.id ? result.sticker : item)),
     );
+    onPlacementsChange();
   }
-
-  const placementItem = useMemo(
-    () =>
-      selectedPlacement
-        ? {
-            id: selectedPlacement.stickerId,
-            name: selectedPlacement.name,
-            assetKey: selectedPlacement.assetKey,
-            digest: selectedPlacement.assetDigest,
-          }
-        : null,
-    [selectedPlacement],
-  );
 
   return (
     <section className="panel recipe-section sticker-packs" aria-labelledby="sticker-packs-title">
@@ -675,44 +687,77 @@ export function StickerPacks({
 
         <div className="sticker-page-column">
           <h3>Страница рецепта</h3>
-          <div className="sticker-page-preview" aria-label="Предпросмотр размещённых стикеров">
-            <span className="sticker-page-label">01</span>
-            {placements.length === 0 && (
-              <p className="sticker-page-empty">
-                Выберите стикер и нажмите <strong>«На страницу»</strong>
-              </p>
-            )}
+          <p className="muted">
+            Стикеры показаны поверх рецепта в предпросмотре выше. Координаты — проценты полного
+            листа A4.
+          </p>
+          <label>
+            Страница для нового стикера
+            <select
+              value={targetPageId}
+              disabled={!editable || busy || !documentPages.length}
+              onChange={(event) => setTargetPageId(event.target.value)}
+            >
+              {!documentPages.includes(targetPageId) && (
+                <option value={targetPageId}>Страница недоступна</option>
+              )}
+              {documentPages
+                .filter((id) => Number(id.slice(5)) <= 100)
+                .map((id) => (
+                  <option key={id} value={id}>
+                    Страница {id.slice(5)}
+                  </option>
+                ))}
+            </select>
+          </label>
+          <div className="sticker-placement-list" aria-label="Размещённые стикеры">
+            {!placements.length && <p>Выберите стикер и нажмите «На страницу».</p>}
             {placements.map((placement) => (
               <button
                 key={placement.id}
                 type="button"
-                className={`sticker-placement ${placement.id === selectedPlacement?.id ? 'selected' : ''}`}
-                style={{
-                  left: `${placement.x}%`,
-                  top: `${placement.y}%`,
-                  width: `${placement.width}%`,
-                  height: `${placement.height}%`,
-                  zIndex: placement.zIndex,
-                  transform: `rotate(${placement.rotation}deg)`,
-                }}
-                onClick={() => setSelectedInstanceId(placement.id)}
                 aria-label={`Выбрать стикер ${placement.name}`}
+                aria-pressed={placement.id === selectedPlacement?.id}
+                onClick={() => setSelectedInstanceId(placement.id)}
               >
-                <StickerImage
-                  item={{
-                    id: placement.stickerId,
-                    name: placement.name,
-                    assetKey: placement.assetKey,
-                    digest: placement.assetDigest,
-                  }}
-                  recipeId={recipeId}
-                  instanceId={placement.id}
-                />
+                {placement.emoji} {placement.name} · лист {placement.page}
+                {!documentPages.includes(`page-${placement.page}`) && ' · страница недоступна'}
               </button>
             ))}
           </div>
-          {editable && selectedPlacement && placementItem && (
+          {editable && selectedPlacement && (
             <div className="sticker-placement-controls">
+              <label>
+                Разместить на странице
+                <select
+                  aria-label="Страница выбранного стикера"
+                  value={`page-${selectedPlacement.page}`}
+                  disabled={busy}
+                  onChange={(event) =>
+                    void act(
+                      () =>
+                        changePlacement({
+                          ...selectedPlacement,
+                          page: Number(event.target.value.slice(5)),
+                        }),
+                      'Привязка к странице сохранена.',
+                    )
+                  }
+                >
+                  {!documentPages.includes(`page-${selectedPlacement.page}`) && (
+                    <option value={`page-${selectedPlacement.page}`}>
+                      Исходная страница отсутствует
+                    </option>
+                  )}
+                  {documentPages
+                    .filter((id) => Number(id.slice(5)) <= 100)
+                    .map((id) => (
+                      <option key={id} value={id}>
+                        Страница {id.slice(5)}
+                      </option>
+                    ))}
+                </select>
+              </label>
               <strong>
                 {selectedPlacement.emoji} {selectedPlacement.name}
               </strong>

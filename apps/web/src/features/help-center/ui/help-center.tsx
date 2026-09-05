@@ -8,10 +8,11 @@ const editing = (target: EventTarget | null) =>
 export function HelpCenter(): React.JSX.Element {
   const { settings } = useSyncExternalStore(subscribeUserSettings, getUserSettings);
   const [open, setOpen] = useState(false);
+  const triggerRef = useRef<HTMLButtonElement>(null);
   const closeRef = useRef<HTMLButtonElement>(null);
+  const dialogRef = useRef<HTMLElement>(null);
   useEffect(() => {
     const keydown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') setOpen(false);
       if (settings.keyboardShortcuts && event.key === '?' && !editing(event.target)) {
         event.preventDefault();
         setOpen(true);
@@ -21,26 +22,64 @@ export function HelpCenter(): React.JSX.Element {
     return () => window.removeEventListener('keydown', keydown);
   }, [settings.keyboardShortcuts]);
   useEffect(() => {
-    if (open) closeRef.current?.focus();
+    if (!open) return;
+    const trigger = triggerRef.current;
+    closeRef.current?.focus();
+    const controlFocus = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        setOpen(false);
+        return;
+      }
+      if (event.key !== 'Tab') return;
+      const controls = Array.from(
+        dialogRef.current?.querySelectorAll<HTMLElement>(
+          'button:not([disabled]), a[href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
+        ) ?? [],
+      );
+      const first = controls[0];
+      const last = controls.at(-1);
+      if (!first || !last) return;
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    };
+    document.addEventListener('keydown', controlFocus);
+    return () => {
+      document.removeEventListener('keydown', controlFocus);
+      trigger?.focus();
+    };
   }, [open]);
   return (
     <>
       <button
+        ref={triggerRef}
         type="button"
         className="help-button"
         aria-haspopup="dialog"
+        aria-expanded={open}
         onClick={() => setOpen(true)}
       >
         Справка <span aria-hidden="true">?</span>
       </button>
       {open && (
-        <div className="dialog-backdrop" role="presentation" onMouseDown={() => setOpen(false)}>
+        <div
+          className="dialog-backdrop"
+          role="presentation"
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget) setOpen(false);
+          }}
+        >
           <section
+            ref={dialogRef}
             className="help-dialog"
             role="dialog"
             aria-modal="true"
             aria-labelledby="help-title"
-            onMouseDown={(event) => event.stopPropagation()}
           >
             <div className="dialog-heading">
               <h2 id="help-title">Как работать с Tastory</h2>
@@ -66,8 +105,8 @@ export function HelpCenter(): React.JSX.Element {
             </p>
             <h3>Перенос данных</h3>
             <p>
-              Экспорт создаёт файл Tastory с рецептами и фото. Перед импортом показываются
-              совпадения и итоговый план.
+              Экспорт создаёт файл Tastory с рецептами, фото и оформлением. Перед импортом
+              показываются совпадения и итоговый план.
             </p>
             {settings.keyboardShortcuts && (
               <>

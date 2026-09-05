@@ -36,6 +36,7 @@ export const adminHealthDataSchema = z
       z.literal(6),
       z.literal(7),
       z.literal(8),
+      z.literal(9),
     ]),
     tablesChecked: z.union([
       z.literal(6),
@@ -46,6 +47,7 @@ export const adminHealthDataSchema = z
       z.literal(17),
       z.literal(21),
       z.literal(24),
+      z.literal(25),
     ]),
     members: z.number().int().min(1).max(10),
     activeMembers: z.number().int().min(1).max(10),
@@ -54,7 +56,7 @@ export const adminHealthDataSchema = z
     (data) =>
       data.activeMembers <= data.members &&
       data.tablesChecked ===
-        { 1: 6, 2: 8, 3: 14, 4: 15, 5: 16, 6: 17, 7: 21, 8: 24 }[data.schemaVersion],
+        { 1: 6, 2: 8, 3: 14, 4: 15, 5: 16, 6: 17, 7: 21, 8: 24, 9: 25 }[data.schemaVersion],
   );
 
 export type AdminUsersData = z.infer<typeof adminUsersDataSchema>;

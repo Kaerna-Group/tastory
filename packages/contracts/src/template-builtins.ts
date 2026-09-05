@@ -1,4 +1,4 @@
-import { templateSchema } from './template';
+import { templateCategoryForLayout, templateSchema } from './template';
 import type { RecipeTemplateRecord } from './template';
 
 const createdAt = '2026-09-04T00:00:00.000Z';
@@ -15,9 +15,7 @@ const builtin = (
     kind: 'builtin',
     name,
     description,
-    category: ['hearth', 'bistro', 'herbarium', 'celebration', 'notebook'].includes(layout)
-      ? 'dish'
-      : 'drink',
+    category: templateCategoryForLayout(layout),
     layout,
     visibility: 'workspace',
     status: 'active',
@@ -57,6 +55,30 @@ export const BUILTIN_RECIPE_TEMPLATES: readonly RecipeTemplateRecord[] = [
     'Семейная тетрадь',
     'Рукописное настроение, поля для заметок и знакомая клетчатая структура.',
     'notebook',
+  ),
+  builtin(
+    'a1100000-0000-4000-8000-000000000011',
+    'Пастельный блокнот',
+    'Розовая страница с пружиной и самостоятельными блоками рецепта и заметок.',
+    'pastel-notebook',
+  ),
+  builtin(
+    'a1100000-0000-4000-8000-000000000012',
+    'Ягодный дневник',
+    'Мягкая двухколоночная композиция с лентами, волнистой рамкой и заметной фотографией.',
+    'berry-diary',
+  ),
+  builtin(
+    'a1100000-0000-4000-8000-000000000013',
+    'Линованная тетрадь',
+    'Кремовая линованная страница: ингредиенты рядом с фотографией, шаги в спокойном ритме.',
+    'lined-notebook',
+  ),
+  builtin(
+    'a1100000-0000-4000-8000-000000000014',
+    'Чистая карточка',
+    'Сдержанная карточка с тонкими разделителями, метаданными и ясными колонками.',
+    'clean-card',
   ),
   builtin(
     'a1100000-0000-4000-8000-000000000006',

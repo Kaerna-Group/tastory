@@ -1,15 +1,31 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import { RecipePageRenderer } from '@/entities/recipe-page';
-import type { RecipeDraftValue } from '../model/drafts';
-import { BUILTIN_RECIPE_TEMPLATES } from '../model/templates';
+import type { RecipeDraftValue, RecipePhoto, Tag } from '../model/drafts';
+import {
+  BUILTIN_RECIPE_TEMPLATES,
+  DEFAULT_RECIPE_THEME,
+  RECIPE_DESIGN_VERSION,
+  RECIPE_LAYOUT_ALGORITHM_VERSION,
+  RECIPE_LAYOUT_VERSION,
+  loadTemplateWorkspace,
+} from '../model/templates';
 import type {
+  RecipeDesign,
+  RecipeDesignValue,
   RecipeTemplate,
   RecipeTemplateCategory,
   RecipeTemplateLayout,
   RecipeTemplateView,
-  TemplateCommand,
 } from '../model/templates';
 import { requestSessionTemplates } from '@/entities/session';
+import { env } from '@/shared/config';
+import { getThemePreferences, subscribeThemePreferences } from '@/shared/theme';
+import {
+  TemplateMutationRequests,
+  templateMutationScope,
+} from '../model/template-mutation-requests';
+import type { TemplateMutationCommand } from '../model/template-mutation-requests';
+import { RecipeCompositionEditor } from './recipe-composition-editor';
 import './recipe-templates.css';
 
 const CATEGORY_LABELS: Record<RecipeTemplateCategory, string> = {
@@ -56,7 +72,7 @@ function TemplateCard({
       layout: RecipeTemplateLayout;
       visibility: 'private' | 'workspace';
     },
-  ) => void;
+  ) => Promise<boolean>;
   onArchive: (item: RecipeTemplateView) => void;
   onRestore: (item: RecipeTemplateView) => void;
 }) {
@@ -138,13 +154,14 @@ function TemplateCard({
             className="template-card-edit"
             onSubmit={(event) => {
               event.preventDefault();
-              onUpdate(item, {
+              void onUpdate(item, {
                 name: editName,
                 description: editDescription,
                 layout: editLayout,
                 visibility: editVisibility,
+              }).then((saved) => {
+                if (saved) setEditing(false);
               });
-              setEditing(false);
             }}
           >
             <label>
@@ -210,50 +227,67 @@ function TemplateCard({
 }
 
 export function RecipeTemplates({
+  subject,
   recipeId,
   recipeRevision,
   value,
+  tags,
+  coverPhoto,
+  photos,
+  onDocumentPagesChange,
+  onStickerPlacementsChange,
+  assetRefreshKey = 0,
   editable,
 }: {
+  subject: string;
   recipeId: string;
   recipeRevision: number;
   value: RecipeDraftValue;
+  tags: readonly Tag[];
+  coverPhoto: RecipePhoto | null;
+  photos: readonly RecipePhoto[];
+  onDocumentPagesChange: (pages: readonly string[]) => void;
+  onStickerPlacementsChange: () => void;
+  assetRefreshKey?: number;
   editable: boolean;
 }) {
   const [items, setItems] = useState<RecipeTemplateView[]>([]);
   const [applied, setApplied] = useState<RecipeTemplate | null>(null);
+  const [design, setDesign] = useState<RecipeDesign | null>(null);
   const [scope, setScope] = useState<LibraryScope>('all');
   const [query, setQuery] = useState('');
   const [busy, setBusy] = useState(false);
   const [loading, setLoading] = useState(true);
   const [notice, setNotice] = useState('');
   const [error, setError] = useState('');
-  const [name, setName] = useState('');
-  const [description, setDescription] = useState('');
-  const [layout, setLayout] = useState<RecipeTemplateLayout>('hearth');
-  const [visibility, setVisibility] = useState<'private' | 'workspace'>('private');
+  const mutationRequests = useMemo(
+    () =>
+      new TemplateMutationRequests(
+        localStorage,
+        templateMutationScope(env.apiUrl || 'mock', subject),
+        requestSessionTemplates,
+      ),
+    [subject],
+  );
+  const pendingCreate = mutationRequests.pending('templates.create').at(-1)?.command;
+  const [name, setName] = useState(() =>
+    pendingCreate?.action === 'templates.create' ? pendingCreate.payload.name : '',
+  );
+  const [description, setDescription] = useState(() =>
+    pendingCreate?.action === 'templates.create' ? pendingCreate.payload.description : '',
+  );
+  const [layout, setLayout] = useState<RecipeTemplateLayout>(() =>
+    pendingCreate?.action === 'templates.create' ? pendingCreate.payload.layout : 'hearth',
+  );
+  const [visibility, setVisibility] = useState<'private' | 'workspace'>(() =>
+    pendingCreate?.action === 'templates.create' ? pendingCreate.payload.visibility : 'private',
+  );
+  const pendingMutation = useRef<AbortController | null>(null);
+  const designRevision = useRef<number | null>(null);
+  const localPageTheme = useSyncExternalStore(subscribeThemePreferences, getThemePreferences).page;
 
   const fetchTemplates = useCallback(
-    async (signal?: AbortSignal) => {
-      const [library, current] = await Promise.all([
-        requestSessionTemplates(
-          {
-            action: 'templates.list',
-            payload: { query: '', category: 'all', scope: 'all', includeArchived: true },
-          },
-          crypto.randomUUID(),
-          signal,
-        ),
-        requestSessionTemplates(
-          { action: 'recipes.template.get', payload: { recipeId } },
-          crypto.randomUUID(),
-          signal,
-        ),
-      ]);
-      if (library.kind !== 'templateLibrary' || current.kind !== 'recipeTemplate')
-        throw new Error('Сервер вернул несовместимую библиотеку шаблонов.');
-      return { items: library.templates, applied: current.template };
-    },
+    (signal?: AbortSignal) => loadTemplateWorkspace(recipeId, requestSessionTemplates, signal),
     [recipeId],
   );
 
@@ -264,6 +298,8 @@ export function RecipeTemplates({
         if (next.signal.aborted) return;
         setItems(result.items);
         setApplied(result.applied);
+        setDesign(result.design);
+        designRevision.current = result.design?.revision ?? null;
       })
       .catch((cause) => {
         if (!next.signal.aborted) setError(errorMessage(cause));
@@ -273,6 +309,13 @@ export function RecipeTemplates({
       });
     return () => next.abort();
   }, [fetchTemplates]);
+
+  useEffect(
+    () => () => {
+      pendingMutation.current?.abort();
+    },
+    [],
+  );
 
   const visible = useMemo(() => {
     const needle = query.trim().toLocaleLowerCase('ru');
@@ -292,28 +335,108 @@ export function RecipeTemplates({
     });
   }, [items, query, scope]);
 
-  async function mutate(command: TemplateCommand, success: string) {
+  async function mutate(command: TemplateMutationCommand, success: string) {
     if (busy) return false;
+    const controller = new AbortController();
+    pendingMutation.current = controller;
     setBusy(true);
     setError('');
     setNotice('');
+    let result;
     try {
-      const result = await requestSessionTemplates(command, crypto.randomUUID());
-      if (result.kind === 'recipeTemplate') setApplied(result.template);
-      const refreshed = await fetchTemplates();
+      result = await mutationRequests.execute(command, controller.signal);
+    } catch (cause) {
+      if (!controller.signal.aborted) setError(errorMessage(cause));
+      if (!controller.signal.aborted) setBusy(false);
+      if (pendingMutation.current === controller) pendingMutation.current = null;
+      return false;
+    }
+
+    if (controller.signal.aborted) return true;
+    if (result.kind === 'recipeTemplate') setApplied(result.template);
+    if (result.kind === 'recipeDesign') {
+      setDesign(result.design);
+      designRevision.current = result.design?.revision ?? null;
+    }
+    setNotice(success);
+    try {
+      const refreshed = await fetchTemplates(controller.signal);
       setItems(refreshed.items);
       setApplied(refreshed.applied);
-      setNotice(success);
-      return true;
+      setDesign(refreshed.design);
+      designRevision.current = refreshed.design?.revision ?? null;
     } catch (cause) {
-      setError(errorMessage(cause));
-      return false;
+      if (!controller.signal.aborted)
+        setError(`Изменение сохранено, но библиотеку не удалось обновить. ${errorMessage(cause)}`);
     } finally {
-      setBusy(false);
+      if (!controller.signal.aborted) setBusy(false);
+      if (pendingMutation.current === controller) pendingMutation.current = null;
     }
+    return true;
   }
 
-  const selectedLayout = applied?.layout ?? 'hearth';
+  const pendingDesignMutation = [...mutationRequests.pending()]
+    .reverse()
+    .find(
+      (item) => 'recipeId' in item.command.payload && item.command.payload.recipeId === recipeId,
+    );
+  const pendingDesign: RecipeDesignValue | null = pendingDesignMutation
+    ? pendingDesignMutation.command.action === 'recipes.design.save'
+      ? pendingDesignMutation.command.payload.value
+      : pendingDesignMutation.command.action === 'recipes.template.apply' ||
+          pendingDesignMutation.command.action === 'recipes.template.restore'
+        ? (pendingDesignMutation.command.payload.design ?? null)
+        : null
+    : null;
+  const activeDesign = pendingDesign ?? design?.value ?? null;
+  const selectedLayout = activeDesign?.layout ?? applied?.layout ?? 'hearth';
+  const compositionDesign: RecipeDesignValue = activeDesign ?? {
+    version: RECIPE_DESIGN_VERSION,
+    layout: selectedLayout,
+    layoutVersion: RECIPE_LAYOUT_VERSION,
+    layoutAlgorithmVersion: RECIPE_LAYOUT_ALGORITHM_VERSION,
+    theme: applied?.theme ?? DEFAULT_RECIPE_THEME,
+    elements: [],
+  };
+
+  const saveComposition = useCallback(
+    async (next: RecipeDesignValue) => {
+      const retry = mutationRequests
+        .pending('recipes.design.save')
+        .find(
+          (item) =>
+            item.command.action === 'recipes.design.save' &&
+            item.command.payload.recipeId === recipeId &&
+            JSON.stringify(item.command.payload.value) === JSON.stringify(next),
+        );
+      const result = await mutationRequests.execute(
+        retry?.command ?? {
+          action: 'recipes.design.save',
+          payload: {
+            recipeId,
+            expectedRevision: designRevision.current,
+            value: next,
+          },
+        },
+      );
+      if (result.kind !== 'recipeDesign' || !result.design)
+        throw new Error('Сервер не подтвердил сохранение композиции.');
+      designRevision.current = result.design.revision;
+      setDesign(result.design);
+      return result.design;
+    },
+    [mutationRequests, recipeId],
+  );
+
+  const reloadComposition = useCallback(async () => {
+    mutationRequests.discardRecipeDesign(recipeId);
+    const refreshed = await fetchTemplates();
+    setItems(refreshed.items);
+    setApplied(refreshed.applied);
+    setDesign(refreshed.design);
+    designRevision.current = refreshed.design?.revision ?? null;
+    return refreshed.design;
+  }, [fetchTemplates, mutationRequests, recipeId]);
 
   return (
     <section className="panel recipe-templates" aria-labelledby="recipe-templates-title">
@@ -322,23 +445,34 @@ export function RecipeTemplates({
           <p className="eyebrow">Оформление рецепта</p>
           <h2 id="recipe-templates-title">Шаблоны страниц</h2>
           <p>
-            Выберите готовую композицию. Цвета и шрифты возьмутся из вашей темы, а содержание
-            рецепта останется на месте.
+            Выберите готовую композицию. Цвета и шрифты берутся из темы страницы, а содержание
+            рецепта остаётся независимым. Тема приложения не меняет сохранённое оформление.
           </p>
         </div>
         {applied && <span className="template-current">Сейчас: {applied.templateName}</span>}
       </header>
 
       <div className="template-stage" aria-label={`Предпросмотр: ${LAYOUT_LABELS[selectedLayout]}`}>
-        <RecipePageRenderer
+        <RecipeCompositionEditor
+          subject={subject}
           recipeId={recipeId}
           recipeRevision={recipeRevision}
           templateId={applied?.templateId ?? null}
           templateRevision={applied?.revision ?? 1}
           templateName={applied?.templateName ?? LAYOUT_LABELS[selectedLayout]}
           layout={selectedLayout}
-          tagNames={[]}
+          theme={compositionDesign.theme}
+          designValue={compositionDesign}
           value={value}
+          tags={tags}
+          coverPhoto={coverPhoto}
+          photos={photos}
+          editable={editable}
+          onDocumentPagesChange={onDocumentPagesChange}
+          assetRefreshKey={assetRefreshKey}
+          onSaveDesign={saveComposition}
+          onReloadDesign={reloadComposition}
+          onStickerSaved={onStickerPlacementsChange}
         />
       </div>
 
@@ -404,19 +538,34 @@ export function RecipeTemplates({
               selected={applied?.templateId === item.template.id}
               busy={busy}
               editable={editable}
-              onApply={(selected) =>
+              onApply={(selected) => {
+                const retry = pendingDesignMutation?.command;
                 void mutate(
-                  {
-                    action: 'recipes.template.apply',
-                    payload: {
-                      recipeId,
-                      expectedRecipeRevision: recipeRevision,
-                      templateId: selected.template.id,
-                    },
-                  },
+                  retry?.action === 'recipes.template.apply' &&
+                    retry.payload.templateId === selected.template.id
+                    ? retry
+                    : {
+                        action: 'recipes.template.apply',
+                        payload: {
+                          recipeId,
+                          expectedRecipeRevision: recipeRevision,
+                          expectedRecipeTemplateRevision: applied?.revision ?? null,
+                          templateId: selected.template.id,
+                          theme: localPageTheme,
+                          expectedRecipeDesignRevision: design?.revision ?? null,
+                          design: {
+                            version: RECIPE_DESIGN_VERSION,
+                            layout: selected.template.layout,
+                            layoutVersion: RECIPE_LAYOUT_VERSION,
+                            layoutAlgorithmVersion: RECIPE_LAYOUT_ALGORITHM_VERSION,
+                            theme: localPageTheme,
+                            elements: [],
+                          },
+                        },
+                      },
                   `Шаблон «${selected.template.name}» применён.`,
-                )
-              }
+                );
+              }}
               onCopy={(selected) =>
                 void mutate(
                   {
@@ -431,7 +580,7 @@ export function RecipeTemplates({
                 )
               }
               onUpdate={(selected, next) =>
-                void mutate(
+                mutate(
                   {
                     action: 'templates.update',
                     payload: {

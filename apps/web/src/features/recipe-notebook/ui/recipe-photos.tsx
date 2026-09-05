@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { requestSessionRecipes } from '@/entities/session';
+import { acquireRecipePhoto, requestSessionRecipes } from '@/entities/session';
 import { preparePhoto } from '@/shared/api';
 import type { RecipeSaveQueue } from '../model/save-queue';
 import type { RecipePhoto } from '../model/drafts';
@@ -26,30 +26,52 @@ function PhotoCard({
   const [image, setImage] = useState('');
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
+  const [open, setOpen] = useState(false);
+  const [attempt, setAttempt] = useState(0);
   useEffect(() => {
-    const controller = new AbortController();
-    void requestSessionRecipes(
-      {
-        action: 'recipes.photos.read',
-        payload: { recipeId, photoId: photo.id, variant: 'thumbnail' },
-      },
-      crypto.randomUUID(),
-      controller.signal,
-    )
-      .then((result) => {
-        if (result.kind === 'photo') setThumbnail(result.base64);
+    let cancelled = false;
+    const lease = acquireRecipePhoto(
+      recipeId,
+      { id: photo.id, thumbnailDigest: photo.thumbnailDigest },
+      'thumbnail',
+    );
+    void lease.promise
+      .then((source) => {
+        if (!cancelled) setThumbnail(source);
       })
-      .catch((cause: unknown) => {
-        if (!controller.signal.aborted)
-          setError(cause instanceof Error ? cause.message : 'Не удалось загрузить миниатюру.');
+      .catch(() => {
+        if (!cancelled) setError('Не удалось загрузить миниатюру.');
       });
-    return () => controller.abort();
-  }, [photo.id, photo.thumbnailDigest, recipeId]);
+    return () => {
+      cancelled = true;
+      lease.release();
+    };
+  }, [photo.id, photo.thumbnailDigest, recipeId, attempt]);
+  useEffect(() => {
+    if (!open) return;
+    let cancelled = false;
+    const lease = acquireRecipePhoto(
+      recipeId,
+      { id: photo.id, imageDigest: photo.imageDigest },
+      'image',
+    );
+    void lease.promise
+      .then((source) => {
+        if (!cancelled) setImage(source);
+      })
+      .catch(() => {
+        if (!cancelled) setError('Не удалось открыть фото.');
+      });
+    return () => {
+      cancelled = true;
+      lease.release();
+    };
+  }, [open, photo.id, photo.imageDigest, recipeId, attempt]);
   return (
     <figure className="recipe-photo-card">
       {thumbnail ? (
         <img
-          src={`data:image/jpeg;base64,${thumbnail}`}
+          src={thumbnail}
           alt={photo.kind === 'cover' ? 'Обложка рецепта' : 'Фотография рецепта'}
         />
       ) : (
@@ -65,29 +87,12 @@ function PhotoCard({
             className="text-link"
             disabled={busy}
             onClick={() => {
-              if (image) {
-                setImage('');
-                return;
-              }
-              setBusy(true);
+              setImage('');
               setError('');
-              void requestSessionRecipes(
-                {
-                  action: 'recipes.photos.read',
-                  payload: { recipeId, photoId: photo.id, variant: 'image' },
-                },
-                crypto.randomUUID(),
-              )
-                .then((result) => {
-                  if (result.kind === 'photo') setImage(result.base64);
-                })
-                .catch((cause: unknown) =>
-                  setError(cause instanceof Error ? cause.message : 'Не удалось открыть фото.'),
-                )
-                .finally(() => setBusy(false));
+              setOpen((value) => !value);
             }}
           >
-            {image ? 'Скрыть' : 'Открыть'}
+            {open ? 'Скрыть' : 'Открыть'}
           </button>
           <button
             type="button"
@@ -108,10 +113,21 @@ function PhotoCard({
           </button>
         </div>
       </figcaption>
-      {image && (
-        <img className="recipe-photo-full" src={`data:image/jpeg;base64,${image}`} alt="" />
+      {open && image && <img className="recipe-photo-full" src={image} alt="" />}
+      {error && (
+        <div role="alert">
+          {error}{' '}
+          <button
+            type="button"
+            onClick={() => {
+              setError('');
+              setAttempt((value) => value + 1);
+            }}
+          >
+            Повторить загрузку фото
+          </button>
+        </div>
       )}
-      {error && <p role="alert">{error}</p>}
     </figure>
   );
 }

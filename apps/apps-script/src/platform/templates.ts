@@ -1,6 +1,8 @@
 import {
   BUILTIN_RECIPE_TEMPLATES,
+  TEMPLATE_API_CAPABILITIES,
   TEMPLATE_LIMITS,
+  recipeDesignSchema,
   recipeTemplateSchema,
   templateCategoryForLayout,
   templateCommandSchema,
@@ -9,6 +11,7 @@ import {
 import type {
   AuthData,
   RecipeTemplate,
+  RecipeDesign,
   RecipeTemplateRecord,
   RecipeTemplateView,
   TemplateCommand,
@@ -52,6 +55,7 @@ function customTemplates(store: ReturnType<typeof createRecipeStore>) {
     applied: [...state.applied.values()].map((row) =>
       recipeTemplateSchema.parse(stripVersion(row)),
     ),
+    designs: [...state.designs.values()].map((row) => recipeDesignSchema.parse(stripVersion(row))),
   };
 }
 
@@ -167,39 +171,63 @@ export function templates(
       return aggregate;
     };
 
+    if (command.action === 'templates.capabilities') return TEMPLATE_API_CAPABILITIES;
+
     if (command.action === 'templates.list') {
       const query = command.payload.query.trim().toLocaleLowerCase('ru');
+      const builtinOrder = new Map(
+        BUILTIN_RECIPE_TEMPLATES.map((template, index) => [template.id, index]),
+      );
+      const filtered = all()
+        .templates.filter((template) => canReadTemplate(actor, template))
+        .filter(
+          (template) =>
+            template.status === 'active' ||
+            (command.payload.includeArchived && canManageTemplate(actor, template)),
+        )
+        .filter(
+          (template) =>
+            command.payload.category === 'all' || template.category === command.payload.category,
+        )
+        .filter((template) => {
+          if (command.payload.scope === 'mine') return template.ownerUserId === actor.userId;
+          if (command.payload.scope === 'community')
+            return (
+              template.kind === 'custom' &&
+              template.visibility === 'workspace' &&
+              template.ownerUserId !== actor.userId
+            );
+          return true;
+        })
+        .map(view)
+        .filter(
+          (item) =>
+            !query ||
+            `${item.template.name} ${item.template.description} ${item.authorName}`
+              .toLocaleLowerCase('ru')
+              .includes(query),
+        )
+        .sort((a, b) => {
+          const aBuiltin = builtinOrder.get(a.template.id);
+          const bBuiltin = builtinOrder.get(b.template.id);
+          if (aBuiltin !== undefined || bBuiltin !== undefined)
+            return aBuiltin === undefined ? 1 : bBuiltin === undefined ? -1 : aBuiltin - bBuiltin;
+          return (
+            a.template.createdAt.localeCompare(b.template.createdAt) ||
+            a.template.id.localeCompare(b.template.id)
+          );
+        });
+      const { offset, limit } = command.payload;
+      if (offset === undefined || limit === undefined) {
+        if (filtered.length > TEMPLATE_LIMITS.listPage)
+          throw new TemplateStorageError('TEMPLATE_LIMIT');
+        return { kind: 'templateLibrary', templates: filtered };
+      }
+      const end = Math.min(offset + limit, filtered.length);
       return {
         kind: 'templateLibrary',
-        templates: all()
-          .templates.filter((template) => canReadTemplate(actor, template))
-          .filter(
-            (template) =>
-              template.status === 'active' ||
-              (command.payload.includeArchived && canManageTemplate(actor, template)),
-          )
-          .filter(
-            (template) =>
-              command.payload.category === 'all' || template.category === command.payload.category,
-          )
-          .filter((template) => {
-            if (command.payload.scope === 'mine') return template.ownerUserId === actor.userId;
-            if (command.payload.scope === 'community')
-              return (
-                template.kind === 'custom' &&
-                template.visibility === 'workspace' &&
-                template.ownerUserId !== actor.userId
-              );
-            return true;
-          })
-          .map(view)
-          .filter(
-            (item) =>
-              !query ||
-              `${item.template.name} ${item.template.description} ${item.authorName}`
-                .toLocaleLowerCase('ru')
-                .includes(query),
-          ),
+        templates: filtered.slice(offset, end),
+        nextOffset: end < filtered.length ? end : null,
       };
     }
 
@@ -216,6 +244,19 @@ export function templates(
       };
     }
 
+    if (command.action === 'recipes.design.get') {
+      readableRecipe(command.payload.recipeId, 'read');
+      const design = customTemplates(store).designs.find(
+        (item) => item.recipeId === command.payload.recipeId,
+      );
+      return {
+        kind: 'recipeDesign',
+        recipeId: command.payload.recipeId,
+        design: design ?? null,
+        outcome: 'read',
+      };
+    }
+
     if (actor.role === 'viewer') throw new AuthError('ACCESS_DENIED');
     const before = all();
     const existing = before.state.operations.find((item) => item.requestId === requestId);
@@ -228,7 +269,21 @@ export function templates(
       )
         throw new TemplateStorageError('TEMPLATE_CONFLICT');
       if (existing.state.startsWith('committed@')) {
-        if (command.action === 'recipes.template.apply') {
+        if (command.action === 'recipes.design.save') {
+          readableRecipe(existing.entityId, 'read');
+          const design = before.designs.find((item) => item.recipeId === existing.entityId);
+          if (!design) throw new TemplateStorageError();
+          return {
+            kind: 'recipeDesign',
+            recipeId: design.recipeId,
+            design,
+            outcome: 'replayed',
+          };
+        }
+        if (
+          command.action === 'recipes.template.apply' ||
+          command.action === 'recipes.template.restore'
+        ) {
           readableRecipe(existing.entityId, 'read');
           const applied = before.applied.find((item) => item.recipeId === existing.entityId);
           if (!applied) throw new TemplateStorageError();
@@ -247,6 +302,43 @@ export function templates(
     const ownedCount = before.templates.filter(
       (template) => template.kind === 'custom' && template.ownerUserId === actor.userId,
     ).length;
+
+    if (command.action === 'recipes.design.save') {
+      readableRecipe(command.payload.recipeId, 'update');
+      const previous = before.designs.find((item) => item.recipeId === command.payload.recipeId);
+      if ((previous?.revision ?? null) !== command.payload.expectedRevision)
+        throw new TemplateStorageError('TEMPLATE_CONFLICT');
+      const applied = before.applied.find((item) => item.recipeId === command.payload.recipeId);
+      const fallbackLayout = applied?.layout ?? 'hearth';
+      if (command.payload.value.layout !== fallbackLayout)
+        throw new TemplateStorageError('TEMPLATE_INVALID');
+      const source = applied?.templateId
+        ? before.templates.find((item) => item.id === applied.templateId)
+        : null;
+      const timestamp = now().toISOString();
+      const design: RecipeDesign = recipeDesignSchema.parse({
+        id: command.payload.recipeId,
+        recipeId: command.payload.recipeId,
+        revision: (previous?.revision ?? 0) + 1,
+        recipeTemplateRevision: applied?.revision ?? null,
+        sourceTemplateId: applied?.templateId ?? null,
+        sourceTemplateRevision:
+          source?.revision ??
+          (previous && previous.sourceTemplateId === applied?.templateId
+            ? previous.sourceTemplateRevision
+            : null),
+        value: command.payload.value,
+        createdAt: previous?.createdAt ?? timestamp,
+        updatedAt: timestamp,
+      });
+      const outcome = publishTemplateMutation(
+        store,
+        operation(command, requestId, design.id, actor, now),
+        [{ table: 'RecipeDesigns', value: design }],
+        now,
+      );
+      return { kind: 'recipeDesign', recipeId: design.recipeId, design, outcome };
+    }
 
     if (command.action === 'templates.create' || command.action === 'templates.clone') {
       if (ownedCount >= TEMPLATE_LIMITS.perUser) throw new TemplateStorageError('TEMPLATE_LIMIT');
@@ -329,30 +421,83 @@ export function templates(
       return { kind: 'template', ...view(next), outcome };
     }
 
-    const applyCommand = command as Extract<TemplateCommand, { action: 'recipes.template.apply' }>;
+    const applyCommand = command as Extract<
+      TemplateCommand,
+      { action: 'recipes.template.apply' | 'recipes.template.restore' }
+    >;
     const aggregate = readableRecipe(applyCommand.payload.recipeId, 'update');
     if (aggregate.recipe.revision !== applyCommand.payload.expectedRecipeRevision)
       throw new TemplateStorageError('TEMPLATE_CONFLICT');
-    const source = requireTemplate(actor, before.templates, applyCommand.payload.templateId);
-    if (source.status !== 'active') throw new TemplateStorageError('TEMPLATE_INVALID');
     const previous = before.applied.find((item) => item.recipeId === applyCommand.payload.recipeId);
+    const previousDesign = before.designs.find(
+      (item) => item.recipeId === applyCommand.payload.recipeId,
+    );
+    const expectedPresentationRevision = applyCommand.payload.expectedRecipeTemplateRevision;
+    if (
+      expectedPresentationRevision === undefined
+        ? previous !== undefined
+        : (previous?.revision ?? null) !== expectedPresentationRevision
+    )
+      throw new TemplateStorageError('TEMPLATE_CONFLICT');
+    const suppliedDesign = applyCommand.payload.design;
+    if (
+      (suppliedDesign === undefined) !==
+        (applyCommand.payload.expectedRecipeDesignRevision === undefined) ||
+      (suppliedDesign &&
+        (previousDesign?.revision ?? null) !== applyCommand.payload.expectedRecipeDesignRevision) ||
+      (!suppliedDesign && previousDesign)
+    )
+      throw new TemplateStorageError('TEMPLATE_CONFLICT');
+    const source =
+      applyCommand.action === 'recipes.template.apply'
+        ? requireTemplate(actor, before.templates, applyCommand.payload.templateId)
+        : null;
+    if (source && source.status !== 'active') throw new TemplateStorageError('TEMPLATE_INVALID');
+    const snapshot =
+      applyCommand.action === 'recipes.template.apply'
+        ? {
+            templateName: source?.name,
+            category: source?.category,
+            layout: source?.layout,
+            theme: applyCommand.payload.theme,
+          }
+        : applyCommand.payload.snapshot;
     const timestamp = now().toISOString();
     const applied: RecipeTemplate = recipeTemplateSchema.parse({
       id: applyCommand.payload.recipeId,
       recipeId: applyCommand.payload.recipeId,
-      templateId: source.id,
-      templateName: source.name,
-      category: source.category,
-      layout: source.layout,
-      sourceOwnerUserId: source.ownerUserId,
+      templateId: source?.id ?? null,
+      templateName: snapshot.templateName,
+      category: snapshot.category,
+      layout: snapshot.layout,
+      theme: snapshot.theme,
+      sourceOwnerUserId: source?.ownerUserId ?? null,
       revision: (previous?.revision ?? 0) + 1,
       createdAt: previous?.createdAt ?? timestamp,
       updatedAt: timestamp,
     });
+    if (suppliedDesign && suppliedDesign.layout !== applied.layout)
+      throw new TemplateStorageError('TEMPLATE_INVALID');
+    const design: RecipeDesign | null = suppliedDesign
+      ? recipeDesignSchema.parse({
+          id: applied.recipeId,
+          recipeId: applied.recipeId,
+          revision: (previousDesign?.revision ?? 0) + 1,
+          recipeTemplateRevision: applied.revision,
+          sourceTemplateId: source?.id ?? null,
+          sourceTemplateRevision: source?.revision ?? null,
+          value: suppliedDesign,
+          createdAt: previousDesign?.createdAt ?? timestamp,
+          updatedAt: timestamp,
+        })
+      : null;
     const outcome = publishTemplateMutation(
       store,
       operation(command, requestId, applied.id, actor, now),
-      [{ table: 'RecipeTemplates', value: applied }],
+      [
+        { table: 'RecipeTemplates', value: applied },
+        ...(design ? ([{ table: 'RecipeDesigns', value: design }] as const) : []),
+      ],
       now,
     );
     return {

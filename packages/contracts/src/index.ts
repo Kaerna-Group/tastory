@@ -117,10 +117,15 @@ export {
   RECIPE_TRANSFER_VERSION,
   RECIPE_TRANSFER_FILE_LIMIT,
   recipeTransferFileSchema,
+  recipeTransferStickerSchema,
   recipeTransferRecipeSchema,
   recipeTransferDocumentSchema,
 } from './recipe-transfer';
-export type { RecipeTransferDocument, RecipeTransferRecipe } from './recipe-transfer';
+export type {
+  RecipeTransferDocument,
+  RecipeTransferRecipe,
+  RecipeTransferSticker,
+} from './recipe-transfer';
 export {
   STICKER_LIMITS,
   stickerVisibilitySchema,
@@ -152,6 +157,9 @@ export {
   templateKindSchema,
   templateStatusSchema,
   templateLayoutSchema,
+  recipeThemeSchema,
+  DEFAULT_RECIPE_THEME,
+  recipeTemplateSnapshotSchema,
   dishTemplateLayouts,
   drinkTemplateLayouts,
   templateCategoryForLayout,
@@ -163,11 +171,19 @@ export type {
   RecipeTemplate,
   RecipeTemplateCategory,
   RecipeTemplateLayout,
+  RecipeTheme,
+  RecipeTemplateSnapshot,
   RecipeTemplateRecord,
   RecipeTemplateView,
 } from './template';
-export { templateCommandSchema, templateMutationActions, templateDataSchema } from './template-api';
-export type { TemplateCommand, TemplateData } from './template-api';
+export {
+  TEMPLATE_API_CAPABILITIES,
+  templateCapabilitiesSchema,
+  templateCommandSchema,
+  templateMutationActions,
+  templateDataSchema,
+} from './template-api';
+export type { TemplateCapabilities, TemplateCommand, TemplateData } from './template-api';
 export { BUILTIN_RECIPE_TEMPLATES } from './template-builtins';
 export {
   RECIPE_PAGE_DOCUMENT_VERSION,
@@ -184,3 +200,14 @@ export type {
   RecipePage,
   RecipePageDocument,
 } from './recipe-page';
+export {
+  RECIPE_DESIGN_VERSION,
+  RECIPE_LAYOUT_VERSION,
+  RECIPE_LAYOUT_ALGORITHM_VERSION,
+  RECIPE_DESIGN_LIMITS,
+  recipeDesignElementSchema,
+  recipeDesignValueSchema,
+  recipeDesignSchema,
+  recipeDesignSaveSchema,
+} from './recipe-design';
+export type { RecipeDesignElement, RecipeDesignValue, RecipeDesign } from './recipe-design';

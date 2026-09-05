@@ -80,6 +80,12 @@ export const stickerUploadSchema = z.strictObject({
 
 const geometry = {
   page: z.number().int().min(1).max(100),
+  // A4 physical-sheet slots are stable within one recipe, independent of screen width.
+  // Numeric page remains the lossless storage/legacy representation of the same anchor.
+  pageId: z
+    .string()
+    .regex(/^page-([1-9][0-9]?|100)$/)
+    .optional(),
   x: z.number().min(0).max(100),
   y: z.number().min(0).max(100),
   width: z.number().min(2).max(100),
@@ -151,18 +157,24 @@ export const stickerItemRevisionSchema = z.strictObject({
   stickerId: id,
   expectedRevision: revision,
 });
-export const recipeStickerAddSchema = z.strictObject({
-  recipeId: id,
-  expectedRecipeRevision: revision,
-  stickerId: id,
-  ...geometry,
-});
-export const recipeStickerUpdateSchema = z.strictObject({
-  recipeId: id,
-  instanceId: id,
-  expectedRevision: revision,
-  ...geometry,
-});
+const consistentPage = (value: { page: number; pageId?: string | undefined }) =>
+  value.pageId === undefined || value.pageId === `page-${value.page}`;
+export const recipeStickerAddSchema = z
+  .strictObject({
+    recipeId: id,
+    expectedRecipeRevision: revision,
+    stickerId: id,
+    ...geometry,
+  })
+  .refine(consistentPage, 'Page ID does not match the physical sheet slot.');
+export const recipeStickerUpdateSchema = z
+  .strictObject({
+    recipeId: id,
+    instanceId: id,
+    expectedRevision: revision,
+    ...geometry,
+  })
+  .refine(consistentPage, 'Page ID does not match the physical sheet slot.');
 export const recipeStickerDeleteSchema = z.strictObject({
   recipeId: id,
   instanceId: id,

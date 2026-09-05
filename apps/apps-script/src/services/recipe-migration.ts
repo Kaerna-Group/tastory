@@ -1,4 +1,6 @@
 import {
+  DESIGN_RECIPE_MIGRATION_ID,
+  DESIGN_RECIPE_MIGRATION_NAME,
   LEGACY_RECIPE_MIGRATION_ID,
   LEGACY_RECIPE_MIGRATION_NAME,
   PHOTO_RECIPE_MIGRATION_ID,
@@ -26,7 +28,8 @@ export function planRecipeSchema(store: RecipeStore, options: JournalMigrationOp
     !/^[a-f0-9]{64}$/.test(options.settingsRecipeChecksum ?? '') ||
     !/^[a-f0-9]{64}$/.test(options.stickerRecipeChecksum ?? '') ||
     !/^[a-f0-9]{64}$/.test(options.templateRecipeChecksum ?? '') ||
-    !['2', '3', '4', '5', '6', '7', '8'].includes(version ?? '') ||
+    !/^[a-f0-9]{64}$/.test(options.designRecipeChecksum ?? '') ||
+    !['2', '3', '4', '5', '6', '7', '8', '9'].includes(version ?? '') ||
     !planJournalSchema(store.journal, options).alreadyApplied
   )
     throw new RecipeStorageError('RECIPE_NOT_READY');
@@ -38,7 +41,8 @@ export function planRecipeSchema(store: RecipeStore, options: JournalMigrationOp
     if (
       table.columnCount !== columns.length ||
       columns.some((column, i) => table.headers[i] !== column) ||
-      (version === '2' && table.rowCount > 1)
+      (version === '2' && table.rowCount > 1) ||
+      (version === '8' && name === 'RecipeDesigns' && table.rowCount > 1)
     )
       throw new RecipeStorageError();
     return { table: name, action: 'keep' as const };
@@ -54,7 +58,8 @@ export function planRecipeSchema(store: RecipeStore, options: JournalMigrationOp
         !['StickerPacks', 'Stickers', 'RecipeStickers', 'StickerOperations'].includes(
           action.table,
         ) &&
-        !['Templates', 'RecipeTemplates', 'TemplateOperations'].includes(action.table),
+        !['Templates', 'RecipeTemplates', 'TemplateOperations'].includes(action.table) &&
+        action.table !== 'RecipeDesigns',
     )
   )
     throw new RecipeStorageError();
@@ -68,7 +73,8 @@ export function planRecipeSchema(store: RecipeStore, options: JournalMigrationOp
         !['StickerPacks', 'Stickers', 'RecipeStickers', 'StickerOperations'].includes(
           action.table,
         ) &&
-        !['Templates', 'RecipeTemplates', 'TemplateOperations'].includes(action.table),
+        !['Templates', 'RecipeTemplates', 'TemplateOperations'].includes(action.table) &&
+        action.table !== 'RecipeDesigns',
     )
   )
     throw new RecipeStorageError();
@@ -81,7 +87,8 @@ export function planRecipeSchema(store: RecipeStore, options: JournalMigrationOp
         !['StickerPacks', 'Stickers', 'RecipeStickers', 'StickerOperations'].includes(
           action.table,
         ) &&
-        !['Templates', 'RecipeTemplates', 'TemplateOperations'].includes(action.table),
+        !['Templates', 'RecipeTemplates', 'TemplateOperations'].includes(action.table) &&
+        action.table !== 'RecipeDesigns',
     )
   )
     throw new RecipeStorageError();
@@ -92,28 +99,40 @@ export function planRecipeSchema(store: RecipeStore, options: JournalMigrationOp
     'StickerOperations',
   ]);
   const templateTables = new Set(['Templates', 'RecipeTemplates', 'TemplateOperations']);
+  const designTables = new Set(['RecipeDesigns']);
   if (
     version === '6' &&
     actions.some(
       (action) =>
         action.action !== 'keep' &&
         !stickerTables.has(action.table) &&
-        !templateTables.has(action.table),
+        !templateTables.has(action.table) &&
+        !designTables.has(action.table),
     )
   )
     throw new RecipeStorageError();
   if (
     version === '7' &&
-    actions.some((action) => action.action !== 'keep' && !templateTables.has(action.table))
+    actions.some(
+      (action) =>
+        action.action !== 'keep' &&
+        !templateTables.has(action.table) &&
+        !designTables.has(action.table),
+    )
   )
     throw new RecipeStorageError();
-  if (version === '8' && actions.some((action) => action.action !== 'keep'))
+  if (
+    version === '8' &&
+    actions.some((action) => action.action !== 'keep' && !designTables.has(action.table))
+  )
+    throw new RecipeStorageError();
+  if (version === '9' && actions.some((action) => action.action !== 'keep'))
     throw new RecipeStorageError();
   return {
-    alreadyApplied: version === '8',
+    alreadyApplied: version === '9',
     actions,
     fromVersion: Number(version),
-    toVersion: 8 as const,
+    toVersion: 9 as const,
   };
 }
 export function applyRecipeSchema(store: RecipeStore, options: JournalMigrationOptions) {
@@ -138,7 +157,8 @@ export function applyRecipeSchema(store: RecipeStore, options: JournalMigrationO
     !options.photoRecipeChecksum ||
     !options.settingsRecipeChecksum ||
     !options.stickerRecipeChecksum ||
-    !options.templateRecipeChecksum
+    !options.templateRecipeChecksum ||
+    !options.designRecipeChecksum
   )
     throw new RecipeStorageError();
   if (plan.fromVersion === 2 && !migrations.some((row) => row[0] === LEGACY_RECIPE_MIGRATION_ID)) {
@@ -222,12 +242,26 @@ export function applyRecipeSchema(store: RecipeStore, options: JournalMigrationO
       'applied',
     ]);
     store.flush();
+    migrations = store.journal.core.read('SchemaMigrations')?.rows;
+    if (!migrations) throw new RecipeStorageError();
+  }
+  if (!migrations.some((row) => row[0] === DESIGN_RECIPE_MIGRATION_ID)) {
+    options.beforeWrite?.();
+    store.journal.core.writeRow('SchemaMigrations', migrations.length + 2, [
+      DESIGN_RECIPE_MIGRATION_ID,
+      DESIGN_RECIPE_MIGRATION_NAME,
+      options.designRecipeChecksum,
+      timestamp,
+      'system:setupRecipes',
+      'applied',
+    ]);
+    store.flush();
   }
   const versionIndex =
     store.journal.core.read('Meta')?.rows.findIndex((row) => row[0] === 'schema_version') ?? -1;
   if (versionIndex < 0) throw new RecipeStorageError();
   options.beforeWrite?.();
-  store.journal.core.writeRow('Meta', versionIndex + 2, ['schema_version', '8', timestamp]);
+  store.journal.core.writeRow('Meta', versionIndex + 2, ['schema_version', '9', timestamp]);
   store.flush();
   return planRecipeSchema(store, options);
 }

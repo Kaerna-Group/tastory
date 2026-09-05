@@ -11,7 +11,7 @@ concurrency:
   cancel-in-progress: true
 jobs:
   quality:
-    name: Quality and smoke
+    name: Fast quality gate
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -26,17 +26,12 @@ jobs:
         run: npm install --global npm@11.9.0
       - run: npm ci
       - run: npm run check
-      - run: npx playwright install --with-deps chromium firefox webkit
-      - run: npm run test:e2e
-      - run: npm run test:auth
       - uses: actions/upload-artifact@v7
         if: always()
         with:
           name: checks-and-builds
           path: |
             coverage/
-            playwright-report/
-            test-results/
             apps/web/dist/
             apps/apps-script/dist/
           retention-days: 7

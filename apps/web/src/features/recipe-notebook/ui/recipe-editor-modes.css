@@ -53,6 +53,19 @@
 .recipe-book-actions p:last-child {
   margin-bottom: 0;
 }
+.recipe-toolbar[data-mode='view'] {
+  padding: 10px 14px;
+  border: 1px solid var(--app-border);
+  border-radius: 12px;
+  background: var(--app-surface);
+}
+.recipe-toolbar[data-mode='view'] .save-status {
+  margin: 0;
+  font-size: 12px;
+}
+.recipe-mode-panel {
+  min-width: 0;
+}
 @media (max-width: 620px) {
   .recipe-editor-mode-tabs {
     margin-inline: -8px;

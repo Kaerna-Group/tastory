@@ -1,6 +1,11 @@
-import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
+import type { KeyboardEvent as ReactKeyboardEvent } from 'react';
 import { Link } from 'react-router';
-import { requestSessionRecipes } from '@/entities/session';
+import {
+  requestSessionRecipes,
+  requestSessionStickers,
+  requestSessionTemplates,
+} from '@/entities/session';
 import { buildTransferDocument, serializeTransferDocument } from '@/entities/recipe-transfer';
 import { getUserSettings, subscribeUserSettings } from '@/entities/user-settings';
 import { useEditor } from '../model/use-editor';
@@ -13,6 +18,19 @@ import { RecipeBookView } from './recipe-book-view';
 import { RecipeTemplates } from './recipe-templates';
 import { StickerPacks } from './sticker-packs';
 import './recipe-editor-modes.css';
+
+const transferRequests = {
+  recipes: requestSessionRecipes,
+  stickers: requestSessionStickers,
+  templates: requestSessionTemplates,
+};
+type RecipeMode = 'view' | 'content' | 'design' | 'history';
+const MODE_LABELS: Record<RecipeMode, string> = {
+  view: 'Просмотр',
+  content: 'Содержание',
+  design: 'Дизайн',
+  history: 'История',
+};
 
 function download(draft: RecipeLocalDraft) {
   const url = URL.createObjectURL(
@@ -66,7 +84,7 @@ function PortableRecipeExport({
       const document = await buildTransferDocument(
         'recipe',
         [recipeId],
-        requestSessionRecipes,
+        transferRequests,
         controller.signal,
       );
       const url = URL.createObjectURL(
@@ -156,24 +174,33 @@ function VersionPreview({
   );
 }
 function EditorContent({
+  subject,
   queue,
   editable: allowed,
   tags,
   recovered,
   offlineCopy,
-}: NonNullable<ReturnType<typeof useEditor>['state']>) {
+}: NonNullable<ReturnType<typeof useEditor>['state']> & { subject: string }) {
   const snapshot = useSyncExternalStore(queue.subscribe, queue.getSnapshot);
   const preferences = useSyncExternalStore(subscribeUserSettings, getUserSettings).settings;
   const editable = allowed && snapshot.editable;
   const { draft, status, message, backupId } = snapshot;
   const [resolving, setResolving] = useState(false);
-  const [mode, setMode] = useState<'view' | 'content' | 'design' | 'history'>(() =>
-    draft.base ? 'view' : 'content',
+  const [pageAssetsRevision, setPageAssetsRevision] = useState(0);
+  const [mode, setMode] = useState<RecipeMode>(() => (draft.base ? 'view' : 'content'));
+  const modes = useMemo<RecipeMode[]>(
+    () => (draft.base ? ['view', 'content', 'design', 'history'] : ['content']),
+    [draft.base],
   );
-  const availableTags = [
-    ...tags,
-    ...(draft.base?.tags.filter((tag) => !tags.some((item) => item.id === tag.id)) ?? []),
-  ];
+  const availableTags = useMemo(
+    () => [
+      ...tags,
+      ...(draft.base?.tags.filter((tag) => !tags.some((item) => item.id === tag.id)) ?? []),
+    ],
+    [tags, draft.base?.tags],
+  );
+  const coverPhoto = draft.base?.photos.find((photo) => photo.kind === 'cover') ?? null;
+  const [documentPages, setDocumentPages] = useState<readonly string[]>([]);
   useEffect(
     () => queue.setAutosaveDelay(preferences.autosaveDelay),
     [preferences.autosaveDelay, queue],
@@ -197,9 +224,22 @@ function EditorContent({
       setResolving(false);
     }
   };
+  const moveTabFocus = (event: ReactKeyboardEvent<HTMLDivElement>) => {
+    const current = modes.indexOf(mode);
+    let next: number;
+    if (event.key === 'ArrowRight') next = (current + 1) % modes.length;
+    else if (event.key === 'ArrowLeft') next = (current - 1 + modes.length) % modes.length;
+    else if (event.key === 'Home') next = 0;
+    else if (event.key === 'End') next = modes.length - 1;
+    else return;
+    event.preventDefault();
+    const nextMode = modes[next] as RecipeMode;
+    setMode(nextMode);
+    event.currentTarget.querySelector<HTMLElement>(`#recipe-tab-${nextMode}`)?.focus();
+  };
   return (
     <>
-      <div className="recipe-toolbar">
+      <div className="recipe-toolbar" data-mode={mode}>
         <div>
           <p role="status" className={`save-status save-status-${status}`}>
             {editable || status === 'storage-error'
@@ -239,45 +279,26 @@ function EditorContent({
           )}
         </div>
       </div>
-      <div className="recipe-editor-mode-tabs" role="tablist" aria-label="Разделы рецепта">
-        {draft.base && (
+      <div
+        className="recipe-editor-mode-tabs"
+        role="tablist"
+        aria-label="Разделы рецепта"
+        onKeyDown={moveTabFocus}
+      >
+        {modes.map((item) => (
           <button
+            key={item}
+            id={`recipe-tab-${item}`}
             type="button"
             role="tab"
-            aria-selected={mode === 'view'}
-            onClick={() => setMode('view')}
+            aria-selected={mode === item}
+            aria-controls={`recipe-panel-${item}`}
+            tabIndex={mode === item ? 0 : -1}
+            onClick={() => setMode(item)}
           >
-            Просмотр
+            {MODE_LABELS[item]}
           </button>
-        )}
-        <button
-          type="button"
-          role="tab"
-          aria-selected={mode === 'content'}
-          onClick={() => setMode('content')}
-        >
-          Содержание
-        </button>
-        {draft.base && (
-          <button
-            type="button"
-            role="tab"
-            aria-selected={mode === 'design'}
-            onClick={() => setMode('design')}
-          >
-            Дизайн
-          </button>
-        )}
-        {draft.base && (
-          <button
-            type="button"
-            role="tab"
-            aria-selected={mode === 'history'}
-            onClick={() => setMode('history')}
-          >
-            История
-          </button>
-        )}
+        ))}
       </div>
       {backupId && (
         <p className="recipe-notice">
@@ -343,94 +364,118 @@ function EditorContent({
           </div>
         </section>
       )}
-      {mode === 'view' && draft.base && (
-        <RecipeBookView
-          recipeId={draft.base.recipe.id}
-          recipeRevision={draft.base.recipe.revision}
-          value={draft.value}
-          tags={availableTags}
-          coverPhoto={draft.base.photos.find((photo) => photo.kind === 'cover') ?? null}
-        />
-      )}
-      {mode === 'content' && (
-        <>
-          <div className="recipe-visibility">
-            <label>
-              Видимость
-              <select
-                aria-label="Видимость"
-                value={draft.visibility}
-                disabled={!editable || Boolean(draft.base || draft.pending)}
-                onChange={(e) =>
-                  queue.edit(draft.value, e.target.value === 'workspace' ? 'workspace' : 'private')
-                }
-              >
-                <option value="private">Личный рецепт</option>
-                <option value="workspace">Общий — для участников тетради</option>
-              </select>
-            </label>
-            <p className="muted text-sm">
-              {draft.visibility === 'private'
-                ? 'Доступен вам и владельцу тетради.'
-                : 'Доступен всем участникам тетради.'}{' '}
-              {draft.base || draft.pending
-                ? 'Видимость выбрана при создании.'
-                : 'Выберите видимость до первого сохранения.'}
-            </p>
-          </div>
-          <RecipeFields
+      <div
+        id={`recipe-panel-${mode}`}
+        role="tabpanel"
+        aria-labelledby={`recipe-tab-${mode}`}
+        className="recipe-mode-panel"
+      >
+        {mode === 'view' && draft.base && (
+          <RecipeBookView
+            recipeId={draft.base.recipe.id}
+            recipeRevision={draft.base.recipe.revision}
             value={draft.value}
-            onChange={(value) => queue.edit(value)}
+            hasUnsavedContent={
+              JSON.stringify(draft.value) !== JSON.stringify(valueFromAggregate(draft.base))
+            }
             tags={availableTags}
-            disabled={!editable || resolving}
-            unitSystem={preferences.unitSystem}
-            keyboardShortcuts={preferences.keyboardShortcuts}
+            coverPhoto={coverPhoto}
+            photos={draft.base.photos}
+            assetRefreshKey={pageAssetsRevision}
           />
-          <RecipePhotos
+        )}
+        {mode === 'content' && (
+          <>
+            <div className="recipe-visibility">
+              <label>
+                Видимость
+                <select
+                  aria-label="Видимость"
+                  value={draft.visibility}
+                  disabled={!editable || Boolean(draft.base || draft.pending)}
+                  onChange={(e) =>
+                    queue.edit(
+                      draft.value,
+                      e.target.value === 'workspace' ? 'workspace' : 'private',
+                    )
+                  }
+                >
+                  <option value="private">Личный рецепт</option>
+                  <option value="workspace">Общий — для участников тетради</option>
+                </select>
+              </label>
+              <p className="muted text-sm">
+                {draft.visibility === 'private'
+                  ? 'Доступен вам и владельцу тетради.'
+                  : 'Доступен всем участникам тетради.'}{' '}
+                {draft.base || draft.pending
+                  ? 'Видимость выбрана при создании.'
+                  : 'Выберите видимость до первого сохранения.'}
+              </p>
+            </div>
+            <RecipeFields
+              value={draft.value}
+              onChange={(value) => queue.edit(value)}
+              tags={availableTags}
+              disabled={!editable || resolving}
+              unitSystem={preferences.unitSystem}
+              keyboardShortcuts={preferences.keyboardShortcuts}
+            />
+            <RecipePhotos
+              queue={queue}
+              editable={editable && !resolving}
+              confirmDelete={preferences.confirmDestructiveActions}
+            />
+            <p className="muted text-sm">
+              Локальная копия хранится в этом браузере. Очистка данных сайта удалит её. Для другого
+              устройства дождитесь сохранения на сервере.
+            </p>
+          </>
+        )}
+        {mode === 'design' && draft.base && (
+          <>
+            <RecipeTemplates
+              subject={subject}
+              recipeId={draft.base.recipe.id}
+              recipeRevision={draft.base.recipe.revision}
+              value={draft.value}
+              tags={availableTags}
+              coverPhoto={coverPhoto}
+              photos={draft.base.photos}
+              onDocumentPagesChange={setDocumentPages}
+              onStickerPlacementsChange={() => setPageAssetsRevision((current) => current + 1)}
+              assetRefreshKey={pageAssetsRevision}
+              editable={
+                editable && !resolving && status === 'saved' && !draft.pending && !draft.conflict
+              }
+            />
+            <StickerPacks
+              documentPages={documentPages}
+              recipeId={draft.base.recipe.id}
+              recipeRevision={draft.base.recipe.revision}
+              editable={
+                editable && !resolving && status === 'saved' && !draft.pending && !draft.conflict
+              }
+              onPlacementsChange={() => setPageAssetsRevision((current) => current + 1)}
+            />
+          </>
+        )}
+        {mode === 'history' && draft.base && (
+          <RecipeHistory
+            key={draft.base.recipe.id}
+            recipeId={draft.base.recipe.id}
+            currentRevision={draft.base.recipe.revision}
+            canRestore={
+              editable &&
+              status === 'saved' &&
+              !draft.pending &&
+              !draft.conflict &&
+              (draft.base.recipe.status === 'draft' || draft.base.recipe.status === 'published')
+            }
             queue={queue}
-            editable={editable && !resolving}
-            confirmDelete={preferences.confirmDestructiveActions}
           />
-          <p className="muted text-sm">
-            Локальная копия хранится в этом браузере. Очистка данных сайта удалит её. Для другого
-            устройства дождитесь сохранения на сервере.
-          </p>
-        </>
-      )}
-      {mode === 'design' && draft.base && (
-        <>
-          <RecipeTemplates
-            recipeId={draft.base.recipe.id}
-            recipeRevision={draft.base.recipe.revision}
-            value={draft.value}
-            editable={
-              editable && !resolving && status === 'saved' && !draft.pending && !draft.conflict
-            }
-          />
-          <StickerPacks
-            recipeId={draft.base.recipe.id}
-            recipeRevision={draft.base.recipe.revision}
-            editable={
-              editable && !resolving && status === 'saved' && !draft.pending && !draft.conflict
-            }
-          />
-        </>
-      )}
-      {mode === 'history' && draft.base && (
-        <RecipeHistory
-          key={draft.base.recipe.id}
-          recipeId={draft.base.recipe.id}
-          currentRevision={draft.base.recipe.revision}
-          canRestore={
-            editable &&
-            status === 'saved' &&
-            !draft.pending &&
-            !draft.conflict &&
-            (draft.base.recipe.status === 'draft' || draft.base.recipe.status === 'published')
-          }
-          queue={queue}
-        />
-      )}
+        )}
+      </div>
     </>
   );
 }
@@ -458,7 +503,7 @@ export function RecipeEditor({
           </button>
         </section>
       ) : state ? (
-        <EditorContent {...state} />
+        <EditorContent {...state} subject={subject} />
       ) : (
         <p role="status">Открываем рецепт…</p>
       )}

@@ -472,7 +472,7 @@ export function checkSchemaRuntime(code) {
   assert.equal(held, false);
   const recipeCall = (action, payload = {}, requestId = randomUUID()) =>
     request('private-owner', 'owner@example.test', action, requestId, payload);
-  assert.equal(recipeCall('admin.recipes.initialize').data.schemaVersion, 8);
+  assert.equal(recipeCall('admin.recipes.initialize').data.schemaVersion, 9);
   assert.equal(recipeCall('admin.recipes.initialize').data.alreadyApplied, true);
   const tag = recipeCall('tags.create', { name: 'Супы', colorToken: 'neutral' });
   assert.equal(tag.ok, true, JSON.stringify(tag));
@@ -546,6 +546,9 @@ export function checkSchemaRuntime(code) {
   assert.equal(recipeCall('recipes.archive', { recipeId, expectedRevision: 2 }).data.revision, 3);
   assert.equal(recipeCall('recipes.restore', { recipeId, expectedRevision: 3 }).data.revision, 4);
   assert.equal(recipeCall('recipes.get', { recipeId }).data.aggregate.recipe.status, 'draft');
+  const templateCapabilities = recipeCall('templates.capabilities', {});
+  assert.equal(templateCapabilities.ok, true, JSON.stringify(templateCapabilities));
+  assert.equal(templateCapabilities.data.protocolVersion, 3);
   const templateLibrary = recipeCall('templates.list', {
     query: '',
     category: 'all',
@@ -553,11 +556,32 @@ export function checkSchemaRuntime(code) {
     includeArchived: false,
   });
   assert.equal(templateLibrary.ok, true, JSON.stringify(templateLibrary));
-  assert.equal(templateLibrary.data.templates.length, 10);
+  assert.equal(templateLibrary.data.templates.length, 14);
+  const coffeehouseTemplate = templateLibrary.data.templates.find(
+    (entry) => entry.template.layout === 'coffeehouse',
+  );
+  assert.ok(coffeehouseTemplate, 'The coffeehouse builtin must remain available.');
   const appliedTemplate = recipeCall('recipes.template.apply', {
     recipeId,
     expectedRecipeRevision: 4,
-    templateId: templateLibrary.data.templates[5].template.id,
+    expectedRecipeTemplateRevision: null,
+    templateId: coffeehouseTemplate.template.id,
+    theme: {
+      name: 'Тёплая бумага',
+      mode: 'light',
+      palette: {
+        background: '#f4efe7',
+        surface: '#fffdf8',
+        text: '#302a25',
+        muted: '#695f57',
+        border: '#d8ccbd',
+        primary: '#a74459',
+        primaryText: '#ffffff',
+        accent: '#8a5b00',
+      },
+      fontPair: 'literary',
+      paper: 'plain',
+    },
   });
   assert.equal(appliedTemplate.data.template.layout, 'coffeehouse');
   assert.equal(
@@ -578,7 +602,7 @@ export function checkSchemaRuntime(code) {
     'ACCESS_DENIED',
   );
   assert.equal(typeof sandbox.recoverBookBackup, 'function');
-  assert.equal(recipeCall('admin.health').data.tablesChecked, 24);
+  assert.equal(recipeCall('admin.health').data.tablesChecked, 25);
   assert.equal(recipeCall('admin.operations.list').data.schemaVersion, 2);
   assert.equal(listAccess().revision, 8);
   assert.equal(held, false);

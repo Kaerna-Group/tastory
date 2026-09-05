@@ -4,7 +4,20 @@ import type {
   RecipeCommand,
   RecipeData,
   RecipeSummary,
+  StickerData,
+  TemplateData,
+  RecipeTemplate,
+  RecipeDesign,
+  RecipeSticker,
+  StickerItem,
+  StickerPackView,
   Tag,
+} from '@tastory/contracts';
+import {
+  DEFAULT_RECIPE_THEME,
+  RECIPE_DESIGN_VERSION,
+  RECIPE_LAYOUT_ALGORITHM_VERSION,
+  RECIPE_LAYOUT_VERSION,
 } from '@tastory/contracts';
 import {
   buildTransferDocument,
@@ -14,6 +27,7 @@ import {
   serializeTransferDocument,
   verifyTransferFiles,
 } from './recipe-transfer';
+import type { TransferRequests } from './recipe-transfer';
 
 const image = 'aW1hZ2U=',
   thumbnail = 'dGh1bWI=',
@@ -142,7 +156,31 @@ function summary(value: RecipeAggregate): RecipeSummary {
 }
 function fixture(initial: RecipeAggregate[] = []) {
   const recipes = new Map(initial.map((item) => [item.recipe.id, structuredClone(item)]));
+  const presentations = new Map<string, RecipeTemplate>(
+    initial.map((item) => [
+      item.recipe.id,
+      {
+        id: item.recipe.id,
+        recipeId: item.recipe.id,
+        templateId: crypto.randomUUID(),
+        templateName: 'Сохранённая страница',
+        category: 'dish',
+        layout: 'herbarium',
+        theme: {
+          ...DEFAULT_RECIPE_THEME,
+          name: 'Шалфей',
+          palette: { ...DEFAULT_RECIPE_THEME.palette, accent: '#356f4f' },
+          paper: 'linen',
+        },
+        sourceOwnerUserId: null,
+        revision: 1,
+        createdAt: now,
+        updatedAt: now,
+      },
+    ]),
+  );
   const tags = new Map<string, Tag>();
+  const designs = new Map<string, RecipeDesign>();
   const receipts = new Map<string, RecipeData>();
   let creates = 0,
     uploads = 0;
@@ -281,13 +319,265 @@ function fixture(initial: RecipeAggregate[] = []) {
     }
     throw new Error(`unexpected ${command.action}`);
   };
-  return { request, recipes, counts: () => ({ creates, uploads }) };
+  const templateReceipts = new Map<string, TemplateData>();
+  const templates = async (
+    command: Parameters<TransferRequests['templates']>[0],
+    requestId: string,
+  ): Promise<TemplateData> => {
+    if (command.action === 'recipes.template.get')
+      return {
+        kind: 'recipeTemplate',
+        recipeId: command.payload.recipeId,
+        template: presentations.get(command.payload.recipeId) ?? null,
+        outcome: 'read',
+      };
+    if (command.action === 'recipes.design.get')
+      return {
+        kind: 'recipeDesign',
+        recipeId: command.payload.recipeId,
+        design: designs.get(command.payload.recipeId) ?? null,
+        outcome: 'read',
+      };
+    if (command.action === 'recipes.template.restore') {
+      const replay = templateReceipts.get(requestId);
+      if (replay) return replay;
+      const previous = presentations.get(command.payload.recipeId);
+      const restored: RecipeTemplate = {
+        id: command.payload.recipeId,
+        recipeId: command.payload.recipeId,
+        templateId: null,
+        ...command.payload.snapshot,
+        sourceOwnerUserId: null,
+        revision: (previous?.revision ?? 0) + 1,
+        createdAt: previous?.createdAt ?? now,
+        updatedAt: now,
+      };
+      presentations.set(command.payload.recipeId, restored);
+      if (command.payload.design) {
+        const previousDesign = designs.get(command.payload.recipeId);
+        designs.set(command.payload.recipeId, {
+          id: command.payload.recipeId,
+          recipeId: command.payload.recipeId,
+          revision: (previousDesign?.revision ?? 0) + 1,
+          recipeTemplateRevision: restored.revision,
+          sourceTemplateId: null,
+          sourceTemplateRevision: null,
+          value: command.payload.design,
+          createdAt: previousDesign?.createdAt ?? now,
+          updatedAt: now,
+        });
+      }
+      const result: TemplateData = {
+        kind: 'recipeTemplate',
+        recipeId: command.payload.recipeId,
+        template: restored,
+        outcome: 'committed',
+      };
+      templateReceipts.set(requestId, result);
+      return result;
+    }
+    if (command.action === 'recipes.design.save') {
+      const replay = templateReceipts.get(requestId);
+      if (replay) return replay;
+      const previous = designs.get(command.payload.recipeId);
+      const design: RecipeDesign = {
+        id: command.payload.recipeId,
+        recipeId: command.payload.recipeId,
+        revision: (previous?.revision ?? 0) + 1,
+        recipeTemplateRevision: presentations.get(command.payload.recipeId)?.revision ?? null,
+        sourceTemplateId: null,
+        sourceTemplateRevision: null,
+        value: command.payload.value,
+        createdAt: previous?.createdAt ?? now,
+        updatedAt: now,
+      };
+      designs.set(command.payload.recipeId, design);
+      const result: TemplateData = {
+        kind: 'recipeDesign',
+        recipeId: command.payload.recipeId,
+        design,
+        outcome: 'committed',
+      };
+      templateReceipts.set(requestId, result);
+      return result;
+    }
+    throw new Error(`unexpected ${command.action}`);
+  };
+  const stickers = async (
+    command: Parameters<TransferRequests['stickers']>[0],
+  ): Promise<StickerData> => {
+    if (command.action === 'recipes.stickers.list')
+      return { kind: 'recipeStickers', recipeId: command.payload.recipeId, stickers: [] };
+    if (command.action === 'stickers.packs.list') return { kind: 'stickerPacks', packs: [] };
+    throw new Error(`unexpected ${command.action}`);
+  };
+  return {
+    request,
+    requests: { recipes: request, templates, stickers },
+    recipes,
+    presentations,
+    designs,
+    counts: () => ({ creates, uploads }),
+  };
+}
+
+function sourceStickerRequests(base: TransferRequests, recipeId: string) {
+  const packId = crypto.randomUUID();
+  const stickerId = crypto.randomUUID();
+  const placement: RecipeSticker = {
+    id: crypto.randomUUID(),
+    recipeId,
+    stickerId,
+    packId,
+    name: 'Лимонная ветка',
+    emoji: '🍋',
+    mimeType: 'image/png',
+    assetWidth: 10,
+    assetHeight: 12,
+    assetBytes: 5,
+    assetDigest: imageDigest,
+    assetKey: null,
+    page: 2,
+    x: 17,
+    y: 23,
+    width: 18,
+    height: 20,
+    rotation: -7,
+    zIndex: 4,
+    status: 'active',
+    revision: 1,
+    createdAt: now,
+    updatedAt: now,
+  };
+  return {
+    ...base,
+    stickers: async (
+      command: Parameters<TransferRequests['stickers']>[0],
+      requestId: string,
+      signal?: AbortSignal,
+    ): Promise<StickerData> => {
+      if (command.action === 'recipes.stickers.list')
+        return { kind: 'recipeStickers', recipeId, stickers: [placement] };
+      if (command.action === 'stickers.assets.read')
+        return { kind: 'stickerAsset', mimeType: 'image/png', base64: image, digest: imageDigest };
+      return base.stickers(command, requestId, signal);
+    },
+  } satisfies TransferRequests;
+}
+
+function targetStickerRequests(base: TransferRequests) {
+  const packs = new Map<string, StickerPackView>();
+  const placements = new Map<string, RecipeSticker>();
+  const stickers = async (
+    command: Parameters<TransferRequests['stickers']>[0],
+    requestId: string,
+  ): Promise<StickerData> => {
+    if (command.action === 'stickers.packs.list')
+      return { kind: 'stickerPacks', packs: [...packs.values()] };
+    if (command.action === 'stickers.packs.create') {
+      const view: StickerPackView = {
+        pack: {
+          id: requestId,
+          workspaceId: crypto.randomUUID(),
+          ownerUserId: crypto.randomUUID(),
+          kind: 'custom',
+          ...command.payload,
+          status: 'active',
+          position: packs.size,
+          revision: 1,
+          createdAt: now,
+          updatedAt: now,
+        },
+        stickers: [],
+        canManage: true,
+      };
+      packs.set(requestId, view);
+      return { kind: 'stickerPack', ...view, outcome: 'committed' };
+    }
+    if (command.action === 'stickers.items.add') {
+      const view = packs.get(command.payload.packId);
+      if (!view) throw new Error('missing pack');
+      const item: StickerItem = {
+        id: requestId,
+        packId: view.pack.id,
+        name: command.payload.name,
+        normalizedName: command.payload.name.toLocaleLowerCase('ru'),
+        emoji: command.payload.emoji,
+        position: command.payload.position,
+        mimeType: command.payload.upload.mimeType,
+        width: command.payload.upload.width,
+        height: command.payload.upload.height,
+        bytes: command.payload.upload.bytes,
+        digest: imageDigest,
+        assetKey: null,
+        status: 'active',
+        revision: 1,
+        createdAt: now,
+        updatedAt: now,
+      };
+      const next: StickerPackView = {
+        ...view,
+        pack: { ...view.pack, revision: view.pack.revision + 1 },
+        stickers: [...view.stickers, item],
+      };
+      packs.set(view.pack.id, next);
+      return { kind: 'stickerPack', ...next, outcome: 'committed' };
+    }
+    if (command.action === 'recipes.stickers.list')
+      return {
+        kind: 'recipeStickers',
+        recipeId: command.payload.recipeId,
+        stickers: [...placements.values()].filter(
+          (placement) => placement.recipeId === command.payload.recipeId,
+        ),
+      };
+    if (command.action === 'recipes.stickers.add') {
+      const item = [...packs.values()]
+        .flatMap((view) => view.stickers)
+        .find((candidate) => candidate.id === command.payload.stickerId);
+      if (!item) throw new Error('missing sticker');
+      const placement: RecipeSticker = {
+        id: requestId,
+        recipeId: command.payload.recipeId,
+        stickerId: item.id,
+        packId: item.packId,
+        name: item.name,
+        emoji: item.emoji,
+        mimeType: item.mimeType,
+        assetWidth: item.width,
+        assetHeight: item.height,
+        assetBytes: item.bytes,
+        assetDigest: item.digest,
+        assetKey: item.assetKey,
+        page: command.payload.page,
+        x: command.payload.x,
+        y: command.payload.y,
+        width: command.payload.width,
+        height: command.payload.height,
+        rotation: command.payload.rotation,
+        zIndex: command.payload.zIndex,
+        status: 'active',
+        revision: 1,
+        createdAt: now,
+        updatedAt: now,
+      };
+      placements.set(requestId, placement);
+      return {
+        kind: 'recipeSticker',
+        recipeId: command.payload.recipeId,
+        sticker: placement,
+        outcome: 'committed',
+      };
+    }
+    throw new Error(`unexpected ${command.action}`);
+  };
+  return { requests: { ...base, stickers } satisfies TransferRequests, packs, placements };
 }
 
 it('exports and validates a recipe with its original and thumbnail', async () => {
   const source = aggregate(),
     f = fixture([source]);
-  const document = await buildTransferDocument('recipe', [source.recipe.id], f.request);
+  const document = await buildTransferDocument('recipe', [source.recipe.id], f.requests);
   const text = serializeTransferDocument(document),
     parsed = parseTransferDocument(text);
   await expect(verifyTransferFiles(parsed)).resolves.toBeUndefined();
@@ -295,6 +585,7 @@ it('exports and validates a recipe with its original and thumbnail', async () =>
     visibility: 'workspace',
     content: { title: 'Суп с фото' },
     photos: [{ stepSourceId: source.steps[0]?.id, image: { base64: image } }],
+    presentation: { layout: 'herbarium', theme: { paper: 'linen' } },
   });
   const damaged = structuredClone(parsed);
   if (damaged.recipes[0]?.photos[0]) damaged.recipes[0].photos[0].image.base64 = 'b3RoZXI=';
@@ -303,7 +594,44 @@ it('exports and validates a recipe with its original and thumbnail', async () =>
 
 it('previews collisions, imports private copies with files and resumes without duplicates', async () => {
   const source = aggregate(),
-    exported = await buildTransferDocument('recipe', [source.recipe.id], fixture([source]).request),
+    sourceFixture = fixture([source]),
+    sourceElementId = crypto.randomUUID();
+  sourceFixture.designs.set(source.recipe.id, {
+    id: source.recipe.id,
+    recipeId: source.recipe.id,
+    revision: 1,
+    recipeTemplateRevision: 1,
+    sourceTemplateId: null,
+    sourceTemplateRevision: null,
+    value: {
+      version: RECIPE_DESIGN_VERSION,
+      layout: 'herbarium',
+      layoutVersion: RECIPE_LAYOUT_VERSION,
+      layoutAlgorithmVersion: RECIPE_LAYOUT_ALGORITHM_VERSION,
+      theme: { ...DEFAULT_RECIPE_THEME, name: 'Шалфей', paper: 'linen' },
+      elements: [
+        {
+          id: sourceElementId,
+          binding: 'notes',
+          region: 'body',
+          x: 10,
+          y: 70,
+          width: 80,
+          height: 15,
+          rotation: 0,
+          zIndex: 2,
+          locked: true,
+        },
+      ],
+    },
+    createdAt: now,
+    updatedAt: now,
+  });
+  const exported = await buildTransferDocument(
+      'recipe',
+      [source.recipe.id],
+      sourceFixture.requests,
+    ),
     existing = aggregate(source.recipe.title),
     target = fixture([existing]);
   expect(previewTransfer(exported, [summary(existing)]).conflicts).toHaveLength(1);
@@ -311,17 +639,17 @@ it('previews collisions, imports private copies with files and resumes without d
     importTransferDocument(
       exported,
       { collision: 'skip', visibility: 'private', runId: crypto.randomUUID() },
-      target.request,
+      target.requests,
     ),
-  ).resolves.toEqual({ imported: 0, skipped: 1, photos: 0 });
+  ).resolves.toEqual({ imported: 0, skipped: 1, photos: 0, stickers: 0 });
   const runId = crypto.randomUUID();
   await expect(
     importTransferDocument(
       exported,
       { collision: 'copy', visibility: 'private', runId },
-      target.request,
+      target.requests,
     ),
-  ).resolves.toEqual({ imported: 1, skipped: 0, photos: 1 });
+  ).resolves.toEqual({ imported: 1, skipped: 0, photos: 1, stickers: 0 });
   expect(target.counts()).toEqual({ creates: 1, uploads: 1 });
   const imported = [...target.recipes.values()].find(
     (item) => item.recipe.id !== existing.recipe.id,
@@ -330,10 +658,73 @@ it('previews collisions, imports private copies with files and resumes without d
     recipe: { visibility: 'private', title: source.recipe.title },
     photos: [{ kind: 'step' }],
   });
+  expect(target.presentations.get(imported?.recipe.id ?? '')).toMatchObject({
+    templateId: null,
+    layout: 'herbarium',
+    theme: { name: 'Шалфей', paper: 'linen' },
+  });
+  const importedDesign = target.designs.get(imported?.recipe.id ?? '');
+  expect(importedDesign).toMatchObject({
+    revision: 1,
+    value: { layout: 'herbarium', elements: [{ x: 10, y: 70 }] },
+  });
+  expect(importedDesign?.value.elements[0]?.id).not.toBe(sourceElementId);
   await importTransferDocument(
     exported,
     { collision: 'copy', visibility: 'private', runId },
-    target.request,
+    target.requests,
   );
   expect(target.counts()).toEqual({ creates: 1, uploads: 1 });
+});
+
+it('moves custom sticker assets and placements through the versioned file without duplicates', async () => {
+  const source = aggregate('Пирог со стикером');
+  const sourceFixture = fixture([source]);
+  const exported = await buildTransferDocument(
+    'recipe',
+    [source.recipe.id],
+    sourceStickerRequests(sourceFixture.requests, source.recipe.id),
+  );
+  expect(exported).toMatchObject({
+    version: 3,
+    recipes: [
+      {
+        stickers: [
+          {
+            name: 'Лимонная ветка',
+            asset: { base64: image, digest: imageDigest },
+            page: 2,
+            rotation: -7,
+          },
+        ],
+      },
+    ],
+  });
+
+  const target = fixture();
+  const visualTarget = targetStickerRequests(target.requests);
+  const options = {
+    collision: 'copy' as const,
+    visibility: 'private' as const,
+    runId: crypto.randomUUID(),
+  };
+  await expect(
+    importTransferDocument(exported, options, visualTarget.requests),
+  ).resolves.toMatchObject({
+    imported: 1,
+    stickers: 1,
+  });
+  await expect(
+    importTransferDocument(exported, options, visualTarget.requests),
+  ).resolves.toMatchObject({
+    stickers: 0,
+  });
+  expect(visualTarget.packs).toHaveLength(1);
+  expect(visualTarget.placements).toHaveLength(1);
+  expect([...visualTarget.placements.values()][0]).toMatchObject({
+    page: 2,
+    x: 17,
+    y: 23,
+    rotation: -7,
+  });
 });

@@ -3,6 +3,14 @@ import { RecipeStorageError } from '../services/recipe-storage';
 import type { RecipeStore } from '../services/recipe-storage';
 import { createJournalStore } from './journal-store';
 
+// JSON-encoded finite negative numbers (e.g. sticker rotation) are data, never formulas.
+function formulaLike(value: string) {
+  return (
+    /^[=+\-@]/.test(value) &&
+    !(/^-(?:0|[1-9]\d*)(?:\.\d+)?(?:e[+-]?\d+)?$/.test(value) && Number.isFinite(Number(value)))
+  );
+}
+
 export function createRecipeStore(
   spreadsheet: GoogleAppsScript.Spreadsheet.Spreadsheet,
 ): RecipeStore {
@@ -51,8 +59,7 @@ export function createRecipeStore(
         firstRow + rows.length > limit + 2 ||
         rows.some(
           (row) =>
-            row.length !== width ||
-            row.some((value) => value.length > 20002 || /^[=+\-@]/.test(value)),
+            row.length !== width || row.some((value) => value.length > 20002 || formulaLike(value)),
         )
       )
         throw new RecipeStorageError('RECIPE_LIMIT');

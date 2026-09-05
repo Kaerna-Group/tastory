@@ -323,6 +323,7 @@ export function createApiClient(
       );
       const parsed = templateResponseSchema.safeParse(raw);
       const expectedKind = {
+        'templates.capabilities': 'templateCapabilities',
         'templates.list': 'templateLibrary',
         'templates.create': 'template',
         'templates.update': 'template',
@@ -331,6 +332,9 @@ export function createApiClient(
         'templates.clone': 'template',
         'recipes.template.get': 'recipeTemplate',
         'recipes.template.apply': 'recipeTemplate',
+        'recipes.template.restore': 'recipeTemplate',
+        'recipes.design.get': 'recipeDesign',
+        'recipes.design.save': 'recipeDesign',
       }[command.action];
       if (
         !parsed.success ||
@@ -341,6 +345,12 @@ export function createApiClient(
               command.action.startsWith('recipes.template.') &&
               (parsed.data.data.recipeId !== (command.payload as { recipeId: string }).recipeId ||
                 (command.action === 'recipes.template.get'
+                  ? parsed.data.data.outcome !== 'read'
+                  : parsed.data.data.outcome === 'read'))) ||
+            (parsed.data.data.kind === 'recipeDesign' &&
+              command.action.startsWith('recipes.design.') &&
+              (parsed.data.data.recipeId !== (command.payload as { recipeId: string }).recipeId ||
+                (command.action === 'recipes.design.get'
                   ? parsed.data.data.outcome !== 'read'
                   : parsed.data.data.outcome === 'read')))))
       )

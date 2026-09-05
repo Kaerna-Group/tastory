@@ -1,52 +1,29 @@
-import { useEffect, useRef, useState } from 'react';
-import { getReloadBlockers } from '@/shared/update-safety';
+import { useEffect, useState } from 'react';
 
-interface InstallPromptEvent extends Event {
-  prompt(): Promise<void>;
+type InstallPrompt = Event & {
+  prompt: () => Promise<void>;
   userChoice: Promise<{ outcome: 'accepted' | 'dismissed'; platform: string }>;
+};
+const DISMISSED_KEY = 'tastory.pwa-install-dismissed.v1';
+
+function wasDismissed() {
+  try {
+    return localStorage.getItem(DISMISSED_KEY) === 'yes';
+  } catch {
+    return false;
+  }
 }
 
 export function PwaManager(): React.JSX.Element | null {
-  const [online, setOnline] = useState(() => navigator.onLine);
-  const [installPrompt, setInstallPrompt] = useState<InstallPromptEvent | null>(null);
-  const [waiting, setWaiting] = useState<ServiceWorker | null>(null);
-  const [message, setMessage] = useState('');
-  const reloadOnChange = useRef(false);
-
+  const [installPrompt, setInstallPrompt] = useState<InstallPrompt | null>(null);
   useEffect(() => {
-    const updateConnection = () => setOnline(navigator.onLine);
-    const offerInstall = (event: Event) => {
-      event.preventDefault();
-      setInstallPrompt(event as InstallPromptEvent);
-    };
-    const installed = () => setInstallPrompt(null);
-    window.addEventListener('online', updateConnection);
-    window.addEventListener('offline', updateConnection);
-    window.addEventListener('beforeinstallprompt', offerInstall);
-    window.addEventListener('appinstalled', installed);
-
-    if (!import.meta.env.PROD || !('serviceWorker' in navigator))
-      return () => {
-        window.removeEventListener('online', updateConnection);
-        window.removeEventListener('offline', updateConnection);
-        window.removeEventListener('beforeinstallprompt', offerInstall);
-        window.removeEventListener('appinstalled', installed);
-      };
+    if (!import.meta.env.PROD || !('serviceWorker' in navigator)) return;
 
     let registration: ServiceWorkerRegistration | null = null;
     let active = true;
-    let updateFound: (() => void) | null = null;
-    const controllerChanged = () => {
-      if (reloadOnChange.current) window.location.reload();
-    };
-    const checkWaiting = (worker: ServiceWorker | null) => {
-      if (active && worker?.state === 'installed' && navigator.serviceWorker.controller)
-        setWaiting(worker);
-    };
     const checkForUpdate = () => {
       if (document.visibilityState === 'visible' && navigator.onLine) void registration?.update();
     };
-    navigator.serviceWorker.addEventListener('controllerchange', controllerChanged);
     void navigator.serviceWorker
       .register(`${import.meta.env.BASE_URL}sw.js`, {
         scope: import.meta.env.BASE_URL,
@@ -55,69 +32,72 @@ export function PwaManager(): React.JSX.Element | null {
       .then((value) => {
         if (!active) return;
         registration = value;
-        if (value.waiting && navigator.serviceWorker.controller) setWaiting(value.waiting);
-        updateFound = () => {
-          const worker = value.installing;
-          worker?.addEventListener('statechange', () => checkWaiting(worker));
-        };
-        value.addEventListener('updatefound', updateFound);
       })
       .catch(() => undefined);
     document.addEventListener('visibilitychange', checkForUpdate);
 
     return () => {
       active = false;
-      if (registration && updateFound) registration.removeEventListener('updatefound', updateFound);
-      window.removeEventListener('online', updateConnection);
-      window.removeEventListener('offline', updateConnection);
-      window.removeEventListener('beforeinstallprompt', offerInstall);
-      window.removeEventListener('appinstalled', installed);
-      navigator.serviceWorker.removeEventListener('controllerchange', controllerChanged);
       document.removeEventListener('visibilitychange', checkForUpdate);
     };
   }, []);
 
-  async function install(): Promise<void> {
-    if (!installPrompt) return;
-    await installPrompt.prompt();
-    const choice = await installPrompt.userChoice;
-    if (choice.outcome !== 'accepted')
-      setMessage('Установку можно запустить позже из меню браузера.');
+  useEffect(() => {
+    if (!import.meta.env.PROD || window.matchMedia('(display-mode: standalone)').matches) return;
+    const offer = (event: Event) => {
+      event.preventDefault();
+      if (!wasDismissed()) setInstallPrompt(event as InstallPrompt);
+    };
+    const installed = () => {
+      setInstallPrompt(null);
+      try {
+        localStorage.setItem(DISMISSED_KEY, 'yes');
+      } catch {
+        // Installation remains complete even if this optional marker cannot be saved.
+      }
+    };
+    window.addEventListener('beforeinstallprompt', offer);
+    window.addEventListener('appinstalled', installed);
+    return () => {
+      window.removeEventListener('beforeinstallprompt', offer);
+      window.removeEventListener('appinstalled', installed);
+    };
+  }, []);
+
+  if (!installPrompt) return null;
+  const close = () => {
     setInstallPrompt(null);
-  }
-
-  function update(): void {
-    if (!waiting) return;
-    if (getReloadBlockers().length > 0) {
-      setMessage('Обновление отложено: сначала сохраните или скачайте аварийную копию рецепта.');
-      return;
+    try {
+      localStorage.setItem(DISMISSED_KEY, 'yes');
+    } catch {
+      // The invitation simply may reappear in a later session.
     }
-    reloadOnChange.current = true;
-    waiting.postMessage({ type: 'SKIP_WAITING' });
-  }
-
-  if (online && !installPrompt && !waiting && !message) return null;
+  };
+  const install = async () => {
+    try {
+      await installPrompt.prompt();
+      await installPrompt.userChoice;
+    } finally {
+      setInstallPrompt(null);
+    }
+  };
   return (
-    <aside className="pwa-status" aria-label="Состояние приложения">
-      {!online && <p role="status">Нет сети. Доступны локальные черновики и недавние рецепты.</p>}
-      {message && <p role="status">{message}</p>}
-      <div className="pwa-status-actions">
-        {installPrompt && (
-          <button type="button" className="button button-secondary" onClick={() => void install()}>
-            Установить приложение
-          </button>
-        )}
-        {waiting && (
-          <button type="button" className="button button-primary" onClick={update}>
-            Обновить приложение
-          </button>
-        )}
-        {message && (
-          <button type="button" className="text-link" onClick={() => setMessage('')}>
-            Закрыть
-          </button>
-        )}
+    <aside className="pwa-install-prompt" aria-label="Установка Tastory">
+      <div>
+        <strong>Добавить Tastory на устройство</strong>
+        <p>Кулинарная книга будет открываться как обычное приложение.</p>
       </div>
+      <button type="button" className="button button-secondary" onClick={() => void install()}>
+        Установить
+      </button>
+      <button
+        type="button"
+        className="icon-button"
+        aria-label="Закрыть приглашение установить Tastory"
+        onClick={close}
+      >
+        ×
+      </button>
     </aside>
   );
 }

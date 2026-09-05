@@ -9,6 +9,7 @@ export {
 } from './model/recipe-transfer';
 export type {
   TransferRequest,
+  TransferRequests,
   TransferProgress,
   TransferPreview,
   ImportOptions,

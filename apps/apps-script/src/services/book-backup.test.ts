@@ -15,6 +15,15 @@ import { canonicalRecipeJson } from './recipe-storage';
 import { sha256 } from '../test-support/journal-fixture';
 import { recoverBookBackup } from '../entrypoints/backup-recovery';
 import { backups } from '../platform/backups';
+import {
+  DEFAULT_RECIPE_THEME,
+  RECIPE_DESIGN_VERSION,
+  RECIPE_LAYOUT_ALGORITHM_VERSION,
+  RECIPE_LAYOUT_VERSION,
+  recipeDesignSchema,
+} from '@tastory/contracts';
+import { publishTemplateMutation } from './template-storage';
+import { other, timestamp } from '../test-support/journal-fixture';
 afterEach(() => {
   vi.unstubAllGlobals();
   vi.useRealTimers();
@@ -25,6 +34,39 @@ function scenario() {
     f.context,
     { action: 'recipes.create', payload: { value: f.value, visibility: 'private' } },
     randomUUID(),
+  );
+  const designRequestId = randomUUID();
+  const design = recipeDesignSchema.parse({
+    id: saved.entityId,
+    recipeId: saved.entityId,
+    revision: 1,
+    recipeTemplateRevision: null,
+    sourceTemplateId: null,
+    sourceTemplateRevision: null,
+    value: {
+      version: RECIPE_DESIGN_VERSION,
+      layout: 'hearth',
+      layoutVersion: RECIPE_LAYOUT_VERSION,
+      layoutAlgorithmVersion: RECIPE_LAYOUT_ALGORITHM_VERSION,
+      theme: DEFAULT_RECIPE_THEME,
+      elements: [],
+    },
+    createdAt: timestamp,
+    updatedAt: timestamp,
+  });
+  publishTemplateMutation(
+    f.store,
+    {
+      requestId: designRequestId,
+      workspaceId: f.context.workspaceId,
+      userId: other,
+      action: 'recipes.design.save',
+      entityId: saved.entityId,
+      payloadHash: 'd'.repeat(64),
+      startedAt: timestamp,
+    },
+    [{ table: 'RecipeDesigns', value: design }],
+    () => new Date(timestamp),
   );
   mutateRecipe(
     f.context,
@@ -62,7 +104,7 @@ it('copies every table/file, checks hashes and restores rights, history and phot
     restoreId = randomUUID();
   const before = readBackupTables(f.book);
   const saved = createBookBackup(f.port, f.id, f.context.workspaceId);
-  expect(saved.tables).toBe(24);
+  expect(saved.tables).toBe(25);
   expect(saved.files).toBe(4);
   expect(verifyBookBackup(f.port, f.id, f.context.workspaceId)).toEqual(saved);
   const restored = restoreBookBackup(f.port, f.id, f.context.workspaceId, restoreId);
@@ -112,7 +154,7 @@ for (const mode of ['backup', 'restore'] as const)
         expect(() => f.run()).toThrow();
         f.failDrive();
         f.run();
-        expect(verifyBookBackup(f.port, f.id, f.context.workspaceId).tables).toBe(24);
+        expect(verifyBookBackup(f.port, f.id, f.context.workspaceId).tables).toBe(25);
         expect(readBackupTables(f.book)).toEqual(before);
         const writes = f.driveWrites();
         f.run();

@@ -28,7 +28,11 @@ import type {
 
 const targets: ReadonlyArray<{ id: ThemeTarget; label: string; description: string }> = [
   { id: 'app', label: 'Приложение', description: 'Меню, библиотека и настройки' },
-  { id: 'page', label: 'Страница рецепта', description: 'Бумага и карточки открытого рецепта' },
+  {
+    id: 'page',
+    label: 'Новые страницы',
+    description: 'Основа при следующем выборе макета',
+  },
 ];
 const fontNames: Record<FontPair, string> = {
   literary: 'Литературная — Georgia и Segoe UI',
@@ -191,6 +195,7 @@ export function ThemeBuilder(): React.JSX.Element {
   const [libraryFilter, setLibraryFilter] = useState<LibraryFilter>('all');
   const [libraryQuery, setLibraryQuery] = useState('');
   const [message, setMessage] = useState('');
+  const [editorOpen, setEditorOpen] = useState(false);
   const libraryTriggerRef = useRef<HTMLButtonElement>(null);
   const libraryDialogRef = useRef<HTMLElement>(null);
   const moreTriggerRef = useRef<HTMLButtonElement>(null);
@@ -372,6 +377,20 @@ export function ThemeBuilder(): React.JSX.Element {
     setAdvancedOpen(false);
     setMessage('');
   };
+  const applyQuickMode = (mode: ThemeProfile['mode']) => {
+    const preset = QUICK_THEME_PRESET_IDS.find((id) => THEME_PRESETS[id].mode === mode);
+    if (!preset) return;
+    const profile = copyThemePreset(preset);
+    setDraft(profile);
+    setSelectedPreset(preset);
+    setSelectedCustom(null);
+    applyThemePreferences({ ...preferences, [target]: profile });
+    setMessage(
+      target === 'app'
+        ? `Оформление приложения изменено на «${profile.name}».`
+        : `Основа для новых страниц изменена на «${profile.name}». Сохранённые рецепты не изменились.`,
+    );
+  };
 
   const normalizedQuery = libraryQuery.trim().toLocaleLowerCase('ru');
   const matchesLibrary = (profile: ThemeProfile, description = '') =>
@@ -396,10 +415,10 @@ export function ThemeBuilder(): React.JSX.Element {
       <div className="theme-builder-heading">
         <div>
           <p className="eyebrow">Оформление без кода</p>
-          <h2 id="theme-builder-title">Конструктор тем</h2>
+          <h2 id="theme-builder-title">Внешний вид</h2>
           <p className="muted">
-            Шесть основных тем доступны сразу. Расширенная библиотека хранит ещё четыре встроенные
-            темы и ваши собственные варианты.
+            Интерфейс Tastory и оформление рецепта независимы. Уже сохранённая книжная страница не
+            меняется вместе с темой приложения.
           </p>
         </div>
         <fieldset className="theme-targets">
@@ -418,312 +437,375 @@ export function ThemeBuilder(): React.JSX.Element {
         </fieldset>
       </div>
 
-      <section className="theme-quick-section" aria-labelledby="quick-themes-title">
-        <div className="theme-section-heading">
-          <div>
-            <p className="eyebrow">3 светлые · 3 тёмные</p>
-            <h3 id="quick-themes-title">Быстрый выбор</h3>
+      <section className="theme-compact-overview" aria-labelledby="theme-compact-title">
+        <div>
+          <p className="eyebrow">Быстрый выбор</p>
+          <h3 id="theme-compact-title">
+            {target === 'app' ? 'Интерфейс приложения' : 'Основа новых страниц'}
+          </h3>
+          <p className="muted">
+            Сейчас: «{preferences[target].name}».{' '}
+            {target === 'page' && 'Изменение применяется только при явном выборе макета рецепта.'}
+          </p>
+          <div className="theme-compact-actions">
+            <button
+              type="button"
+              className="button button-secondary"
+              aria-pressed={preferences[target].mode === 'light'}
+              onClick={() => applyQuickMode('light')}
+            >
+              Светлое
+            </button>
+            <button
+              type="button"
+              className="button button-secondary"
+              aria-pressed={preferences[target].mode === 'dark'}
+              onClick={() => applyQuickMode('dark')}
+            >
+              Тёмное
+            </button>
+            <button
+              type="button"
+              className="text-link"
+              aria-expanded={editorOpen}
+              onClick={() => setEditorOpen((open) => !open)}
+            >
+              {editorOpen ? 'Скрыть подробные настройки' : 'Подробные настройки'}
+            </button>
           </div>
-          <button
-            ref={libraryTriggerRef}
-            type="button"
-            className="button button-secondary"
-            onClick={() => setLibraryOpen(true)}
-          >
-            Открыть библиотеку тем
-            <span className="theme-library-count">10 встроенных · {customThemes.length} своих</span>
-          </button>
+          {!editorOpen && message && <p role="status">{message}</p>}
         </div>
-        <div className="theme-quick-groups">
-          {(['light', 'dark'] as const).map((mode) => (
-            <div key={mode} className="theme-quick-group">
-              <h4>{mode === 'light' ? 'Светлые темы' : 'Тёмные темы'}</h4>
-              <div className="theme-card-grid theme-card-grid-quick">
-                {QUICK_THEME_PRESET_IDS.filter((id) => THEME_PRESETS[id].mode === mode).map(
-                  (id) => (
-                    <ThemeCard
-                      key={id}
-                      profile={THEME_PRESETS[id]}
-                      description={THEME_PRESET_DETAILS[id].description}
-                      source={THEME_PRESET_DETAILS[id].mood}
-                      selected={selectedPreset === id}
-                      onSelect={() => selectPreset(id)}
-                    />
-                  ),
-                )}
-              </div>
-            </div>
-          ))}
+        <div className="theme-compact-preview" style={previewStyle} aria-hidden="true">
+          <span />
+          <strong>{draft.name}</strong>
+          <i />
+          <i />
+          <b>Пример</b>
         </div>
       </section>
 
-      <div className="theme-builder-layout">
-        <div className="theme-controls">
-          <div className="theme-current-row">
-            <div>
-              <span className="theme-current-label">Редактируется</span>
-              <strong>{draft.name}</strong>
-              <span>
-                {selectedPreset ? 'Встроенная тема' : selectedCustom ? 'Моя тема' : 'Новая тема'}
-              </span>
-            </div>
-            <div ref={moreMenuRef} className="theme-more">
-              <button
-                ref={moreTriggerRef}
-                type="button"
-                className="theme-more-button"
-                aria-label="Дополнительные действия с темой"
-                aria-expanded={moreOpen}
-                aria-haspopup="menu"
-                onClick={() => setMoreOpen((open) => !open)}
-              >
-                ⋮
-              </button>
-              {moreOpen && (
-                <div className="theme-more-menu" role="menu">
-                  <button
-                    type="button"
-                    role="menuitem"
-                    onClick={() => {
-                      copyCurrent();
-                      setMoreOpen(false);
-                    }}
-                  >
-                    <strong>Создать копию</strong>
-                    <span>Сохранить исходную тему без изменений</span>
-                  </button>
-                  <button
-                    type="button"
-                    role="menuitem"
-                    disabled={!contrast.passesAA || !draft.name.trim()}
-                    onClick={() => {
-                      saveMine();
-                      setMoreOpen(false);
-                    }}
-                  >
-                    <strong>{selectedCustom ? 'Обновить мою тему' : 'Сохранить в мои темы'}</strong>
-                    <span>Добавить оформление в личную библиотеку</span>
-                  </button>
-                  <button
-                    type="button"
-                    role="menuitem"
-                    onClick={() => {
-                      setAdvancedOpen((open) => !open);
-                      setMoreOpen(false);
-                    }}
-                  >
-                    <strong>{advancedOpen ? 'Скрыть точные настройки' : 'Точные настройки'}</strong>
-                    <span>Все цвета, режим и проверка контраста</span>
-                  </button>
-                </div>
-              )}
-            </div>
-          </div>
-
-          <section className="theme-simple-controls" aria-labelledby="simple-theme-title">
-            <div className="theme-simple-heading">
+      {editorOpen && (
+        <>
+          <section className="theme-quick-section" aria-labelledby="quick-themes-title">
+            <div className="theme-section-heading">
               <div>
-                <p className="eyebrow">Легко изменить</p>
-                <h3 id="simple-theme-title">Подстройте оформление под себя</h3>
+                <p className="eyebrow">3 светлые · 3 тёмные</p>
+                <h3 id="quick-themes-title">Быстрый выбор</h3>
               </div>
-              <p className="muted">Изменения сразу появляются в примере справа.</p>
+              <button
+                ref={libraryTriggerRef}
+                type="button"
+                className="button button-secondary"
+                onClick={() => setLibraryOpen(true)}
+              >
+                Открыть библиотеку тем
+                <span className="theme-library-count">
+                  10 встроенных · {customThemes.length} своих
+                </span>
+              </button>
             </div>
-            <label className="theme-friendly-name">
-              Название оформления
-              <input
-                value={draft.name}
-                maxLength={40}
-                onChange={(event) => change('name', event.target.value)}
-              />
-            </label>
-
-            <fieldset className="theme-friendly-colors">
-              <legend>Цвет деталей</legend>
-              <div className="theme-color-choices">
-                {detailColors.map((color) => (
-                  <button
-                    key={color.value}
-                    type="button"
-                    aria-label={`Цвет деталей: ${color.label}`}
-                    aria-pressed={draft.palette.primary === color.value}
-                    onClick={() => changeDetailColor(color.value)}
-                  >
-                    <span style={{ backgroundColor: color.value }} />
-                    {color.label}
-                  </button>
-                ))}
-                <label className="theme-custom-color">
-                  <input
-                    type="color"
-                    aria-label="Свой цвет деталей"
-                    value={draft.palette.primary}
-                    onChange={(event) => changeDetailColor(event.target.value)}
-                  />
-                  <span>Свой</span>
-                </label>
-              </div>
-            </fieldset>
-
-            <fieldset className="theme-choice-group">
-              <legend>Стиль текста</legend>
-              <div className="theme-choice-buttons theme-font-choices">
-                {fontChoices.map((choice) => (
-                  <button
-                    key={choice.id}
-                    type="button"
-                    aria-pressed={draft.fontPair === choice.id}
-                    onClick={() => change('fontPair', choice.id)}
-                  >
-                    <strong>{choice.label}</strong>
-                    <span>{choice.description}</span>
-                  </button>
-                ))}
-              </div>
-            </fieldset>
-
-            <fieldset className="theme-choice-group">
-              <legend>Фактура страницы</legend>
-              <div className="theme-choice-buttons theme-paper-choices">
-                {paperChoices.map((choice) => (
-                  <button
-                    key={choice.id}
-                    type="button"
-                    aria-pressed={draft.paper === choice.id}
-                    onClick={() => change('paper', choice.id)}
-                  >
-                    {choice.label}
-                  </button>
-                ))}
-              </div>
-            </fieldset>
+            <div className="theme-quick-groups">
+              {(['light', 'dark'] as const).map((mode) => (
+                <div key={mode} className="theme-quick-group">
+                  <h4>{mode === 'light' ? 'Светлые темы' : 'Тёмные темы'}</h4>
+                  <div className="theme-card-grid theme-card-grid-quick">
+                    {QUICK_THEME_PRESET_IDS.filter((id) => THEME_PRESETS[id].mode === mode).map(
+                      (id) => (
+                        <ThemeCard
+                          key={id}
+                          profile={THEME_PRESETS[id]}
+                          description={THEME_PRESET_DETAILS[id].description}
+                          source={THEME_PRESET_DETAILS[id].mood}
+                          selected={selectedPreset === id}
+                          onSelect={() => selectPreset(id)}
+                        />
+                      ),
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
           </section>
 
-          {advancedOpen && (
-            <section className="theme-advanced" aria-labelledby="advanced-theme-title">
-              <div className="theme-advanced-heading">
+          <div className="theme-builder-layout">
+            <div className="theme-controls">
+              <div className="theme-current-row">
                 <div>
-                  <p className="eyebrow">Дополнительные функции</p>
-                  <h3 id="advanced-theme-title">Точные настройки</h3>
+                  <span className="theme-current-label">Редактируется</span>
+                  <strong>{draft.name}</strong>
+                  <span>
+                    {selectedPreset
+                      ? 'Встроенная тема'
+                      : selectedCustom
+                        ? 'Моя тема'
+                        : 'Новая тема'}
+                  </span>
                 </div>
-                <button
-                  type="button"
-                  className="theme-advanced-close"
-                  onClick={() => setAdvancedOpen(false)}
-                >
-                  Скрыть
-                </button>
-              </div>
-              <div className="theme-meta-grid theme-advanced-meta">
-                <label>
-                  Режим элементов
-                  <select
-                    value={draft.mode}
-                    onChange={(event) => change('mode', event.target.value as ThemeProfile['mode'])}
+                <div ref={moreMenuRef} className="theme-more">
+                  <button
+                    ref={moreTriggerRef}
+                    type="button"
+                    className="theme-more-button"
+                    aria-label="Дополнительные действия с темой"
+                    aria-expanded={moreOpen}
+                    aria-haspopup="menu"
+                    onClick={() => setMoreOpen((open) => !open)}
                   >
-                    <option value="light">Светлый</option>
-                    <option value="dark">Тёмный</option>
-                  </select>
-                </label>
-                <label>
-                  Точная пара шрифтов
-                  <select
-                    value={draft.fontPair}
-                    onChange={(event) => change('fontPair', event.target.value as FontPair)}
-                  >
-                    {Object.entries(fontNames).map(([id, name]) => (
-                      <option key={id} value={id}>
-                        {name}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                <label>
-                  Точная фактура
-                  <select
-                    value={draft.paper}
-                    onChange={(event) => change('paper', event.target.value as PaperStyle)}
-                  >
-                    {Object.entries(paperNames).map(([id, name]) => (
-                      <option key={id} value={id}>
-                        {name}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-              </div>
-              <fieldset className="theme-colors">
-                <legend>Все цвета</legend>
-                {colorFields.map((field) => (
-                  <label key={field.key}>
-                    <span>{field.label}</span>
-                    <input
-                      type="color"
-                      value={draft.palette[field.key]}
-                      onChange={(event) => changeColor(field.key, event.target.value)}
-                    />
-                    <code>{draft.palette[field.key].toUpperCase()}</code>
-                  </label>
-                ))}
-              </fieldset>
-              <section className="contrast-report" aria-labelledby="contrast-title">
-                <div>
-                  <h3 id="contrast-title">Читаемость текста</h3>
-                  <strong className={contrast.passesAA ? 'contrast-pass' : 'contrast-fail'}>
-                    {contrast.passesAA ? 'Всё хорошо' : 'Нужно исправить'}
-                  </strong>
+                    ⋮
+                  </button>
+                  {moreOpen && (
+                    <div className="theme-more-menu" role="menu">
+                      <button
+                        type="button"
+                        role="menuitem"
+                        onClick={() => {
+                          copyCurrent();
+                          setMoreOpen(false);
+                        }}
+                      >
+                        <strong>Создать копию</strong>
+                        <span>Сохранить исходную тему без изменений</span>
+                      </button>
+                      <button
+                        type="button"
+                        role="menuitem"
+                        disabled={!contrast.passesAA || !draft.name.trim()}
+                        onClick={() => {
+                          saveMine();
+                          setMoreOpen(false);
+                        }}
+                      >
+                        <strong>
+                          {selectedCustom ? 'Обновить мою тему' : 'Сохранить в мои темы'}
+                        </strong>
+                        <span>Добавить оформление в личную библиотеку</span>
+                      </button>
+                      <button
+                        type="button"
+                        role="menuitem"
+                        onClick={() => {
+                          setAdvancedOpen((open) => !open);
+                          setMoreOpen(false);
+                        }}
+                      >
+                        <strong>
+                          {advancedOpen ? 'Скрыть точные настройки' : 'Точные настройки'}
+                        </strong>
+                        <span>Все цвета, режим и проверка контраста</span>
+                      </button>
+                    </div>
+                  )}
                 </div>
-                <ul>
-                  {contrast.checks.map((check) => (
-                    <li key={check.id}>
-                      <span>{check.label}</span>
-                      <strong>{check.ratio.toFixed(2)}:1</strong>
-                      <span>{check.ratio >= 4.5 ? 'Читается' : 'Слишком бледно'}</span>
-                    </li>
-                  ))}
-                </ul>
-              </section>
-            </section>
-          )}
-        </div>
+              </div>
 
-        <div className="theme-preview-column">
-          <article
-            className="theme-preview"
-            data-paper={draft.paper}
-            style={previewStyle}
-            aria-label="Предпросмотр темы"
-          >
-            <p className="eyebrow">Семейный рецепт</p>
-            <h3>Яблочный пирог</h3>
-            <p>Тонкое тесто, яблоки и щепотка корицы.</p>
-            <p className="muted">Подготовка · 20 минут</p>
-            <div className="theme-preview-note">
-              <strong>Первый шаг</strong>
-              <span>Разогрейте духовку и подготовьте форму.</span>
+              <section className="theme-simple-controls" aria-labelledby="simple-theme-title">
+                <div className="theme-simple-heading">
+                  <div>
+                    <p className="eyebrow">Легко изменить</p>
+                    <h3 id="simple-theme-title">Подстройте оформление под себя</h3>
+                  </div>
+                  <p className="muted">Изменения сразу появляются в примере справа.</p>
+                </div>
+                <label className="theme-friendly-name">
+                  Название оформления
+                  <input
+                    value={draft.name}
+                    maxLength={40}
+                    onChange={(event) => change('name', event.target.value)}
+                  />
+                </label>
+
+                <fieldset className="theme-friendly-colors">
+                  <legend>Цвет деталей</legend>
+                  <div className="theme-color-choices">
+                    {detailColors.map((color) => (
+                      <button
+                        key={color.value}
+                        type="button"
+                        aria-label={`Цвет деталей: ${color.label}`}
+                        aria-pressed={draft.palette.primary === color.value}
+                        onClick={() => changeDetailColor(color.value)}
+                      >
+                        <span style={{ backgroundColor: color.value }} />
+                        {color.label}
+                      </button>
+                    ))}
+                    <label className="theme-custom-color">
+                      <input
+                        type="color"
+                        aria-label="Свой цвет деталей"
+                        value={draft.palette.primary}
+                        onChange={(event) => changeDetailColor(event.target.value)}
+                      />
+                      <span>Свой</span>
+                    </label>
+                  </div>
+                </fieldset>
+
+                <fieldset className="theme-choice-group">
+                  <legend>Стиль текста</legend>
+                  <div className="theme-choice-buttons theme-font-choices">
+                    {fontChoices.map((choice) => (
+                      <button
+                        key={choice.id}
+                        type="button"
+                        aria-pressed={draft.fontPair === choice.id}
+                        onClick={() => change('fontPair', choice.id)}
+                      >
+                        <strong>{choice.label}</strong>
+                        <span>{choice.description}</span>
+                      </button>
+                    ))}
+                  </div>
+                </fieldset>
+
+                <fieldset className="theme-choice-group">
+                  <legend>Фактура страницы</legend>
+                  <div className="theme-choice-buttons theme-paper-choices">
+                    {paperChoices.map((choice) => (
+                      <button
+                        key={choice.id}
+                        type="button"
+                        aria-pressed={draft.paper === choice.id}
+                        onClick={() => change('paper', choice.id)}
+                      >
+                        {choice.label}
+                      </button>
+                    ))}
+                  </div>
+                </fieldset>
+              </section>
+
+              {advancedOpen && (
+                <section className="theme-advanced" aria-labelledby="advanced-theme-title">
+                  <div className="theme-advanced-heading">
+                    <div>
+                      <p className="eyebrow">Дополнительные функции</p>
+                      <h3 id="advanced-theme-title">Точные настройки</h3>
+                    </div>
+                    <button
+                      type="button"
+                      className="theme-advanced-close"
+                      onClick={() => setAdvancedOpen(false)}
+                    >
+                      Скрыть
+                    </button>
+                  </div>
+                  <div className="theme-meta-grid theme-advanced-meta">
+                    <label>
+                      Режим элементов
+                      <select
+                        value={draft.mode}
+                        onChange={(event) =>
+                          change('mode', event.target.value as ThemeProfile['mode'])
+                        }
+                      >
+                        <option value="light">Светлый</option>
+                        <option value="dark">Тёмный</option>
+                      </select>
+                    </label>
+                    <label>
+                      Точная пара шрифтов
+                      <select
+                        value={draft.fontPair}
+                        onChange={(event) => change('fontPair', event.target.value as FontPair)}
+                      >
+                        {Object.entries(fontNames).map(([id, name]) => (
+                          <option key={id} value={id}>
+                            {name}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                    <label>
+                      Точная фактура
+                      <select
+                        value={draft.paper}
+                        onChange={(event) => change('paper', event.target.value as PaperStyle)}
+                      >
+                        {Object.entries(paperNames).map(([id, name]) => (
+                          <option key={id} value={id}>
+                            {name}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                  </div>
+                  <fieldset className="theme-colors">
+                    <legend>Все цвета</legend>
+                    {colorFields.map((field) => (
+                      <label key={field.key}>
+                        <span>{field.label}</span>
+                        <input
+                          type="color"
+                          value={draft.palette[field.key]}
+                          onChange={(event) => changeColor(field.key, event.target.value)}
+                        />
+                        <code>{draft.palette[field.key].toUpperCase()}</code>
+                      </label>
+                    ))}
+                  </fieldset>
+                  <section className="contrast-report" aria-labelledby="contrast-title">
+                    <div>
+                      <h3 id="contrast-title">Читаемость текста</h3>
+                      <strong className={contrast.passesAA ? 'contrast-pass' : 'contrast-fail'}>
+                        {contrast.passesAA ? 'Всё хорошо' : 'Нужно исправить'}
+                      </strong>
+                    </div>
+                    <ul>
+                      {contrast.checks.map((check) => (
+                        <li key={check.id}>
+                          <span>{check.label}</span>
+                          <strong>{check.ratio.toFixed(2)}:1</strong>
+                          <span>{check.ratio >= 4.5 ? 'Читается' : 'Слишком бледно'}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </section>
+                </section>
+              )}
             </div>
-            <button type="button">Сохранить рецепт</button>
-          </article>
-        </div>
-      </div>
-      <div className="settings-actions theme-builder-actions">
-        <button
-          type="button"
-          className="button button-primary"
-          disabled={!contrast.passesAA || !draft.name.trim()}
-          onClick={apply}
-        >
-          {target === 'app' ? 'Применить оформление' : 'Оформить страницы рецептов'}
-        </button>
-        {!contrast.passesAA && (
-          <p role="alert" className="error-text">
-            Некоторые цвета плохо читаются.{' '}
-            <button type="button" onClick={() => setAdvancedOpen(true)}>
-              Исправить в точных настройках
+
+            <div className="theme-preview-column">
+              <article
+                className="theme-preview"
+                data-paper={draft.paper}
+                style={previewStyle}
+                aria-label="Предпросмотр темы"
+              >
+                <p className="eyebrow">Семейный рецепт</p>
+                <h3>Яблочный пирог</h3>
+                <p>Тонкое тесто, яблоки и щепотка корицы.</p>
+                <p className="muted">Подготовка · 20 минут</p>
+                <div className="theme-preview-note">
+                  <strong>Первый шаг</strong>
+                  <span>Разогрейте духовку и подготовьте форму.</span>
+                </div>
+                <button type="button">Сохранить рецепт</button>
+              </article>
+            </div>
+          </div>
+          <div className="settings-actions theme-builder-actions">
+            <button
+              type="button"
+              className="button button-primary"
+              disabled={!contrast.passesAA || !draft.name.trim()}
+              onClick={apply}
+            >
+              {target === 'app' ? 'Применить оформление' : 'Оформить страницы рецептов'}
             </button>
-          </p>
-        )}
-        {message && <p role="status">{message}</p>}
-      </div>
+            {!contrast.passesAA && (
+              <p role="alert" className="error-text">
+                Некоторые цвета плохо читаются.{' '}
+                <button type="button" onClick={() => setAdvancedOpen(true)}>
+                  Исправить в точных настройках
+                </button>
+              </p>
+            )}
+            {message && <p role="status">{message}</p>}
+          </div>
+        </>
+      )}
 
       {libraryOpen && (
         <div

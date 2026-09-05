@@ -43,5 +43,21 @@ export default defineConfig({
       use: { ...devices['Desktop Safari'] },
     },
     { name: 'mobile-chromium', use: { ...devices['Pixel 7'] } },
+    {
+      name: 'print-webkit',
+      testMatch: /recipes\.spec\.ts/,
+      grep: /N6 print/,
+      use: { ...devices['Desktop Safari'] },
+    },
+    ...(process.platform === 'win32' && !process.env['CI']
+      ? []
+      : [
+          {
+            name: 'print-firefox',
+            testMatch: /recipes\.spec\.ts/,
+            grep: /N6 print/,
+            use: { ...devices['Desktop Firefox'] },
+          },
+        ]),
   ],
 });

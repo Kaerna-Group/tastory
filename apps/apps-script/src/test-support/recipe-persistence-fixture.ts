@@ -5,6 +5,7 @@ import { applyRecipeSchema } from '../services/recipe-migration';
 import { createRecipeStore } from '../platform/recipe-store';
 import { readWorkspaceDirectory } from '../platform/workspace-directory';
 import {
+  DESIGN_RECIPE_SCHEMA_FINGERPRINT,
   LEGACY_RECIPE_SCHEMA_FINGERPRINT,
   PHOTO_RECIPE_SCHEMA_FINGERPRINT,
   RECIPE_SCHEMA_FINGERPRINT,
@@ -40,6 +41,7 @@ export function persistenceFixture(initialize = true) {
     settingsRecipeChecksum: sha256(SETTINGS_RECIPE_SCHEMA_FINGERPRINT),
     stickerRecipeChecksum: sha256(STICKER_RECIPE_SCHEMA_FINGERPRINT),
     templateRecipeChecksum: sha256(TEMPLATE_RECIPE_SCHEMA_FINGERPRINT),
+    designRecipeChecksum: sha256(DESIGN_RECIPE_SCHEMA_FINGERPRINT),
   };
   if (initialize) applyRecipeSchema(store, migrationOptions);
   const model = recipeFixture();

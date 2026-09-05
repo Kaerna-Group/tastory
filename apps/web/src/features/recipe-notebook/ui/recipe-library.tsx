@@ -1,7 +1,10 @@
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
+import type { CSSProperties } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router';
-import { requestSessionRecipes } from '@/entities/session';
+import { RecipePageRenderer } from '@/entities/recipe-page';
+import { requestSessionRecipes, acquireRecipePhoto } from '@/entities/session';
 import { env } from '@/shared/config';
+import { defaultThemePreferences, themeCssVariables } from '@/shared/theme';
 import { getUserSettings, subscribeUserSettings } from '@/entities/user-settings';
 import {
   draftKey,
@@ -17,32 +20,198 @@ import { readLibraryQuery, selectLibraryRecipes, writeLibraryQuery } from '../mo
 import type { LibraryQuery } from '../model/library';
 import { cacheRecentLibrary, readRecentLibrary } from '../model/recent-recipes';
 
-function RecipeThumbnail({ recipe }: { recipe: RecipeSummary }) {
-  const [source, setSource] = useState('');
+const DEMO_RECIPE_ID = '10000000-0000-4000-8000-000000000008';
+const DEMO_RECIPE = {
+  content: {
+    title: 'Яблочный пирог для воскресенья',
+    description: 'Тонкое тесто, кислые яблоки и семейная заметка на полях.',
+    servings: 8,
+    prepMinutes: 25,
+    cookMinutes: 45,
+    sourceUrl: '',
+    notes: 'Подавать чуть тёплым. На следующий день корочка остаётся хрустящей.',
+  },
+  ingredients: [
+    {
+      key: 'demo-apples',
+      sectionTitle: 'Начинка',
+      position: 0,
+      name: 'Кислые яблоки',
+      quantityValue: 5,
+      quantityText: '',
+      unit: 'шт.',
+      note: '',
+      isOptional: false,
+    },
+    {
+      key: 'demo-flour',
+      sectionTitle: 'Тесто',
+      position: 1,
+      name: 'Мука',
+      quantityValue: 240,
+      quantityText: '',
+      unit: 'г',
+      note: '',
+      isOptional: false,
+    },
+  ],
+  steps: [
+    {
+      key: 'demo-step-1',
+      sectionTitle: '',
+      position: 0,
+      body: 'Нарежьте яблоки тонкими дольками и смешайте с корицей.',
+      durationSeconds: null,
+    },
+    {
+      key: 'demo-step-2',
+      sectionTitle: '',
+      position: 1,
+      body: 'Выложите начинку на тесто и выпекайте до золотистой корочки.',
+      durationSeconds: 2700,
+    },
+  ],
+  tagIds: [],
+};
+const DEMO_THEME = defaultThemePreferences('light').page;
+
+function readIntroDismissed(key: string) {
+  try {
+    return localStorage.getItem(key) === 'dismissed';
+  } catch {
+    return false;
+  }
+}
+
+function RecipeThumbnail({ recipe, href }: { recipe: RecipeSummary; href: string }) {
+  const root = useRef<HTMLAnchorElement>(null);
+  const [nearby, setNearby] = useState(() => typeof IntersectionObserver === 'undefined');
+  const [loaded, setLoaded] = useState<{ photoId: string; source: string } | null>(null);
+  const source = nearby && loaded?.photoId === recipe.coverPhotoId ? loaded.source : '';
   useEffect(() => {
-    if (!recipe.coverPhotoId) return;
-    const controller = new AbortController();
-    void requestSessionRecipes(
-      {
-        action: 'recipes.photos.read',
-        payload: { recipeId: recipe.id, photoId: recipe.coverPhotoId, variant: 'thumbnail' },
-      },
-      crypto.randomUUID(),
-      controller.signal,
-    )
-      .then((result) => {
-        if (!controller.signal.aborted && result.kind === 'photo')
-          setSource(`data:image/jpeg;base64,${result.base64}`);
+    const element = root.current;
+    if (!element || !recipe.coverPhotoId) return;
+    if (!('IntersectionObserver' in window)) return;
+    const observer = new IntersectionObserver(
+      (entries) => setNearby(entries.some((entry) => entry.isIntersecting)),
+      { rootMargin: '320px 0px' },
+    );
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, [recipe.coverPhotoId]);
+  useEffect(() => {
+    if (!recipe.coverPhotoId || !nearby) return;
+    let cancelled = false;
+    const photoId = recipe.coverPhotoId;
+    const lease = acquireRecipePhoto(recipe.id, { id: photoId }, 'thumbnail');
+    void lease.promise
+      .then((source) => {
+        if (!cancelled) setLoaded({ photoId, source });
       })
       .catch(() => undefined);
-    return () => controller.abort();
-  }, [recipe.coverPhotoId, recipe.id]);
-  return source ? (
-    <img className="library-recipe-cover" src={source} alt="" />
-  ) : (
-    <div className="library-recipe-cover library-recipe-cover-empty" aria-hidden="true">
-      ⌁
-    </div>
+    return () => {
+      cancelled = true;
+      lease.release();
+    };
+  }, [nearby, recipe.coverPhotoId, recipe.id]);
+  return (
+    <Link
+      ref={root}
+      className="library-recipe-cover-link"
+      to={href}
+      aria-label={`Открыть рецепт «${recipe.title}»`}
+      data-thumbnail-state={!recipe.coverPhotoId ? 'empty' : source ? 'ready' : 'idle'}
+    >
+      {source ? (
+        <img className="library-recipe-cover" src={source} alt="" loading="lazy" decoding="async" />
+      ) : (
+        <div className="library-recipe-cover library-recipe-cover-empty" aria-hidden="true">
+          <span>⌁</span>
+          <i />
+          <i />
+          <i />
+        </div>
+      )}
+    </Link>
+  );
+}
+
+function recipeTime(recipe: RecipeSummary) {
+  if (recipe.prepMinutes === null && recipe.cookMinutes === null) return '';
+  const minutes = (recipe.prepMinutes ?? 0) + (recipe.cookMinutes ?? 0);
+  if (minutes < 60) return `${minutes} мин`;
+  const rest = minutes % 60;
+  return `${Math.floor(minutes / 60)} ч${rest ? ` ${rest} мин` : ''}`;
+}
+
+function FirstRecipeGuide({
+  canCreate,
+  onCreate,
+  onDismiss,
+}: {
+  canCreate: boolean;
+  onCreate: () => void;
+  onDismiss: () => void;
+}) {
+  const style = {
+    ...themeCssVariables(DEMO_THEME),
+    colorScheme: DEMO_THEME.mode,
+  } as CSSProperties;
+  return (
+    <section className="first-recipe-guide" aria-labelledby="first-recipe-title">
+      <div className="first-recipe-copy">
+        <div className="first-recipe-label">
+          <span>Демонстрационный рецепт</span>
+          <button type="button" className="text-link" onClick={onDismiss}>
+            Скрыть знакомство
+          </button>
+        </div>
+        <p className="eyebrow">Так выглядит готовая страница</p>
+        <h2 id="first-recipe-title">Соберите свою кулинарную книгу</h2>
+        <p>
+          Рецепт начинается с привычных полей, получает книжный макет и остаётся удобным для чтения
+          и печати. Этот пример живёт только в браузере и ничего не записывает на сервер.
+        </p>
+        <ol className="first-recipe-steps" aria-label="Основной путь создания рецепта">
+          <li>
+            <span>1</span>Добавить рецепт
+          </li>
+          <li>
+            <span>2</span>Заполнить содержание
+          </li>
+          <li>
+            <span>3</span>Выбрать макет
+          </li>
+          <li>
+            <span>4</span>Открыть просмотр
+          </li>
+        </ol>
+        {canCreate && (
+          <button type="button" className="button button-primary" onClick={onCreate}>
+            Создать первый рецепт
+          </button>
+        )}
+      </div>
+      <div
+        className="first-recipe-preview recipe-presentation-theme"
+        data-paper={DEMO_THEME.paper}
+        data-mode={DEMO_THEME.mode}
+        style={style}
+        aria-label="Локальный пример готовой страницы"
+      >
+        <RecipePageRenderer
+          recipeId={DEMO_RECIPE_ID}
+          recipeRevision={null}
+          templateId={null}
+          templateRevision={1}
+          templateName="Домашняя страница"
+          layout="hearth"
+          tagNames={['Выпечка', 'Семейное']}
+          value={DEMO_RECIPE}
+          compact
+        />
+      </div>
+    </section>
   );
 }
 
@@ -68,9 +237,10 @@ export function RecipeLibrary({
   const [attempt, setAttempt] = useState(0);
   const [notReady, setNotReady] = useState(false);
   const [initializing, setInitializing] = useState(false);
-  const autoInitializeAttempted = useRef(false);
   const [removeId, setRemoveId] = useState<string | null>(null);
   const [favoriteBusy, setFavoriteBusy] = useState<string | null>(null);
+  const introKey = `tastory.library-intro.v1:${encodeURIComponent(scope)}`;
+  const [introDismissed, setIntroDismissed] = useState(() => readIntroDismissed(introKey));
   const selectedRecipes = useMemo(() => selectLibraryRecipes(recipes, query), [recipes, query]);
   const tags = useMemo(() => {
     const values = new Map<string, string>();
@@ -117,29 +287,11 @@ export function RecipeLibrary({
       })
       .catch((error) => {
         if (!controller.signal.aborted) {
-          if (error?.code === 'RECIPE_NOT_READY' && owner && !autoInitializeAttempted.current) {
-            autoInitializeAttempted.current = true;
-            setInitializing(true);
-            void requestSessionRecipes(
-              { action: 'admin.recipes.initialize', payload: {} },
-              crypto.randomUUID(),
-              controller.signal,
-            )
-              .then(() => {
-                if (!controller.signal.aborted) {
-                  setInitializing(false);
-                  setAttempt((value) => value + 1);
-                }
-              })
-              .catch(() => {
-                if (!controller.signal.aborted) {
-                  setInitializing(false);
-                  setNotReady(true);
-                  setError(
-                    'Не удалось автоматически подготовить хранение. Повторите подготовку вручную.',
-                  );
-                }
-              });
+          if (error?.code === 'RECIPE_NOT_READY' && owner) {
+            setNotReady(true);
+            setError(
+              'Хранилище рецептов ещё не подготовлено. Запуск требует явного подтверждения.',
+            );
             return;
           }
           const recent = readRecentLibrary(localStorage, scope);
@@ -188,6 +340,14 @@ export function RecipeLibrary({
       setError('Не удалось подготовить хранение рецептов. Проверьте подключение и повторите.');
     } finally {
       setInitializing(false);
+    }
+  };
+  const dismissIntro = () => {
+    setIntroDismissed(true);
+    try {
+      localStorage.setItem(introKey, 'dismissed');
+    } catch {
+      // Dismissal is optional; the guide can reappear if browser storage is unavailable.
     }
   };
   const remove = async (id: string) => {
@@ -269,6 +429,9 @@ export function RecipeLibrary({
             Подготовить хранение рецептов
           </button>
         </section>
+      )}
+      {!loading && recipes.length === 0 && drafts.length === 0 && !introDismissed && (
+        <FirstRecipeGuide canCreate={writer} onCreate={create} onDismiss={dismissIntro} />
       )}
       {drafts.length > 0 && (
         <section className="recipe-section" aria-labelledby="local-drafts-title">
@@ -363,7 +526,7 @@ export function RecipeLibrary({
           </div>
         </div>
         {loading && <p role="status">Загружаем библиотеку…</p>}
-        {!loading && !error && recipes.length === 0 && (
+        {!loading && recipes.length === 0 && (introDismissed || drafts.length > 0) && (
           <div className="notebook">
             <h3>Всё начинается с одного рецепта</h3>
             <p className="muted">Запишите любимое блюдо — правки сохраняются автоматически.</p>
@@ -460,9 +623,11 @@ export function RecipeLibrary({
         <div className="library-recipe-results" data-view={query.view}>
           {selectedRecipes.map((recipe) => {
             const draft = drafts.find((item) => item.base?.recipe.id === recipe.id);
+            const href = draft ? `/drafts/${draft.id}` : `/recipes/${recipe.id}`;
+            const duration = recipeTime(recipe);
             return (
               <article key={recipe.id} className="panel recipe-card library-recipe-card">
-                <RecipeThumbnail recipe={recipe} />
+                <RecipeThumbnail recipe={recipe} href={href} />
                 <div className="library-recipe-copy">
                   <div className="library-recipe-meta">
                     <p className="eyebrow">
@@ -484,11 +649,15 @@ export function RecipeLibrary({
                     </button>
                   </div>
                   <h3>
-                    <Link to={draft ? `/drafts/${draft.id}` : `/recipes/${recipe.id}`}>
-                      {recipe.title}
-                    </Link>
+                    <Link to={href}>{recipe.title}</Link>
                   </h3>
                   {recipe.description && <p className="muted">{recipe.description}</p>}
+                  {(duration || recipe.servings !== null) && (
+                    <ul className="library-recipe-facts" aria-label="Кратко о рецепте">
+                      {duration && <li>◷ {duration}</li>}
+                      {recipe.servings !== null && <li>{recipe.servings} порц.</li>}
+                    </ul>
+                  )}
                   {recipe.ingredientNames.length > 0 && (
                     <p className="library-ingredients">
                       {recipe.ingredientNames.slice(0, 4).join(' · ')}

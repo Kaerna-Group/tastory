@@ -13,9 +13,10 @@ export const recipePageBindingSchema = z.enum([
   'notes',
   'source',
   'tags',
+  'photos',
 ]);
 export const recipePageRegionSchema = z.enum(['header', 'sidebar', 'body', 'footer']);
-export const recipePageKindSchema = z.enum(['opening', 'continuation', 'story', 'notes']);
+export const recipePageKindSchema = z.enum(['opening', 'continuation', 'story', 'notes', 'photos']);
 
 const percent = z.number().min(0).max(100);
 const elementId = z.string().regex(/^page-[1-9][0-9]*-[a-z]+$/);

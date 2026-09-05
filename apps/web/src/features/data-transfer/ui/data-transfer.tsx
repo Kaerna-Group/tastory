@@ -1,5 +1,11 @@
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
-import { getSession, requestSessionRecipes, subscribeSession } from '@/entities/session';
+import {
+  getSession,
+  requestSessionRecipes,
+  requestSessionStickers,
+  requestSessionTemplates,
+  subscribeSession,
+} from '@/entities/session';
 import {
   buildTransferDocument,
   importTransferDocument,
@@ -12,6 +18,12 @@ import {
 import type { ImportReport, TransferPreview, TransferProgress } from '@/entities/recipe-transfer';
 import { env } from '@/shared/config';
 import type { RecipeTransferDocument } from '../model/types';
+
+const transferRequests = {
+  recipes: requestSessionRecipes,
+  stickers: requestSessionStickers,
+  templates: requestSessionTemplates,
+};
 
 function download(text: string, name: string) {
   const url = URL.createObjectURL(new Blob([text], { type: 'application/json' }));
@@ -111,7 +123,7 @@ function TransferPanel({ subject, owner }: { subject: string; owner: boolean }) 
       const result = await buildTransferDocument(
         'book',
         list.recipes.map((recipe) => recipe.id),
-        requestSessionRecipes,
+        transferRequests,
         controller.signal,
         setProgress,
       );
@@ -143,14 +155,14 @@ function TransferPanel({ subject, owner }: { subject: string; owner: boolean }) 
       const result = await importTransferDocument(
         document,
         { collision, visibility, runId },
-        requestSessionRecipes,
+        transferRequests,
         controller.signal,
         setProgress,
       );
       if (controller.signal.aborted) return;
       setReport(result);
       setMessage(
-        `Импорт завершён: рецептов — ${result.imported}, пропущено — ${result.skipped}, фотографий — ${result.photos}.`,
+        `Импорт завершён: рецептов — ${result.imported}, пропущено — ${result.skipped}, фотографий — ${result.photos}, стикеров — ${result.stickers}.`,
       );
     } catch (cause) {
       if (!controller.signal.aborted)
@@ -175,8 +187,8 @@ function TransferPanel({ subject, owner }: { subject: string; owner: boolean }) 
     <section className="panel" aria-labelledby="transfer-title">
       <h2 id="transfer-title">Импорт и экспорт</h2>
       <p className="muted">
-        Файл Tastory содержит рецепты, теги и фотографии. Перед импортом он полностью проверяется;
-        данные записываются только после предпросмотра.
+        Файл Tastory содержит рецепты, теги, фотографии и сохранённое оформление со стикерами. Перед
+        импортом он полностью проверяется; данные записываются только после предпросмотра.
       </p>
       <div className="recipe-row-actions">
         {owner && (

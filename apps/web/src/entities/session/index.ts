@@ -25,3 +25,8 @@ export {
 export type { AccessEvent, AccessReport } from './model/access-check';
 export { requestSessionAccess } from './model/session-store';
 export { requestSessionBackups } from './model/session-store';
+export {
+  acquireRecipePhoto,
+  acquireRecipeStickers,
+  acquireStickerImage,
+} from './model/session-resources';

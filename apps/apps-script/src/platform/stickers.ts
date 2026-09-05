@@ -52,7 +52,7 @@ function customPacks(store: ReturnType<typeof createRecipeStore>) {
     packs: [...state.packs.values()].map((row) => stickerPackSchema.parse(stripVersion(row))),
     stickers: [...state.stickers.values()].map((row) => stickerItemSchema.parse(stripVersion(row))),
     placements: [...state.placements.values()].map((row) =>
-      recipeStickerSchema.parse(stripVersion(row)),
+      recipeStickerSchema.parse({ ...stripVersion(row), pageId: `page-${row.page}` }),
     ),
   };
 }
@@ -384,6 +384,7 @@ export function stickers(input: StickerCommand, requestId: string, session: Auth
         assetDigest: item.digest,
         assetKey: item.assetKey,
         page: recipeCommand.payload.page,
+        pageId: `page-${recipeCommand.payload.page}`,
         x: recipeCommand.payload.x,
         y: recipeCommand.payload.y,
         width: recipeCommand.payload.width,
@@ -410,6 +411,7 @@ export function stickers(input: StickerCommand, requestId: string, session: Auth
           : recipeStickerSchema.parse({
               ...previous,
               page: recipeCommand.payload.page,
+              pageId: `page-${recipeCommand.payload.page}`,
               x: recipeCommand.payload.x,
               y: recipeCommand.payload.y,
               width: recipeCommand.payload.width,
